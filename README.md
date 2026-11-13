@@ -364,6 +364,10 @@ derived variables, updated when the occupant changes or loads. The release
 cooldown uses a persisted idle-only timer, and placement checks and detached
 preview caching use shared entity helpers. Capture rules, wording, pose extensions
 and Animal Gym installation remain mod-owned.
+Animal Gym implements MMDLib's item receiver contract, so Courier needs no gym
+classes or slot knowledge. The shared right-click path also handles fluid buckets
+and compatible modded containers on fluid machines, returning the resulting
+container and leaving rejected exchanges unchanged.
 Old development block-entity saves are not migrated.
 
 All four sides share the paw display and status indicators; occupied cages also

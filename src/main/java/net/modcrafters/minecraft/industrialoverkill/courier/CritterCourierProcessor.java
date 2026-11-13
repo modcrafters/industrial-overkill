@@ -10,15 +10,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 
-import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
 import zone.moddev.mc.lib.api.entity.EntityPlacement;
 import zone.moddev.mc.lib.api.entity.EntityPreviewCache;
 import zone.moddev.mc.lib.api.entity.EntitySnapshot;
@@ -28,7 +25,6 @@ import zone.moddev.mc.lib.machine.feature.ProcessorMachine;
 import zone.moddev.mc.lib.machine.feature.ProcessorState;
 import zone.moddev.mc.lib.machine.feature.ProcessorTimer;
 import zone.moddev.mc.lib.machine.feature.Processors;
-import zone.moddev.mc.lib.machine.neoforge.MultiblockMembers;
 
 /** Capture, transport and release policy for the XML-defined Critter Courier. */
 public final class CritterCourierProcessor extends PortableStoredProcessor {
@@ -123,20 +119,6 @@ public final class CritterCourierProcessor extends PortableStoredProcessor {
         variables.update(() -> { cooldown.start(40); variables.set(occupant, EntitySnapshot.EMPTY); });
         server.playSound(null, machine.position(), SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.BLOCKS, 1, 1);
         return true;
-    }
-    public InteractionResult useItem(UseOnContext context) {
-        if (!CritterCourierData.occupied(context.getItemInHand())) return InteractionResult.PASS;
-        if (context.getLevel().isClientSide() && context.getLevel().getBlockState(context.getClickedPos())
-            .getBlock() instanceof net.modcrafters.minecraft.industrialoverkill.gym.GymBlock) return InteractionResult.SUCCESS;
-        var structure = MultiblockMembers.resolve(context.getLevel(), context.getClickedPos());
-        if (structure == null || !(structure.owner() instanceof AnimalGymEntity gym)) return InteractionResult.PASS;
-        if (context.getLevel().isClientSide()) return InteractionResult.SUCCESS;
-        if (!structure.ready() || !gym.food.getStackInSlot(3).isEmpty()) return InteractionResult.FAIL;
-        gym.training.reset();
-        if (!gym.food.insertItem(3, context.getItemInHand().copyWithCount(1), false).isEmpty()) return InteractionResult.FAIL;
-        context.getItemInHand().shrink(1);
-        gym.synchronize();
-        return InteractionResult.CONSUME;
     }
     public void tooltip(ItemStack stack, List<Component> lines) {
         var data = CritterCourierData.read(stack);

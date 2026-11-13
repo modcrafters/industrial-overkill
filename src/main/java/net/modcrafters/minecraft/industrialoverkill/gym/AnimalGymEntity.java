@@ -13,6 +13,7 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -30,13 +31,14 @@ import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.api.capabilities.SideConfig;
 import zone.moddev.mc.lib.api.redstone.RedstoneControl;
 import zone.moddev.mc.lib.api.redstone.RedstoneOutput;
+import zone.moddev.mc.lib.machine.feature.ItemReceiver;
 import zone.moddev.mc.lib.machine.multiblock.MultiblockInstance;
 import zone.moddev.mc.lib.machine.multiblock.StructureTransform;
 import zone.moddev.mc.lib.machine.neoforge.BasePoweredMachine;
 import zone.moddev.mc.lib.machine.neoforge.MultiblockMembers;
 import zone.moddev.mc.lib.machine.neoforge.MultiblockResources;
 
-public final class AnimalGymEntity extends BasePoweredMachine implements MultiblockResources {
+public final class AnimalGymEntity extends BasePoweredMachine implements MultiblockResources, ItemReceiver {
     public final ItemStorage food = new ItemStorage(4)
         .restrict(stack -> GymAnimalRecipe.food(level, stack), 0, 1, 2)
         .restrict(CritterCourierData::occupied, 3).onChange(this::inventoryChanged);
@@ -100,6 +102,21 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
                 () -> training.generation() > 0 ? 15 : 0)))
             .disabledFaces(AnimalGym.UNAVAILABLE_FACES);
         features.add(training);
+    }
+    @Override
+    public boolean accepts(ItemStack offered) {
+        return CritterCourierData.occupied(offered);
+    }
+    @Override
+    public Exchange receive(ItemStack offered, UseOnContext context) {
+        if (context.getLevel().isClientSide() || offered.getCount() != 1 || !accepts(offered) || !structureReady()
+            || !food.getStackInSlot(3).isEmpty() || !food.insertItem(3, offered, true).isEmpty())
+            return Exchange.reject();
+        if (!food.insertItem(3, offered, false).isEmpty())
+            return Exchange.reject();
+        training.reset();
+        synchronize();
+        return Exchange.accept(ItemStack.EMPTY);
     }
     private void inventoryChanged() {
         setChanged();

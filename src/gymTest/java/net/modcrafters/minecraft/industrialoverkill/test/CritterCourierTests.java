@@ -218,6 +218,43 @@ public final class CritterCourierTests {
         require(!gym.captive.installed(), "Removed slot no longer owns an animal");
         helper.succeed();
     }
+
+    @GameTest(template = "gym_empty")
+    public static void receiverOwnsInstallationAndRejectsWithoutChangingEitherSide(GameTestHelper helper) {
+        var gym = AnimalGymTests.place(helper, Direction.NORTH);
+        var cow = EntityType.COW.create(helper.getLevel());
+        var stack = CritterCourierData.stack(CritterCourierData.save(cow));
+        var player = helper.makeMockPlayer(GameType.CREATIVE);
+        player.setItemInHand(InteractionHand.MAIN_HAND, stack);
+        var member = gym.getBlockPos().west();
+        var use = new UseOnContext(player, InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(member), Direction.UP, member, false));
+        require(MachineContent.item(CritterCourierData.ID).useOn(use).consumesAction(),
+            "Shared item routing finds the gym receiver through a multiblock part");
+        stack.setCount(1); // Vanilla restores this original reference after creative Item.useOn.
+        require(player.getMainHandItem().isEmpty(), "Creative installation consumes unique contents despite vanilla count restoration");
+        var installed = gym.food.getStackInSlot(3).copy();
+        require(CritterCourierData.read(installed).getUUID("UUID").equals(cow.getUUID()), "Receiver preserves the carried identity");
+        var second = CritterCourierData.stack(CritterCourierData.save(EntityType.SHEEP.create(helper.getLevel())));
+        player.setItemInHand(InteractionHand.MAIN_HAND, second);
+        var before = second.copy();
+        var training = gym.training.state();
+        use = new UseOnContext(player, InteractionHand.MAIN_HAND,
+            new BlockHitResult(Vec3.atCenterOf(member), Direction.UP, member, false));
+        require(MachineContent.item(CritterCourierData.ID).useOn(use) == net.minecraft.world.InteractionResult.FAIL,
+            "Full receiver rejects the exchange without placing the courier beside it");
+        require(ItemStack.matches(player.getMainHandItem(), before) && ItemStack.matches(gym.food.getStackInSlot(3), installed),
+            "Failed exchange leaves both items unchanged");
+        require(training.equals(gym.training.state()), "Rejected installation does not reset training");
+        gym.food.extractItem(3, 1, false);
+        player.setItemInHand(InteractionHand.OFF_HAND, second);
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        var offhand = new UseOnContext(player, InteractionHand.OFF_HAND,
+            new BlockHitResult(Vec3.atCenterOf(member), Direction.UP, member, false));
+        require(MachineContent.item(CritterCourierData.ID).useOn(offhand).consumesAction()
+            && player.getOffhandItem().isEmpty(), "Offhand exchanges use the same ownership rules");
+        helper.succeed();
+    }
     @GameTest(template = "gym_empty")
     public static void captiveCachePreservesEveryTickAndRefreshesOnReplacement(
         GameTestHelper helper) {

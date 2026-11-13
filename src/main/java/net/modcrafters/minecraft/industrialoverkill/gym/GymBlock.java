@@ -44,16 +44,6 @@ public final class GymBlock extends MultiblockBlock {
         return lights == null ? 0 : lights.getLightAt(pos);
     }
     @Override
-    protected net.minecraft.world.ItemInteractionResult useItemOn(
-        net.minecraft.world.item.ItemStack stack,
-        BlockState state, net.minecraft.world.level.Level level, BlockPos pos,
-        net.minecraft.world.entity.player.Player player, net.minecraft.world.InteractionHand hand,
-        net.minecraft.world.phys.BlockHitResult hit) {
-        if (net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData.occupied(stack))
-            return net.minecraft.world.ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION;
-        return super.useItemOn(stack, state, level, pos, player, hand, hit);
-    }
-    @Override
     protected boolean isSignalSource(BlockState state) {
         return kind == Kind.CONTROLLER;
     }
