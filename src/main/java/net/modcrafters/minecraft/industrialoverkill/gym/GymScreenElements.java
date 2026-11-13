@@ -1,6 +1,7 @@
 package net.modcrafters.minecraft.industrialoverkill.gym;
 
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -62,26 +63,39 @@ public final class GymScreenElements {
         public List<Component> tooltip(ScreenHost host, ItemStack carried) {
             if (!(host instanceof AnimalGymEntity gym))
                 return List.of();
-            var stack = gym.food.getStackInSlot(index());
-            if (stack.isEmpty())
-                return List.of();
-            var animal = gym.training.animal();
+            var animal = gym.training.foodAnimal();
             if (animal == null)
-                return List.of(Component.translatable("gym.food.no_animal"));
-            var recipe = GymAnimalRecipe.find(animal, stack);
-            if (recipe == null)
-                return List.of(Component.translatable("gym.food.unsuitable"));
-            int intensity = gym.getIntensity();
-            var format = NumberFormat.getNumberInstance(Locale.ROOT);
-            format.setMaximumFractionDigits(2);
-            long total = (long) recipe.energyPerTick() * recipe.foodDurationTicks();
-            return List.of(
-                Component.translatable("gym.food.intensity", intensity),
-                Component.translatable("gym.food.power",
-                    format.format(recipe.energyPerTick() * intensity)),
-                Component.translatable("gym.food.duration",
-                    format.format(recipe.foodDurationTicks() / (20.0 * intensity))),
-                Component.translatable("gym.food.total_energy", format.format(total)));
+                return List.of(Component.translatable(gym.hasCaptive()
+                    ? "gym.food.none" : "gym.food.no_animal"));
+            var lines = new ArrayList<Component>();
+            var stack = gym.food.getStackInSlot(index());
+            if (!stack.isEmpty()) {
+                var recipe = GymAnimalRecipe.find(animal, stack);
+                if (recipe == null) {
+                    lines.add(Component.translatable("gym.food.unsuitable"));
+                } else {
+                    int intensity = gym.getIntensity();
+                    var format = NumberFormat.getNumberInstance(Locale.ROOT);
+                    format.setMaximumFractionDigits(2);
+                    long total = (long) recipe.energyPerTick() * recipe.foodDurationTicks();
+                    lines.addAll(List.of(
+                        Component.translatable("gym.food.intensity", intensity),
+                        Component.translatable("gym.food.power",
+                            format.format(recipe.energyPerTick() * intensity)),
+                        Component.translatable("gym.food.duration",
+                            format.format(recipe.foodDurationTicks() / (20.0 * intensity))),
+                        Component.translatable("gym.food.total_energy", format.format(total))));
+                }
+            }
+            var foods = GymAnimalRecipe.foodsFor(animal);
+            if (foods.isEmpty()) {
+                lines.add(Component.translatable("gym.food.none"));
+            } else {
+                lines.add(Component.translatable("gym.food.accepts", animal.getName()));
+                for (var food : foods)
+                    lines.add(Component.translatable("gym.food.accepted_item", food.getHoverName()));
+            }
+            return List.copyOf(lines);
         }
     }
 

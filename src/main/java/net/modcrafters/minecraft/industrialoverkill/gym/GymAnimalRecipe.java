@@ -1,5 +1,6 @@
 package net.modcrafters.minecraft.industrialoverkill.gym;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +97,21 @@ public record GymAnimalRecipe(Selector entity, Ingredient food, boolean enabled,
         ItemStack stack) {
         return !stack.isEmpty() && GymAnimalRecipe.rules(animal.level()).stream()
             .anyMatch(rule -> rule.entity().matches(animal.getType()) && rule.food().test(stack));
+    }
+
+    /** Displayable foods across every enabled tier, expanding tags without duplicate stacks. */
+    public static List<ItemStack> foodsFor(net.minecraft.world.entity.animal.Animal animal) {
+        var foods = new ArrayList<ItemStack>();
+        for (var rule : rules(animal.level())) {
+            if (!rule.entity().matches(animal.getType()))
+                continue;
+            for (var stack : rule.food().getItems()) {
+                if (!stack.isEmpty() && rule.food().test(stack)
+                    && foods.stream().noneMatch(existing -> ItemStack.isSameItemSameComponents(existing, stack)))
+                    foods.add(stack.copyWithCount(1));
+            }
+        }
+        return List.copyOf(foods);
     }
 
     public static GymAnimalRecipe find(net.minecraft.world.entity.animal.Animal animal,

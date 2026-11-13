@@ -372,6 +372,8 @@ only that animal's food is accepted; an empty gym accepts any supported animal
 food. GUI insertion and hopper automation use the same live food-slot filter.
 Changing animals preserves existing food, which can still be removed through the
 GUI. Adding food does not interrupt training.
+Hover any food slot, empty or occupied, to see the current animal's accepted
+foods across all recipe tiers. Suitable stored food also shows its energy details.
 The shared right-click path also handles fluid buckets
 and compatible modded containers on fluid machines, returning the resulting
 container and leaving rejected exchanges unchanged.

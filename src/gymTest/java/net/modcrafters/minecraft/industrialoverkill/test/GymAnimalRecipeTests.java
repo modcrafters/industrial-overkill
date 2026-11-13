@@ -108,6 +108,11 @@ public final class GymAnimalRecipeTests {
             manager.replaceRecipes(java.util.List.of(
                 new RecipeHolder<>(ResourceLocation.parse("industrial_overkill:z"), other),
                 new RecipeHolder<>(ResourceLocation.parse("industrial_overkill:a"), shortMeal)));
+            var foods = GymAnimalRecipe.foodsFor(EntityType.PANDA.create(level));
+            require(foods.size() == 1 && foods.getFirst().is(Items.BAMBOO), "Overlapping food tiers produce one tooltip entry");
+            foods.getFirst().setCount(0);
+            require(GymAnimalRecipe.foodsFor(EntityType.PANDA.create(level)).getFirst().getCount() == 1,
+                "Tooltip samples cannot mutate recipe ingredients");
             var gym = AnimalGymTests.place(h, Direction.NORTH);
             gym.food.insertItem(3,
                 CritterCourierData.stack(CritterCourierData.save(EntityType.PANDA.create(level))), false);
@@ -167,6 +172,9 @@ public final class GymAnimalRecipeTests {
                 "Reload replaces cached roster; disabled recipe excluded");
             require(!GymAnimalRecipe.food(level, new ItemStack(Items.BAMBOO)),
                 "Disabled foods leave inventory filter");
+            require(GymAnimalRecipe.foodsFor(panda).isEmpty(), "Disabled foods leave the tooltip list too");
+            var foods = GymAnimalRecipe.foodsFor(parrot);
+            require(foods.size() == 1 && foods.getFirst().is(Items.APPLE), "Reloaded custom diet appears in tooltips");
             require(GymAnimalRecipe.foodFor(parrot, new ItemStack(Items.APPLE)),
                 "Recipe overrides vanilla animal diet");
             var gym = AnimalGymTests.place(h, Direction.NORTH);
@@ -176,6 +184,7 @@ public final class GymAnimalRecipeTests {
             gym.serverTick();
             require(gym.getGeneration() == 8, "Custom animal trains using its recipe");
             manager.replaceRecipes(java.util.List.of());
+            require(GymAnimalRecipe.foodsFor(parrot).isEmpty(), "Recipe removal clears the tooltip list");
             gym.serverTick();
             require(gym.getGeneration() == 0 && gym.training.status().equals("unsupported"),
                 "Removed recipe stops current trainee even with paid ration");
