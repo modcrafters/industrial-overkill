@@ -76,7 +76,7 @@ public final class FoxGymTests {
             h.getLevel().removeBlock(cage.getBlockPos(), false);
             cage = CritterCourierTests.trap(h, gym.getBlockPos().east(3));
             cage.occupant(snapshot);
-            require(cage.release(h.makeMockPlayer(GameType.CREATIVE)),
+            require(cage.release().accepted(),
                 "Trained fox releases safely");
             var released = (Fox) h.getLevel().getEntity(uuid);
             require(

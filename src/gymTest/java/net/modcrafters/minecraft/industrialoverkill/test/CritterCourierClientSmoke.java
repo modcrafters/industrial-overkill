@@ -65,7 +65,7 @@ public final class CritterCourierClientSmoke {
         if (active() && (stage == 31 || stage == 5) && event.getEntity().getUUID().equals(occupant)) {
             var calls = StackWalker.getInstance().walk(frames -> frames
                 .map(StackWalker.StackFrame::getClassName).toList());
-            boolean item = calls.contains("net.modcrafters.minecraft.industrialoverkill.client.CritterCourierItemRenderer");
+            boolean item = calls.contains("zone.moddev.mc.lib.machine.neoforge.client.MachineEntityDisplays$ItemDisplay");
             boolean inventory = calls.contains("net.minecraft.client.gui.GuiGraphics");
             if (item && inventory == (stage == 5))
                 courierItemRendered = true;
@@ -214,15 +214,15 @@ public final class CritterCourierClientSmoke {
                     occupant = chicken.getUUID();
                     player().serverLevel().addFreshEntity(chicken);
                 });
-            } else if (stage == 1 && trap != null && trap.previewMob() != null) {
+            } else if (stage == 1 && trap != null && trap.occupied()) {
                 shot("critter-courier-occupied-above.png");
                 next(103);
                 server(() -> player().connection.teleport(.2, 100, 3.5, -143, 15));
-            } else if (stage == 103 && trap != null && trap.previewMob() != null) {
+            } else if (stage == 103 && trap != null && trap.occupied()) {
                 shot("critter-courier-back-sides.png");
                 next(102);
                 server(() -> player().connection.teleport(5.5, 100, -3.3, 38, 12));
-            } else if (stage == 102 && trap != null && trap.previewMob() != null) {
+            } else if (stage == 102 && trap != null && trap.occupied()) {
                 shot("critter-courier-occupied.png");
                 mc.options.hideGui = false;
                 next(2);
@@ -245,6 +245,15 @@ public final class CritterCourierClientSmoke {
                 check(portraitData.uuid().orElseThrow().equals(occupant),
                     "Portrait receives the stored occupant through element synchronization");
                 check(courierPortraitRendered, "The standard portrait renders the captured living entity");
+                var policies = zone.moddev.mc.lib.gui.client.EntityPreviewPolicies.forHost(
+                    (zone.moddev.mc.lib.gui.runtime.ScreenHost) screen.getMenu().blockEntity);
+                var source = EntityType.PANDA.create(mc.level);
+                source.sit(true);
+                var restored = zone.moddev.mc.lib.gui.client.EntityPreviewPolicies.create(
+                    CritterCourierProcessor.ENTITIES.capture(source), mc.level,
+                    policies.policy(((zone.moddev.mc.lib.gui.model.elements.EntityPortraitElement) portrait).variable()));
+                check(restored instanceof Panda panda && panda.isSitting() && panda.sitAmount == 1,
+                    "Standard portrait resolves the occupant's paired pose-restoration policy");
                 var details = screen.getMenu().elements.stream()
                     .filter(e -> e.common().id().orElse("").equals("status")).findFirst()
                     .orElseThrow();
@@ -390,7 +399,7 @@ public final class CritterCourierClientSmoke {
                             MachineContent.block(CritterCourierProcessor.ID).defaultBlockState(), 3);
                         var cage = CritterCourierProcessor.from(player().serverLevel().getBlockEntity(TRAP));
                         cage.occupant(CritterCourierProcessor.OCCUPANT.read(carried));
-                        check(cage.release(player()), "Trained pet released");
+                        check(cage.release().accepted(), "Trained pet released");
                         var released = (Animal) player().serverLevel().getEntity(occupant);
                         check(released != null && originalPose(released),
                             "Release preserves resting state");

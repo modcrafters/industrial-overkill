@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -12,9 +14,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.Panda;
-import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
-import net.minecraft.world.entity.boss.wither.WitherBoss;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
@@ -38,11 +37,10 @@ import zone.moddev.mc.lib.machine.neoforge.MachineContent;
 public final class CritterCourierProcessor extends PortableStoredProcessor {
     public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(
         IndustrialOverkill.MOD_ID, "critter_courier");
-    public static final PortableVariable<EntitySnapshot> OCCUPANT = PortableVariable.entity(
-        () -> MachineContent.item(ID), "courier", "occupant");
+    public static final TagKey<EntityType<?>> CAPTURE_BLACKLIST = TagKey.create(
+        Registries.ENTITY_TYPE, ID.withPath("critter_courier_blacklist"));
     public static final EntitySnapshotPolicy<Mob> ENTITIES = new EntitySnapshotPolicy<>(Mob.class,
-        mob -> mob.isAlive() && !mob.isPassenger() && !mob.isVehicle()
-            && !(mob instanceof EnderDragon) && !(mob instanceof WitherBoss),
+        mob -> mob.isAlive() && !mob.isPassenger() && !mob.isVehicle(),
         (mob, data) -> {
             // Vanilla panda NBT keeps genes but omits the resting pose.
             if (mob instanceof Panda panda)
@@ -52,9 +50,13 @@ public final class CritterCourierProcessor extends PortableStoredProcessor {
             data.remove("Leash");
         },
         (mob, data) -> {
-            if (mob instanceof Panda panda && data.contains("industrial_overkill:panda_sitting"))
+            if (mob instanceof Panda panda && data.contains("industrial_overkill:panda_sitting")) {
                 panda.sit(data.getBoolean("industrial_overkill:panda_sitting"));
+                panda.sitAmount = panda.sitAmountO = panda.isSitting() ? 1 : 0;
+            }
         });
+    public static final PortableVariable<EntitySnapshot> OCCUPANT = PortableVariable.entity(
+        () -> MachineContent.item(ID), "courier", "occupant", ENTITIES);
     private final EntityPreviewCache<Mob> previews = new EntityPreviewCache<>(ENTITIES, 1);
     private final ProcessorState.Key<EntitySnapshot> occupant = OCCUPANT.declare(variables).synced().define();
     private final ProcessorState.Key<Boolean> occupied = variables.bool("occupied", false).visual()
@@ -64,7 +66,7 @@ public final class CritterCourierProcessor extends PortableStoredProcessor {
     private final ProcessorTimer cooldown = variables.timer("cooldown", 40, ProcessorTimer.Policy.IDLE);
     private final Map<ResourceLocation, ProcessorAction> actions = Map.of(
         ID.withPath("release"), new ProcessorAction((s, c) -> occupied() && !taken(),
-            (s, c) -> release(c.player()) ? ProcessorAction.Result.success() : ProcessorAction.Result.unavailable()));
+            (s, c) -> release()));
 
     public static CritterCourierProcessor from(Object host) {
         return Processors.find(host, OCCUPANT.processor(), CritterCourierProcessor.class).orElse(null);
@@ -75,9 +77,6 @@ public final class CritterCourierProcessor extends PortableStoredProcessor {
     public EntitySnapshot occupant() { return variables.get(occupant); }
     public BlockPos getBlockPos() { return machine.position(); }
 
-    public Mob previewMob() {
-        return preview(variables.get(occupant));
-    }
     private Mob preview(EntitySnapshot snapshot) {
         return previews.get(machine == null ? null : machine.level(), snapshot);
     }
@@ -115,7 +114,8 @@ public final class CritterCourierProcessor extends PortableStoredProcessor {
         return ProcessState.IDLE;
     }
     public boolean capture(Mob candidate) {
-        if (!(machine.level() instanceof ServerLevel) || !canStart(variables, machine)) return false;
+        if (!(machine.level() instanceof ServerLevel) || !canStart(variables, machine)
+            || candidate.getType().is(CAPTURE_BLACKLIST)) return false;
         var pos = machine.position();
         double x = candidate.getX() - pos.getX(), z = candidate.getZ() - pos.getZ(), y = candidate.getY() - pos.getY();
         if (x < 0 || x >= 1 || z < 0 || z >= 1 || y < .1 || y > .7) return false;
@@ -129,27 +129,29 @@ public final class CritterCourierProcessor extends PortableStoredProcessor {
         machine.level().playSound(null, pos, SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.BLOCKS, 1, .8f);
         return true;
     }
-    public boolean release(Player player) {
-        if (!(machine.level() instanceof ServerLevel server) || !occupied() || taken()) return false;
+    public ProcessorAction.Result release() {
+        if (!(machine.level() instanceof ServerLevel server) || !occupied() || taken()) return ProcessorAction.Result.unavailable();
         var entity = ENTITIES.createDetached(occupant(), server).orElse(null);
         var front = machine.blockState().getValue(BlockStateProperties.HORIZONTAL_FACING);
         var result = entity == null ? EntityPlacement.Result.INVALID_ENTITY
             : EntityPlacement.place(entity, server, EntityPlacement.around(entity, machine.position(),
                 List.of(front, front.getClockWise(), front.getCounterClockWise(), front.getOpposite())));
         if (result != EntityPlacement.Result.SUCCESS) {
-            player.displayClientMessage(Component.translatable(
+            return ProcessorAction.Result.failure(Component.translatable(
                 result == EntityPlacement.Result.NO_SPACE || result == EntityPlacement.Result.SPAWN_REJECTED
-                    ? "courier.no_space" : "courier.release_failed"), true);
-            return false;
+                    ? "courier.no_space" : "courier.release_failed"));
         }
         variables.update(() -> { cooldown.start(40); variables.set(occupant, EntitySnapshot.EMPTY); });
         server.playSound(null, machine.position(), SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.BLOCKS, 1, 1);
-        return true;
+        return ProcessorAction.Result.success();
     }
     public void tooltip(ItemStack stack, List<Component> lines) {
         var snapshot = OCCUPANT.read(stack);
+        var species = snapshot.type().map(EntityType::getDescription)
+            .orElse(Component.translatable("courier.unknown"));
+        var name = snapshot.customName().<Component>map(custom ->
+            Component.translatable("courier.named", custom, species)).orElse(species);
         lines.add(snapshot.isEmpty() ? Component.translatable("courier.armed")
-            : Component.translatable("courier.contains", snapshot.type().map(EntityType::getDescription)
-                .orElse(Component.translatable("courier.unknown"))));
+            : Component.translatable("courier.contains", name));
     }
 }

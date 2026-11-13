@@ -62,7 +62,7 @@ public final class PandaGymTests {
         h.getLevel().removeBlock(cage.getBlockPos(), false);
         cage = CritterCourierTests.trap(h, gym.getBlockPos().east(3));
         cage.occupant(data);
-        require(cage.release(h.makeMockPlayer(GameType.CREATIVE)),
+        require(cage.release().accepted(),
             "Full-size panda releases beside trap");
         var released = (Panda) h.getLevel().getEntity(uuid);
         require(

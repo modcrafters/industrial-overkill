@@ -119,14 +119,14 @@ public final class CritterCourierTests {
         placed.occupant(zone.moddev.mc.lib.api.entity.EntitySnapshot.EMPTY);
         host.loadWithComponents(saved, helper.getLevel().registryAccess());
         require(detailLines.equals(placed.variable("details")), "Translated lines recompute identically after save/load");
-        require(placed.release(player), "Mob releases into clear adjacent space");
+        require(placed.release().accepted(), "Mob releases into clear adjacent space");
         var released = (Animal) helper.getLevel().getEntity(uuid);
         require(
             released != null && released.getHealth() == 7
                 && released.getName().getString().equals("Bessie")
                 && !released.getPersistentData().contains("industrial_overkill:fitness"),
             "Name, UUID, health survive transport");
-        require(!placed.occupied() && !placed.release(player), "No second release possible");
+        require(!placed.occupied() && !placed.release().accepted(), "No second release possible");
         helper.succeed();
     }
     @GameTest(template = "gym_empty")
@@ -143,14 +143,51 @@ public final class CritterCourierTests {
         }
         var player = helper.makeMockPlayer(GameType.SURVIVAL);
         var before = trap.occupant();
-        require(!trap.release(player) && trap.occupant().equals(before),
+        var blocked = trap.invoke(CritterCourierProcessor.ID.withPath("release"), player);
+        require(!blocked.accepted() && blocked.message().orElseThrow().equals(Component.translatable("courier.no_space"))
+            && trap.occupant().equals(before),
             "Blocked release keeps full occupant data");
         var invalid = new CompoundTag();
         invalid.putString("id", "missing_mod:unknown_mob");
         invalid.putString("custom_payload", "retain me");
         trap.occupant(new zone.moddev.mc.lib.api.entity.EntitySnapshot(invalid));
-        require(!trap.release(player) && CritterCourierProcessor.OCCUPANT.read(trap.take()).data().equals(invalid),
+        var invalidResult = trap.invoke(CritterCourierProcessor.ID.withPath("release"), player);
+        require(!invalidResult.accepted() && invalidResult.message().orElseThrow().equals(Component.translatable("courier.release_failed"))
+            && CritterCourierProcessor.OCCUPANT.read(trap.take()).data().equals(invalid),
             "Undecodable occupants remain recoverable");
+        helper.succeed();
+    }
+    @GameTest(template = "gym_empty")
+    public static void captureBlacklistIsTagDrivenAndDoesNotStrandCarriedMobs(GameTestHelper helper) {
+        var trap = trap(helper, AnimalGymTests.origin(helper));
+        require(EntityType.WITHER.is(CritterCourierProcessor.CAPTURE_BLACKLIST)
+            && EntityType.ENDER_DRAGON.is(CritterCourierProcessor.CAPTURE_BLACKLIST), "Default bosses are excluded by tag");
+        var creeper = mob(helper, trap, EntityType.CREEPER);
+        require(creeper.getType().is(CritterCourierProcessor.CAPTURE_BLACKLIST), "Test data pack extends the capture blacklist");
+        require(!trap.capture(creeper) && !creeper.isRemoved() && !trap.occupied(), "Excluded mob remains in the world");
+        var existing = CritterCourierProcessor.ENTITIES.capture(creeper);
+        creeper.discard();
+        trap.occupant(existing);
+        require(trap.release().accepted(), "Existing carried mobs remain releasable after blacklist changes");
+        helper.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void carriedTooltipShowsCustomNameAndSpecies(GameTestHelper helper) {
+        var trap = trap(helper, AnimalGymTests.origin(helper));
+        var cow = EntityType.COW.create(helper.getLevel());
+        cow.setCustomName(Component.literal("Bessie"));
+        var item = CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(cow));
+        var lines = new java.util.ArrayList<Component>();
+        trap.tooltip(item, lines);
+        require(lines.equals(java.util.List.of(Component.translatable("courier.contains",
+            Component.translatable("courier.named", cow.getCustomName(), EntityType.COW.getDescription())))),
+            "Named animal tooltip retains both its custom name and translated species");
+        cow.setCustomName(null);
+        lines.clear();
+        trap.tooltip(CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(cow)), lines);
+        require(lines.equals(java.util.List.of(Component.translatable("courier.contains", EntityType.COW.getDescription()))),
+            "Unnamed animals keep the species-only tooltip");
         helper.succeed();
     }
     @GameTest(template = "gym_empty")

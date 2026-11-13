@@ -51,6 +51,7 @@
   "courier.armed": "Status: Armed",
   "courier.occupied": "Status: Occupied",
   "courier.waiting": "Waiting for a mob",
+  "courier.named": "%s (%s)",
   "courier.contains": "Contains: %s",
   "courier.unknown": "Unknown mob (data preserved)",
   "courier.release": "Release",

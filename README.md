@@ -354,7 +354,8 @@ Release is disabled while empty and both actions recheck availability on the ser
 The standard status label reads the processor's stored `details` lines. Each line
 is translated independently, including health arguments and age. The standard
 `entity-portrait` reads the typed `occupant` variable and renders a display-only
-client entity; Courier needs no custom screen elements.
+client entity; Courier needs no custom screen elements. The portrait uses the
+occupant declaration's snapshot policy, including its saved panda resting pose.
 MMDLib registers the block, item and block entity type automatically; Java integrations
 look them up through `MachineContent`, without a Courier-specific registration class.
 `CritterCourierProcessor` is the sole Courier gameplay class. Its shared
@@ -363,7 +364,9 @@ typed item access for Animal Gym and rendering. Its `ENTITIES` snapshot policy
 pairs capture and restore hooks, preserving panda pose consistently during
 transport and preview updates. Consumers keep `EntitySnapshot` values until NBT
 serialization boundaries; there is no separate Courier data utility or Gym
-migration logic in the Courier.
+migration logic in the Courier. Animal Gym uses the library's cached portable
+reader to avoid decoding unchanged item components. Release returns a standard
+action result, including translated failure messages, for the library to deliver.
 The library handles item transfer, placement and the standard `mmdlib:pickup` action,
 which is shared by the button and sneak-use. Occupancy and status lines are cached
 derived variables, updated when the occupant changes or loads. The release
@@ -390,6 +393,10 @@ have an amber overhead lamp on each side.
 Occupied Courier items render their captured animal inside the cage in inventories,
 in hand and when dropped. The preview uses the saved appearance and pose without
 creating a world entity; empty items retain the armed plate model.
+The XML `entity-display` supplies both block and item previews, their fit bounds,
+and the occupied-item model predicate. MMDLib handles renderer registration and
+model wrapping; Courier has no dedicated renderer classes. Carried-item tooltips
+show both the custom name and species, for example **Bessie (Cow)**.
 
 Craft one with `B B / B B / IPI`: four iron bars, two iron ingots and a stone
 pressure plate. It is also in the Industrial Overkill creative tab. The compact
@@ -413,7 +420,12 @@ Food automation cannot insert or extract the trap slot.
 
 Traps preserve entity identity, names, health, equipment, variants, existing scale,
 and remaining food allowance. They capture ordinary mobs, including hostile
-mobs; players, bosses and riding/passenger groups are excluded. A lead is dropped
+mobs; players and riding/passenger groups are excluded. The entity-type tag
+`industrial_overkill:critter_courier_blacklist` excludes the wither and ender dragon
+by default. Datapacks can extend or replace it at
+`data/industrial_overkill/tags/entity_type/critter_courier_blacklist.json`.
+This restriction applies to new captures; already carried mobs remain releasable.
+A lead is dropped
 when its mob is captured. Only the gym's supported adult animals can power the gym; other
 occupants stay safely stored and can be removed. A trapped mob's aging and AI are
 suspended. Blocked releases, missing mob types and duplicate loaded UUIDs leave the

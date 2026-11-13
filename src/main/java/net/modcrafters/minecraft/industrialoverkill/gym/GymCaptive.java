@@ -1,19 +1,19 @@
 package net.modcrafters.minecraft.industrialoverkill.gym;
 
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.item.component.CustomData;
 
 import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 
 import zone.moddev.mc.lib.api.entity.EntitySnapshot;
+import zone.moddev.mc.lib.machine.feature.PortableVariable;
 
 /** The item in slot 3 is the sole owner. Decoded mobs are never added to the world. */
 public final class GymCaptive {
     private final AnimalGymEntity gym;
     private EntitySnapshot cached = EntitySnapshot.EMPTY;
-    private CustomData component = CustomData.EMPTY;
+    private final PortableVariable<EntitySnapshot>.Reader reader =
+        CritterCourierProcessor.OCCUPANT.reader();
     private Mob mob;
     private boolean resolved;
     public GymCaptive(AnimalGymEntity gym) {
@@ -24,19 +24,11 @@ public final class GymCaptive {
         return !cached.isEmpty();
     }
     private void refresh() {
-        var stack = gym.food.getStackInSlot(3);
-        var next = CritterCourierProcessor.OCCUPANT.matches(stack)
-            ? stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
-            : CustomData.EMPTY;
-        // Components are immutable: reading the same item must not copy its full entity NBT.
-        if (next != component) {
-            component = next;
-            var data = CritterCourierProcessor.OCCUPANT.read(stack);
-            if (!data.equals(cached)) {
-                cached = data;
-                mob = null;
-                resolved = false;
-            }
+        var data = reader.read(gym.food.getStackInSlot(3));
+        if (!data.equals(cached)) {
+            cached = data;
+            mob = null;
+            resolved = false;
         }
     }
     public Mob mob() {
@@ -57,7 +49,6 @@ public final class GymCaptive {
         var stack = gym.food.getStackInSlot(3).copy();
         CritterCourierProcessor.OCCUPANT.write(stack, cached);
         gym.persistCaptive(stack);
-        component = gym.food.getStackInSlot(3).getOrDefault(DataComponents.CUSTOM_DATA,
-            CustomData.EMPTY);
+        reader.read(stack);
     }
 }
