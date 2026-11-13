@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:cat",
+  "food": {
+    "tag": "minecraft:cat_food"
+  },
+  "energy_per_tick": 4,
+  "food_duration_ticks": 900
+}

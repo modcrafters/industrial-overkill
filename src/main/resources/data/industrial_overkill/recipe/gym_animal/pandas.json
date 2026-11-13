@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:panda",
+  "food": {
+    "tag": "minecraft:panda_food"
+  },
+  "energy_per_tick": 20,
+  "food_duration_ticks": 240
+}

@@ -1,0 +1,49 @@
+{
+  "type": "industrial_overkill:rock_stew",
+  "inputs": {
+    "input": [
+      {
+        "items": {
+          "item": "minecraft:blackstone"
+        },
+        "count": 1
+      }
+    ],
+    "water": [
+      {
+        "fluids": "minecraft:water",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "lava": [
+      {
+        "fluids": "minecraft:lava",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "reagent": [
+      {
+        "fluids": "minecraft:lava",
+        "amount": 200
+      }
+    ],
+    "energy": [
+      {
+        "energy": 240
+      }
+    ]
+  },
+  "outputs": {
+    "output": [
+      {
+        "item": {
+          "id": "minecraft:blackstone",
+          "count": 1
+        }
+      }
+    ]
+  },
+  "time": 40
+}

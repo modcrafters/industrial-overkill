@@ -1,0 +1,17 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:pig",
+  "food": [
+    {
+      "item": "minecraft:carrot"
+    },
+    {
+      "item": "minecraft:potato"
+    },
+    {
+      "item": "minecraft:beetroot"
+    }
+  ],
+  "energy_per_tick": 8,
+  "food_duration_ticks": 480
+}

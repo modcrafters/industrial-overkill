@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:fox",
+  "food": {
+    "tag": "minecraft:fox_food"
+  },
+  "energy_per_tick": 4,
+  "food_duration_ticks": 900
+}

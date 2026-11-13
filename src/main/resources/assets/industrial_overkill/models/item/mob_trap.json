@@ -1,0 +1,11 @@
+{
+  "parent": "industrial_overkill:block/mob_trap",
+  "overrides": [
+    {
+      "predicate": {
+        "industrial_overkill:occupied": 1
+      },
+      "model": "industrial_overkill:item/mob_trap_occupied"
+    }
+  ]
+}

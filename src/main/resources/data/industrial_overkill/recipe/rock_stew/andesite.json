@@ -1,0 +1,49 @@
+{
+  "type": "industrial_overkill:rock_stew",
+  "inputs": {
+    "input": [
+      {
+        "items": {
+          "item": "minecraft:andesite"
+        },
+        "count": 1
+      }
+    ],
+    "water": [
+      {
+        "fluids": "minecraft:water",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "lava": [
+      {
+        "fluids": "minecraft:lava",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "reagent": [
+      {
+        "fluids": "minecraft:lava",
+        "amount": 100
+      }
+    ],
+    "energy": [
+      {
+        "energy": 240
+      }
+    ]
+  },
+  "outputs": {
+    "output": [
+      {
+        "item": {
+          "id": "minecraft:andesite",
+          "count": 1
+        }
+      }
+    ]
+  },
+  "time": 40
+}

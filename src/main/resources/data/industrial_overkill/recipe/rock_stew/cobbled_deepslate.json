@@ -1,0 +1,43 @@
+{
+  "type": "industrial_overkill:rock_stew",
+  "inputs": {
+    "input": [
+      {
+        "items": {
+          "item": "minecraft:cobbled_deepslate"
+        },
+        "count": 1
+      }
+    ],
+    "water": [
+      {
+        "fluids": "minecraft:water",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "lava": [
+      {
+        "fluids": "minecraft:lava",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "energy": [
+      {
+        "energy": 560
+      }
+    ]
+  },
+  "outputs": {
+    "output": [
+      {
+        "item": {
+          "id": "minecraft:cobbled_deepslate",
+          "count": 1
+        }
+      }
+    ]
+  },
+  "time": 40
+}

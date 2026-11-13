@@ -1,0 +1,94 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "panel": "industrial_overkill:block/gym_panel",
+    "side": "industrial_overkill:block/gym_side",
+    "vent": "industrial_overkill:block/gym_vent",
+    "hazard": "industrial_overkill:block/gym_hazard",
+    "belt": "industrial_overkill:block/gym_belt",
+    "display": "industrial_overkill:block/gym_display",
+    "light": "industrial_overkill:block/gym_light",
+    "light_off": "industrial_overkill:block/gym_light_off",
+    "dark": "industrial_overkill:block/gym_dark",
+    "trim": "industrial_overkill:block/gym_trim",
+    "gold": "industrial_overkill:block/gym_gold",
+    "green": "industrial_overkill:block/gym_green",
+    "bolt": "industrial_overkill:block/gym_bolt",
+    "bait_rod": "minecraft:block/stripped_oak_log",
+    "particle": "industrial_overkill:block/gym_panel"
+  },
+  "elements": [
+    {
+      "from": [
+        7.949999999999999,
+        28.25,
+        5.219999999999999
+      ],
+      "to": [
+        14.15,
+        29.75,
+        5.35
+      ],
+      "faces": {
+        "north": {
+          "texture": "#light_off",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#light_off",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "east": {
+          "texture": "#light_off",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "west": {
+          "texture": "#light_off",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "up": {
+          "texture": "#light_off",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#light_off",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ]
+        }
+      },
+      "shade": true,
+      "neoforge_data": {
+        "ambient_occlusion": false
+      }
+    }
+  ]
+}

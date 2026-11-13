@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:sheep",
+  "food": {
+    "item": "minecraft:wheat"
+  },
+  "energy_per_tick": 8,
+  "food_duration_ticks": 480
+}

@@ -1,0 +1,20 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:wolf",
+  "food": {
+    "type": "neoforge:difference",
+    "base": {
+      "tag": "minecraft:wolf_food"
+    },
+    "subtracted": [
+      {
+        "tag": "industrial_overkill:gym/wolf_cooked_food"
+      },
+      {
+        "item": "minecraft:rotten_flesh"
+      }
+    ]
+  },
+  "energy_per_tick": 6,
+  "food_duration_ticks": 600
+}

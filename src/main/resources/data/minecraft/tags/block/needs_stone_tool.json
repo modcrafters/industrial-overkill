@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "industrial_overkill:animal_gym",
+    "industrial_overkill:gym_belt",
+    "industrial_overkill:gym_post",
+    "industrial_overkill:gym_beam",
+    "industrial_overkill:mob_trap"
+  ]
+}

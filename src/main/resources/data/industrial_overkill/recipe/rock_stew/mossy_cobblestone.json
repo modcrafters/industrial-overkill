@@ -1,0 +1,49 @@
+{
+  "type": "industrial_overkill:rock_stew",
+  "inputs": {
+    "input": [
+      {
+        "items": {
+          "item": "minecraft:mossy_cobblestone"
+        },
+        "count": 1
+      }
+    ],
+    "water": [
+      {
+        "fluids": "minecraft:water",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "lava": [
+      {
+        "fluids": "minecraft:lava",
+        "amount": 1000,
+        "consumed": false
+      }
+    ],
+    "reagent": [
+      {
+        "fluids": "minecraft:water",
+        "amount": 250
+      }
+    ],
+    "energy": [
+      {
+        "energy": 320
+      }
+    ]
+  },
+  "outputs": {
+    "output": [
+      {
+        "item": {
+          "id": "minecraft:mossy_cobblestone",
+          "count": 1
+        }
+      }
+    ]
+  },
+  "time": 40
+}

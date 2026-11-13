@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:goat",
+  "food": {
+    "item": "minecraft:wheat"
+  },
+  "energy_per_tick": 10,
+  "food_duration_ticks": 400
+}

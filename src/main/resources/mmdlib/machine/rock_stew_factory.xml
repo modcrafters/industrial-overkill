@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
+         extends="mmdlib:base_powered_machine" name="Rock Stew Factory">
+  <appearance preset="cube-front"
+              front="industrial_overkill:block/rock_stew_front"
+              side="industrial_overkill:block/rock_stew_side"
+              top="industrial_overkill:block/rock_stew_top"
+              bottom="industrial_overkill:block/rock_stew_bottom">
+    <face-texture id="running_front" face="front"
+                  texture="industrial_overkill:block/rock_stew_front_active"
+                  emissive-mask="industrial_overkill:block/rock_stew_front_emissive"
+                  when="$processors.rock_stew.running"/>
+    <face-texture id="running_top" face="top"
+                  texture="industrial_overkill:block/rock_stew_top_active"
+                  emissive-mask="industrial_overkill:block/rock_stew_top_emissive"
+                  when="$processors.rock_stew.running"/>
+  </appearance>
+  <storage>
+    <fluids id="fluids">
+      <tank id="water" name="Water Catalyst" capacity="1000" role="manual" fluid="minecraft:water" automation="false" />
+      <tank id="lava" name="Lava Catalyst" capacity="1000" role="manual" fluid="minecraft:lava" automation="false" />
+      <tank id="reagent" name="Reagent" capacity="1000" role="input" />
+    </fluids>
+    <items id="items">
+      <slots id="input" name="Rock Selection" count="1" role="input" type="ghost" default-item="minecraft:cobblestone" />
+      <slots id="output" name="Products" count="4" role="output" />
+    </items>
+  </storage>
+  <recipe-type id="industrial_overkill:rock_stew" declare="true" name="Rock Stew"/>
+  <processor id="rock_stew" recipe-type="industrial_overkill:rock_stew"
+             name="Rock Stew Factory" filter-inputs="reagent"/>
+  <screen xmlns="https://moddev.zone/mmdlib/screen">
+    <fill name="machine">
+      <hbox spacing="6" align="center">
+        <fluid-tank id="tank_0" tank="0" length="3s"/>
+        <fluid-tank id="tank_1" tank="1" length="3s"/>
+        <placeholder name="inputs" generator="mmdlib:resource-groups" role="input" columns="1"/>
+        <placeholder name="processor" generator="mmdlib:processors"/>
+        <placeholder name="outputs" generator="mmdlib:resource-groups"
+                     role="output" columns="2"/>
+        <fluid-tank id="tank_2" tank="2" length="3s"/>
+      </hbox>
+    </fill>
+    <fill name="tanks"/>
+  </screen>
+</machine>

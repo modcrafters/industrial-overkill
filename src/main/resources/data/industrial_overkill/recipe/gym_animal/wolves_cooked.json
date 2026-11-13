@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:wolf",
+  "food": {
+    "tag": "industrial_overkill:gym/wolf_cooked_food"
+  },
+  "energy_per_tick": 6,
+  "food_duration_ticks": 900
+}

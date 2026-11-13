@@ -1,0 +1,36 @@
+{
+  "variants": {
+    "facing=north,end=false": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 0
+    },
+    "facing=north,end=true": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 0
+    },
+    "facing=east,end=false": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 90
+    },
+    "facing=east,end=true": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 90
+    },
+    "facing=south,end=false": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 180
+    },
+    "facing=south,end=true": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 180
+    },
+    "facing=west,end=false": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 270
+    },
+    "facing=west,end=true": {
+      "model": "industrial_overkill:block/animal_gym",
+      "y": 270
+    }
+  }
+}

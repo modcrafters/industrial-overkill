@@ -1,0 +1,17 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "#industrial_overkill:gym/horses",
+  "food": [
+    {
+      "item": "minecraft:wheat"
+    },
+    {
+      "item": "minecraft:apple"
+    },
+    {
+      "item": "minecraft:sugar"
+    }
+  ],
+  "energy_per_tick": 24,
+  "food_duration_ticks": 200
+}

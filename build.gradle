@@ -1,0 +1,272 @@
+plugins {
+    id 'java-library'
+    id 'idea'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = providers.environmentVariable('TAG').getOrElse(mod_version)
+group = mod_group
+base { archivesName = 'industrial-overkill' }
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+def localMavenRepo = providers.gradleProperty('mmdlibLocalRepo').filter { !it.isBlank() }
+def useLocalMaven = providers.gradleProperty('mmdlibUseLocal').map { it.toBoolean() }
+        .getOrElse(true) && localMavenRepo.isPresent()
+def mmdlibVersion = useLocalMaven
+        ? providers.gradleProperty('mmdlibLocalVersion').getOrElse('')
+        : providers.gradleProperty('mmdlib_version').get()
+if (mmdlibVersion.isBlank()) {
+    throw new GradleException('Set mmdlibLocalVersion beside mmdlibLocalRepo in ~/.gradle/gradle.properties.')
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.blamejared.com' }
+    // Resolve MMDLib exclusively from the selected repository: never silently fall back.
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = useLocalMaven ? 'mmdlibLocal' : 'mmdlibReleases'
+                url = useLocalMaven ? uri(localMavenRepo.get())
+                        : uri(providers.gradleProperty('mmdlibMavenUrl').get())
+            }
+        }
+        filter { includeModule('zone.moddev.mc.lib', 'mmdlib') }
+    }
+}
+
+dependencies {
+    compileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-1.21.1-neoforge-api:${jei_version}"
+    if (!providers.gradleProperty('withoutJei').isPresent()) {
+        runtimeOnly "mezz.jei:jei-1.21.1-neoforge:${jei_version}"
+    }
+    implementation("zone.moddev.mc.lib:mmdlib:${mmdlibVersion}") {
+        // Local publications overwrite one dev version; check for updated artifacts every build.
+        changing = useLocalMaven
+    }
+}
+
+if (useLocalMaven) {
+    configurations.configureEach {
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    }
+}
+
+neoForge {
+    version = neoforge_version
+    parchment {
+        minecraftVersion = parchment_minecraft_version
+        mappingsVersion = parchment_mappings_version
+    }
+    mods {
+        "${mod_id}" { sourceSet sourceSets.main }
+    }
+    runs {
+        configureEach { gameDirectory = file('run') }
+        client {
+            client()
+            loadedMods = [neoForge.mods.named(mod_id).get()]
+        }
+        server {
+            server()
+            loadedMods = [neoForge.mods.named(mod_id).get()]
+            programArgument '--nogui'
+        }
+    }
+}
+
+// Generate metadata separately so IntelliJ imports plain resources, without trying to
+// reproduce Gradle's filesMatching/expand copy actions in its own resource compiler.
+def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    def properties = [
+            mod_id: mod_id,
+            mod_name: mod_name,
+            mod_version: project.version,
+            mod_license: mod_license,
+            mod_description: mod_description,
+            minecraft_version_range: minecraft_version_range,
+            neoforge_version_range: neoforge_version_range,
+            loader_version_range: loader_version_range,
+            // Require the exact dependency this jar was compiled against.
+            mmdlib_version_range: "[${mmdlibVersion}]"
+    ]
+    inputs.properties properties
+    from('src/main/templates') { expand properties }
+    into layout.buildDirectory.dir('generated/resources/modMetadata')
+}
+
+sourceSets.main.resources.srcDir(generateModMetadata)
+neoForge.ideSyncTask(generateModMetadata)
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.named('jar', Jar) {
+    manifest.attributes('Implementation-Version': project.version.toString())
+}
+
+idea { module { downloadSources = true } }
+
+sourceSets {
+    gymTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+neoForge.addModdingDependenciesTo(sourceSets.gymTest)
+neoForge {
+    mods {
+        gymTest { sourceSet sourceSets.main; sourceSet sourceSets.gymTest }
+    }
+    runs {
+        gameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = layout.buildDirectory.dir('gym-gametest')
+            sourceSet = sourceSets.gymTest
+            loadedMods = [neoForge.mods.gymTest]
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+        }
+        mobTrapClientSmoke {
+            client()
+            gameDirectory = layout.buildDirectory.dir('trap-client-smoke')
+            sourceSet = sourceSets.gymTest
+            loadedMods = [neoForge.mods.gymTest]
+            systemProperty 'industrialoverkill.trapSmoke', 'true'
+            programArguments.addAll '--width', '1280', '--height', '960'
+        }
+        gymClientSmoke {
+            client()
+            gameDirectory = layout.buildDirectory.dir('gym-client-smoke')
+            sourceSet = sourceSets.gymTest
+            loadedMods = [neoForge.mods.gymTest]
+            systemProperty 'industrialoverkill.gymSmoke', 'true'
+            systemProperty 'industrialoverkill.gymUiOnly', providers.gradleProperty('gymUiOnly').isPresent().toString()
+            systemProperty 'industrialoverkill.gymDemandSmoke', providers.gradleProperty('gymDemandSmoke').isPresent().toString()
+            programArguments.addAll '--width', '1280', '--height', '960'
+        }
+        gymJeiClientSmoke {
+            client()
+            gameDirectory = layout.buildDirectory.dir('gym-jei-smoke')
+            sourceSet = sourceSets.gymTest
+            loadedMods = [neoForge.mods.gymTest]
+            systemProperty 'industrialoverkill.jeiSmoke', 'true'
+            programArguments.addAll '--width', '1280', '--height', '1200'
+        }
+        gymPerformance {
+            client()
+            gameDirectory = layout.buildDirectory.dir('gym-performance')
+            sourceSet = sourceSets.gymTest
+            loadedMods = [neoForge.mods.gymTest]
+            systemProperty 'industrialoverkill.gymPerformance', 'true'
+            programArguments.addAll '--width', '1280', '--height', '960'
+        }
+        rockStewClientSmoke {
+            client()
+            gameDirectory = layout.buildDirectory.dir('rock-stew-client-smoke')
+            sourceSet = sourceSets.gymTest
+            loadedMods = [neoForge.mods.gymTest]
+            systemProperty 'industrialoverkill.rockStewSmoke', 'true'
+            programArguments.addAll '--width', '1280', '--height', '960'
+        }
+        rockStewJeiSmoke {
+            client()
+            gameDirectory = layout.buildDirectory.dir('rock-stew-jei-smoke')
+            sourceSet = sourceSets.gymTest
+            loadedMods = [neoForge.mods.gymTest]
+            systemProperty 'industrialoverkill.rockStewJeiSmoke', 'true'
+            programArguments.addAll '--width', '1280', '--height', '960'
+        }
+    }
+}
+tasks.named('check') { dependsOn 'runGameTestServer' }
+
+tasks.named('runRockStewJeiSmoke') {
+    doFirst {
+        if (providers.gradleProperty('withoutJei').isPresent())
+            throw new GradleException('The Stone Stew JEI check requires JEI.')
+        def folder = layout.buildDirectory.dir('rock-stew-jei-smoke').get().asFile
+        folder.mkdirs()
+        new File(folder, 'options.txt').text = 'guiScale:3\nmaxFps:30\nonboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:4\ntutorialStep:none\n'
+    }
+    doLast {
+        def log = layout.buildDirectory.file('rock-stew-jei-smoke/logs/latest.log').get().asFile
+        if (!log.exists() || !log.text.contains('ROCK_STEW_JEI_PASS') || log.text.contains('ROCK_STEW_JEI_FAIL'))
+            throw new GradleException('Stone Stew JEI check failed; inspect ' + log)
+    }
+}
+tasks.named('runRockStewClientSmoke') {
+    doFirst {
+        def folder = layout.buildDirectory.dir('rock-stew-client-smoke').get().asFile
+        folder.mkdirs()
+        new File(folder, 'options.txt').text = 'guiScale:3\nmaxFps:30\nonboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:4\ntutorialStep:none\n'
+    }
+    doLast {
+        def log = layout.buildDirectory.file('rock-stew-client-smoke/logs/latest.log').get().asFile
+        if (!log.exists() || !log.text.contains('ROCK_STEW_CLIENT_PASS') || log.text.contains('ROCK_STEW_CLIENT_FAIL'))
+            throw new GradleException('Rock Stew client smoke failed; inspect ' + log)
+    }
+}
+tasks.named('runGameTestServer') {
+    doLast {
+        def log = layout.buildDirectory.file('gym-gametest/logs/latest.log').get().asFile
+        if (!log.exists() || !(log.text =~ /All [1-9][0-9]* required tests passed/).find())
+            throw new GradleException('Animal Gym GameTests did not pass; inspect ' + log)
+    }
+}
+tasks.named('runGymClientSmoke') {
+    doFirst {
+        def folder = layout.buildDirectory.dir('gym-client-smoke').get().asFile
+        folder.mkdirs()
+        new File(folder, 'options.txt').text = 'guiScale:2\nmaxFps:30\nonboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\n'
+    }
+    doLast {
+        def log = layout.buildDirectory.file('gym-client-smoke/logs/latest.log').get().asFile
+        if (!log.exists() || !log.text.contains('ANIMAL_GYM_CLIENT_PASS') || log.text.contains('ANIMAL_GYM_CLIENT_FAIL'))
+            throw new GradleException('Animal Gym client smoke failed; inspect ' + log)
+    }
+}
+
+tasks.named('runGymPerformance') {
+    doFirst {
+        def folder = layout.buildDirectory.dir('gym-performance').get().asFile
+        folder.mkdirs()
+        new File(folder, 'options.txt').text = 'guiScale:2\nmaxFps:260\nenableVsync:false\nonboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\n'
+    }
+    doLast {
+        def log = layout.buildDirectory.file('gym-performance/logs/latest.log').get().asFile
+        if (!log.exists() || !log.text.contains('GYM_PERFORMANCE_PASS') || log.text.contains('GYM_PERFORMANCE_FAIL'))
+            throw new GradleException('Gym performance run failed; inspect ' + log)
+    }
+}
+
+tasks.named('runMobTrapClientSmoke') {
+    doFirst {
+        def folder = layout.buildDirectory.dir('trap-client-smoke').get().asFile
+        folder.mkdirs()
+        new File(folder, 'options.txt').text = 'guiScale:2\nmaxFps:30\nonboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\n'
+    }
+    doLast {
+        def log = layout.buildDirectory.file('trap-client-smoke/logs/latest.log').get().asFile
+        if (!log.exists() || !log.text.contains('MOB_TRAP_CLIENT_PASS') || log.text.contains('MOB_TRAP_CLIENT_FAIL'))
+            throw new GradleException('Mob Trap client smoke failed; inspect ' + log)
+    }
+}
+
+
+tasks.named('runGymJeiClientSmoke') {
+    doFirst {
+        if (providers.gradleProperty('withoutJei').isPresent())
+            throw new GradleException('The JEI smoke requires JEI; omit -PwithoutJei.')
+        def folder = layout.buildDirectory.dir('gym-jei-smoke').get().asFile
+        folder.mkdirs()
+        new File(folder, 'options.txt').text = 'guiScale:3\nmaxFps:30\nonboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:4\n'
+    }
+    doLast {
+        def log = layout.buildDirectory.file('gym-jei-smoke/logs/latest.log').get().asFile
+        if (!log.exists() || !log.text.contains('GYM_JEI_CLIENT_PASS') || log.text.contains('GYM_JEI_CLIENT_FAIL'))
+            throw new GradleException('Gym JEI client smoke failed; inspect ' + log)
+    }
+}

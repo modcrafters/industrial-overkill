@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:chicken",
+  "food": {
+    "tag": "minecraft:chicken_food"
+  },
+  "energy_per_tick": 2,
+  "food_duration_ticks": 1200
+}

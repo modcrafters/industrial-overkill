@@ -1,0 +1,36 @@
+{
+  "variants": {
+    "facing=north,occupied=false": {
+      "model": "industrial_overkill:block/mob_trap",
+      "y": 0
+    },
+    "facing=north,occupied=true": {
+      "model": "industrial_overkill:block/mob_trap_occupied",
+      "y": 0
+    },
+    "facing=east,occupied=false": {
+      "model": "industrial_overkill:block/mob_trap",
+      "y": 90
+    },
+    "facing=east,occupied=true": {
+      "model": "industrial_overkill:block/mob_trap_occupied",
+      "y": 90
+    },
+    "facing=south,occupied=false": {
+      "model": "industrial_overkill:block/mob_trap",
+      "y": 180
+    },
+    "facing=south,occupied=true": {
+      "model": "industrial_overkill:block/mob_trap_occupied",
+      "y": 180
+    },
+    "facing=west,occupied=false": {
+      "model": "industrial_overkill:block/mob_trap",
+      "y": 270
+    },
+    "facing=west,occupied=true": {
+      "model": "industrial_overkill:block/mob_trap_occupied",
+      "y": 270
+    }
+  }
+}

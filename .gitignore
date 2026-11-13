@@ -1,0 +1,52 @@
+# Build output and local game data
+/.gradle/
+/build/
+/run/
+/logs/
+/out/
+*.log
+hs_err_pid*
+replay_pid*
+*.hprof
+*.jfr
+
+# IDE configuration
+/.idea/
+/.vscode/
+/*.iml
+/bin/
+/.classpath
+/.project
+/.settings/
+/*.launch
+
+# Python asset-generator caches and environments
+__pycache__/
+*.py[cod]
+/.venv/
+/venv/
+/.pytest_cache/
+
+# Local credentials and agent state
+.env
+.env.*
+!.env.example
+/.codex/
+/.agents/
+/.aws/
+/.ssh/
+/local.properties
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# OS and editor leftovers
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~

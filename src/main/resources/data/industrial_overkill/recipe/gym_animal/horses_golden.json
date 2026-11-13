@@ -1,0 +1,14 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "#industrial_overkill:gym/horses",
+  "food": [
+    {
+      "item": "minecraft:golden_carrot"
+    },
+    {
+      "item": "minecraft:golden_apple"
+    }
+  ],
+  "energy_per_tick": 30,
+  "food_duration_ticks": 400
+}

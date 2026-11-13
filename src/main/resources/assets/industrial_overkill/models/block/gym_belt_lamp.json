@@ -1,0 +1,124 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "panel": "industrial_overkill:block/gym_panel",
+    "side": "industrial_overkill:block/gym_side",
+    "vent": "industrial_overkill:block/gym_vent",
+    "hazard": "industrial_overkill:block/gym_hazard",
+    "belt": "industrial_overkill:block/gym_belt",
+    "display": "industrial_overkill:block/gym_display",
+    "light": "industrial_overkill:block/gym_light",
+    "light_off": "industrial_overkill:block/gym_light_off",
+    "dark": "industrial_overkill:block/gym_dark",
+    "trim": "industrial_overkill:block/gym_trim",
+    "gold": "industrial_overkill:block/gym_gold",
+    "green": "industrial_overkill:block/gym_green",
+    "bolt": "industrial_overkill:block/gym_bolt",
+    "bait_rod": "minecraft:block/stripped_oak_log",
+    "particle": "industrial_overkill:block/gym_panel"
+  },
+  "elements": [
+    {
+      "from": [
+        6.35,
+        28.25,
+        5.219999999999999
+      ],
+      "to": [
+        14.15,
+        29.75,
+        5.35
+      ],
+      "faces": {
+        "north": {
+          "texture": "#light",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "neoforge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "south": {
+          "texture": "#light",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "neoforge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "east": {
+          "texture": "#light",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "neoforge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "west": {
+          "texture": "#light",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "neoforge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "up": {
+          "texture": "#light",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "neoforge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "down": {
+          "texture": "#light",
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "neoforge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        }
+      },
+      "shade": false,
+      "neoforge_data": {
+        "ambient_occlusion": false
+      }
+    }
+  ]
+}

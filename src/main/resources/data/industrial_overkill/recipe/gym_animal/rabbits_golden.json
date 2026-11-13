@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "minecraft:rabbit",
+  "food": {
+    "item": "minecraft:golden_carrot"
+  },
+  "energy_per_tick": 3,
+  "food_duration_ticks": 1800
+}

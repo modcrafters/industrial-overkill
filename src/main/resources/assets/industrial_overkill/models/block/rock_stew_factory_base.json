@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "industrial_overkill:block/rock_stew_front",
+    "side": "industrial_overkill:block/rock_stew_side",
+    "top": "industrial_overkill:block/rock_stew_top",
+    "bottom": "industrial_overkill:block/rock_stew_bottom"
+  }
+}

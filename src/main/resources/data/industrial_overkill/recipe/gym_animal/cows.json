@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:gym_animal",
+  "entity": "#industrial_overkill:gym/cows",
+  "food": {
+    "item": "minecraft:wheat"
+  },
+  "energy_per_tick": 16,
+  "food_duration_ticks": 300
+}
