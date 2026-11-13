@@ -105,18 +105,34 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
     }
     @Override
     public boolean accepts(ItemStack offered) {
-        return CritterCourierData.occupied(offered);
+        return CritterCourierData.occupied(offered) || GymAnimalRecipe.food(level, offered);
     }
     @Override
     public Exchange receive(ItemStack offered, UseOnContext context) {
-        if (context.getLevel().isClientSide() || offered.getCount() != 1 || !accepts(offered) || !structureReady()
-            || !food.getStackInSlot(3).isEmpty() || !food.insertItem(3, offered, true).isEmpty())
+        if (context.getLevel().isClientSide() || offered.getCount() != 1 || !accepts(offered) || !structureReady())
+            return Exchange.reject();
+        if (!CritterCourierData.occupied(offered))
+            return receiveFood(offered);
+        if (!food.getStackInSlot(3).isEmpty() || !food.insertItem(3, offered, true).isEmpty())
             return Exchange.reject();
         if (!food.insertItem(3, offered, false).isEmpty())
             return Exchange.reject();
         training.reset();
         synchronize();
         return Exchange.accept(ItemStack.EMPTY);
+    }
+    private Exchange receiveFood(ItemStack offered) {
+        // Top up existing stacks before using empty slots; slot 3 belongs to the occupant.
+        for (boolean empty : new boolean[]{false, true}) {
+            for (int slot = 0; slot < 3; slot++) {
+                if (food.getStackInSlot(slot).isEmpty() != empty
+                    || !food.insertItem(slot, offered, true).isEmpty())
+                    continue;
+                return food.insertItem(slot, offered, false).isEmpty()
+                    ? Exchange.reusable(ItemStack.EMPTY) : Exchange.reject();
+            }
+        }
+        return Exchange.reject();
     }
     private void inventoryChanged() {
         setChanged();

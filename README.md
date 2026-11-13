@@ -365,7 +365,10 @@ cooldown uses a persisted idle-only timer, and placement checks and detached
 preview caching use shared entity helpers. Capture rules, wording, pose extensions
 and Animal Gym installation remain mod-owned.
 Animal Gym implements MMDLib's item receiver contract, so Courier needs no gym
-classes or slot knowledge. The shared right-click path also handles fluid buckets
+classes or slot knowledge. Right-click any formed gym part with supported food to
+insert one item into its food slots, topping up existing stacks first. Full slots
+leave the held food unchanged, and adding food does not interrupt training.
+The shared right-click path also handles fluid buckets
 and compatible modded containers on fluid machines, returning the resulting
 container and leaving rejected exchanges unchanged.
 Old development block-entity saves are not migrated.
