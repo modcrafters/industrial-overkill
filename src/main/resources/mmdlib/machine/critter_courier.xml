@@ -1,7 +1,7 @@
 <machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
          extends="mmdlib:base_machine" name="Critter Courier">
   <block hardness="2.5" stack-size="1" no-occlusion="true" immovable="true"
-         portable="true" drawers="false" requires-tool="false"/>
+         portable="true" drawers="false" requires-tool="false" on-secondary-use="mmdlib:pickup"/>
   <redstone enabled="false"/>
   <appearance preset="model" model="industrial_overkill:block/critter_courier_empty">
     <part id="plate" model="industrial_overkill:block/critter_courier_plate"
@@ -29,7 +29,7 @@
                   enabled-when="$processors.courier.occupied &amp;&amp; !$processors.courier.taken"
                   icon="industrial_overkill:courier_release" tooltip="courier.release.tip"/>
           <button id="courier_pickup" processor="courier"
-                  on-click="industrial_overkill:pickup"
+                  on-click="mmdlib:pickup"
                   enabled-when="!$processors.courier.taken"
                   icon="industrial_overkill:courier_pickup" tooltip="courier.pickup.tip"/>
         </vbox>

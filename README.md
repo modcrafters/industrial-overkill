@@ -357,6 +357,13 @@ is translated independently, including health arguments and age. The standard
 client entity; Courier needs no custom screen elements.
 MMDLib registers the block, item and block entity type automatically; Java integrations
 look them up through `MachineContent`, without a Courier-specific registration class.
+The processor opts its `EntitySnapshot` occupant into MMDLib's portable state. The
+library handles item transfer, placement and the standard `mmdlib:pickup` action,
+which is shared by the button and sneak-use. Occupancy and status lines are cached
+derived variables, updated when the occupant changes or loads. The release
+cooldown uses a persisted idle-only timer, and placement checks and detached
+preview caching use shared entity helpers. Capture rules, wording, pose extensions
+and Animal Gym installation remain mod-owned.
 Old development block-entity saves are not migrated.
 
 All four sides share the paw display and status indicators; occupied cages also

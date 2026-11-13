@@ -1,20 +1,14 @@
 package net.modcrafters.minecraft.industrialoverkill.client;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -23,13 +17,13 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import zone.moddev.mc.lib.api.entity.EntityPreviewCache;
 
 /** Item previews are detached entities; they never join or tick in the client world. */
 @EventBusSubscriber(modid = IndustrialOverkill.MOD_ID, value = Dist.CLIENT)
 public final class CritterCourierItemRenderer extends BlockEntityWithoutLevelRenderer {
     private static CritterCourierItemRenderer instance;
-    private final Map<CustomData, Mob> previews = new LinkedHashMap<>(16, .75f, true);
-    private ClientLevel level;
+    private final EntityPreviewCache<Mob> previews = new EntityPreviewCache<>(64, CritterCourierData::load);
     private boolean renderingAnimal;
 
     private CritterCourierItemRenderer() {
@@ -47,35 +41,11 @@ public final class CritterCourierItemRenderer extends BlockEntityWithoutLevelRen
     public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {
         if (instance != null) {
             instance.previews.clear();
-            instance.level = null;
         }
     }
 
     private Mob preview(ItemStack stack) {
-        var current = Minecraft.getInstance().level;
-        if (current != level) {
-            previews.clear();
-            level = current;
-        }
-        if (level == null)
-            return null;
-        var data = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
-        if (data.isEmpty())
-            return null;
-        if (!previews.containsKey(data)) {
-            var mob = CritterCourierData.load(CritterCourierData.read(stack), level);
-            if (mob != null) {
-                mob.setPos(0, 0, 0);
-                var size = mob.getDimensions(mob.getPose());
-                if (!Float.isFinite(size.width()) || !Float.isFinite(size.height())
-                    || size.width() <= 0 || size.height() <= 0)
-                    mob = null;
-            }
-            previews.put(data, mob);
-            if (previews.size() > 64)
-                previews.remove(previews.keySet().iterator().next());
-        }
-        return previews.get(data);
+        return previews.get(Minecraft.getInstance().level, CritterCourierData.snapshot(stack));
     }
 
     @Override

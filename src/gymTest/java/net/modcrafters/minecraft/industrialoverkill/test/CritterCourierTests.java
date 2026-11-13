@@ -95,6 +95,10 @@ public final class CritterCourierTests {
         require(source.occupied() && cow.isRemoved(),
             "Stepping onto armed plate captures exactly one mob");
         var stack = source.take();
+        var payload = zone.moddev.mc.lib.machine.feature.PortableData.read(stack, "courier");
+        require(payload.getAllKeys().equals(java.util.Set.of("occupant")),
+            "Only the explicitly portable occupant travels; execution and derived state stay out");
+        require(!source.occupied(), "Taking portable data refreshes the source's derived occupied state");
         require(source.take().isEmpty(), "Pickup ownership can transfer only once");
         helper.getLevel().removeBlock(pos, false);
         var target = pos.east(3);
@@ -111,10 +115,12 @@ public final class CritterCourierTests {
         var placed = CritterCourierProcessor.from(host);
         require(placed.occupied(), "Placed cage still contains the mob");
         var detailLines = placed.variable("details");
+        require(!placed.state().contains("details") && !placed.state().contains("occupied"),
+            "Derived details and occupancy are reconstructed rather than persisted");
         var saved = host.saveWithFullMetadata(helper.getLevel().registryAccess());
         placed.setMob(new net.minecraft.nbt.CompoundTag());
         host.loadWithComponents(saved, helper.getLevel().registryAccess());
-        require(detailLines.equals(placed.variable("details")), "Translated component lines and their arguments survive save/load");
+        require(detailLines.equals(placed.variable("details")), "Translated lines recompute identically after save/load");
         require(placed.release(player), "Mob releases into clear adjacent space");
         var released = (Animal) helper.getLevel().getEntity(uuid);
         require(
@@ -293,7 +299,9 @@ public final class CritterCourierTests {
         var player = helper.makeMockPlayer(GameType.SURVIVAL);
         player.setPos(pos.getX() + 5, pos.getY(), pos.getZ());
         var release = net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym.id("release");
-        var pickup = net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym.id("pickup");
+        var pickup = zone.moddev.mc.lib.machine.feature.PortableStoredProcessor.PICKUP;
+        require(pickup.equals(host.definition.behavior().secondaryAction()),
+            "XML sneak-use and the pickup button share the library action");
         require(!host.screenFeatures().condition("$processors.courier.occupied"), "Empty courier disables Release");
         require(!courier.invoke(release, player).accepted(), "Empty release action is rejected on the server");
         require(host.getBlockState().getShape(helper.getLevel(), pos).max(net.minecraft.core.Direction.Axis.Y) == 3.0 / 16,
@@ -307,6 +315,13 @@ public final class CritterCourierTests {
         require(courier.invoke(release, player).accepted(), "Release remains available while processing is paused");
         require(!host.screenFeatures().condition("$processors.courier.occupied"), "Release disables its button immediately");
         require(!courier.invoke(release, player).accepted(), "Repeated stale release cannot duplicate the occupant");
+        host.serverTick();
+        require(courier.state().getInt("cooldown") == 40, "Cooldown stays frozen while paused");
+        courier.setPaused(false);
+        for (int i = 0; i < 39; i++) host.serverTick();
+        require(courier.state().getInt("cooldown") == 1, "Idle timer counts down through the shared lifecycle");
+        host.serverTick();
+        require(courier.state().getInt("cooldown") == 0, "Cooldown reaches zero without underflow");
         require(courier.invoke(pickup, player).accepted() && helper.getLevel().getBlockState(pos).isAir(),
             "Pickup action removes the generic machine host");
         require(!courier.invoke(pickup, player).accepted(), "Repeated pickup cannot produce another item");

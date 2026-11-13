@@ -3,7 +3,6 @@ package net.modcrafters.minecraft.industrialoverkill.courier;
 import java.util.List;
 import java.util.Map;
 
-import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -18,66 +17,60 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
-import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
-import zone.moddev.mc.lib.machine.feature.PortableProcessor;
+import zone.moddev.mc.lib.api.entity.EntityPlacement;
+import zone.moddev.mc.lib.api.entity.EntityPreviewCache;
+import zone.moddev.mc.lib.api.entity.EntitySnapshot;
+import zone.moddev.mc.lib.machine.feature.PortableStoredProcessor;
 import zone.moddev.mc.lib.machine.feature.ProcessorAction;
 import zone.moddev.mc.lib.machine.feature.ProcessorMachine;
 import zone.moddev.mc.lib.machine.feature.ProcessorState;
-import zone.moddev.mc.lib.machine.feature.StoredProcessor;
-import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
+import zone.moddev.mc.lib.machine.feature.ProcessorTimer;
+import zone.moddev.mc.lib.machine.feature.Processors;
 import zone.moddev.mc.lib.machine.neoforge.MultiblockMembers;
-import zone.moddev.mc.lib.gui.model.EntityPortraitData;
 
 /** Capture, transport and release policy for the XML-defined Critter Courier. */
-public final class CritterCourierProcessor extends StoredProcessor implements PortableProcessor {
-    private final ProcessorState.Key<EntityPortraitData> occupant = variables.define("occupant", EntityPortraitData.CODEC,
-        EntityPortraitData.EMPTY, java.util.function.UnaryOperator.identity(), false, true);
-    private final ProcessorState.Key<Boolean> occupied = variables.define("occupied", Codec.BOOL, false);
-    private final ProcessorState.Key<Boolean> taken = variables.define("taken", Codec.BOOL, false);
-    private final ProcessorState.Key<List<Component>> details = variables.define("details",
-        net.minecraft.network.chat.ComponentSerialization.CODEC.listOf(),
-        List.<Component>of(Component.translatable("courier.armed"), Component.translatable("courier.waiting")),
-        lines -> lines.stream().<Component>map(Component::copy).toList(), false, true);
-    private final ProcessorState.Key<Integer> cooldown = variables.define("cooldown", Codec.intRange(0, 40),
-        0, java.util.function.UnaryOperator.identity(), false, false);
-    private CompoundTag previewData;
-    private Mob preview;
+public final class CritterCourierProcessor extends PortableStoredProcessor {
+    private final EntityPreviewCache<Mob> previews = new EntityPreviewCache<>(1, CritterCourierData::load);
+    private final ProcessorState.Key<EntitySnapshot> occupant = variables.entity("occupant")
+        .synced().portable().define();
+    private final ProcessorState.Key<Boolean> occupied = variables.bool("occupied", false).visual()
+        .derived(List.of(occupant), state -> !state.get(occupant).isEmpty());
+    private final ProcessorState.Key<List<Component>> details = variables.components("details", List.of()).synced()
+        .derived(List.of(occupant), state -> describeOccupant(state.get(occupant)));
+    private final ProcessorTimer cooldown = variables.timer("cooldown", 40, ProcessorTimer.Policy.IDLE);
     private final Map<ResourceLocation, ProcessorAction> actions = Map.of(
-        AnimalGym.id("release"), new ProcessorAction((s, c) -> occupied() && !s.get(taken),
-            (s, c) -> release(c.player()) ? ProcessorAction.Result.success() : ProcessorAction.Result.unavailable()),
-        AnimalGym.id("pickup"), new ProcessorAction((s, c) -> !s.get(taken), (s, c) -> {
-            pickUp(c.player());
-            return ProcessorAction.Result.success();
-        }));
+        CritterCourierData.ID.withPath("release"), new ProcessorAction((s, c) -> occupied() && !taken(),
+            (s, c) -> release(c.player()) ? ProcessorAction.Result.success() : ProcessorAction.Result.unavailable()));
 
     public static CritterCourierProcessor from(Object host) {
-        return host instanceof DefinedMachineEntity machine
-            ? machine.screenFeatures().findProcessor("courier")
-                .filter(CritterCourierProcessor.class::isInstance).map(CritterCourierProcessor.class::cast).orElse(null)
-            : null;
+        return Processors.find(host, "courier", CritterCourierProcessor.class).orElse(null);
     }
-    public Map<ResourceLocation, ProcessorAction> actions() { return actions; }
+    @Override
+    protected Map<ResourceLocation, ProcessorAction> customActions() { return actions; }
     public boolean occupied() { return variables.get(occupied); }
     public CompoundTag mobData() { return variables.get(occupant).data(); }
     public BlockPos getBlockPos() { return machine.position(); }
 
     public Mob previewMob() {
-        var data = mobData();
-        if (machine != null && machine.level() != null && !data.equals(previewData)) {
-            previewData = data;
-            preview = CritterCourierData.load(data, machine.level());
-        }
-        return preview;
+        return preview(variables.get(occupant));
     }
-    private List<Component> describeOccupant() {
-        var entity = previewMob();
+    private Mob preview(EntitySnapshot snapshot) {
+        return previews.get(machine == null ? null : machine.level(), snapshot);
+    }
+    private List<Component> describeOccupant(EntitySnapshot snapshot) {
         var lines = new java.util.ArrayList<Component>();
-        lines.add(Component.translatable(occupied() ? "courier.occupied" : "courier.armed"));
-        if (!occupied()) { lines.add(Component.translatable("courier.waiting")); return lines; }
-        if (entity == null) { lines.add(CritterCourierData.name(mobData())); return lines; }
+        lines.add(Component.translatable(snapshot.isEmpty() ? "courier.armed" : "courier.occupied"));
+        if (snapshot.isEmpty()) {
+            lines.add(Component.translatable("courier.waiting"));
+            return lines;
+        }
+        var entity = preview(snapshot);
+        if (entity == null) {
+            lines.add(CritterCourierData.name(snapshot.data()));
+            return lines;
+        }
         lines.add(entity.getDisplayName());
         if (entity.hasCustomName()) lines.add(entity.getType().getDescription());
         lines.add(Component.translatable("courier.health",
@@ -88,17 +81,10 @@ public final class CritterCourierProcessor extends StoredProcessor implements Po
         return lines;
     }
     public void setMob(CompoundTag data) {
-        variables.update(() -> {
-            variables.set(occupant, new EntityPortraitData(data));
-            variables.set(occupied, !data.isEmpty());
-            variables.set(details, describeOccupant());
-        });
+        variables.update(() -> variables.set(occupant, new EntitySnapshot(data)));
     }
     public boolean canStart(ProcessorState state, ProcessorMachine context) {
-        return !occupied() && !state.get(taken) && state.get(cooldown) == 0;
-    }
-    protected void idle(ProcessorState state, ProcessorMachine context, int deltaTicks) {
-        if (state.get(cooldown) > 0) state.set(cooldown, Math.max(0, state.get(cooldown) - deltaTicks));
+        return !occupied() && !taken() && cooldown.ready();
     }
     public ProcessState process(ProcessorState state, ProcessorMachine context, int deltaTicks) {
         for (var candidate : context.level().getEntitiesOfClass(Mob.class, new AABB(context.position()).inflate(0, .5, 0)))
@@ -121,55 +107,22 @@ public final class CritterCourierProcessor extends StoredProcessor implements Po
         machine.level().playSound(null, pos, SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.BLOCKS, 1, .8f);
         return true;
     }
-    public ItemStack take() {
-        if (variables.get(taken)) return ItemStack.EMPTY;
-        var stack = CritterCourierData.stack(mobData());
-        variables.update(() -> {
-            variables.set(taken, true);
-            setMob(new CompoundTag());
-        });
-        return stack;
-    }
-    public void pickUp(Player player) {
-        if (machine.level().isClientSide() || variables.get(taken)) return;
-        var stack = take();
-        machine.remove();
-        player.getInventory().placeItemBackInInventory(stack);
-        player.closeContainer();
-    }
     public boolean release(Player player) {
-        if (!(machine.level() instanceof ServerLevel server) || !occupied() || variables.get(taken)) return false;
-        var entity = CritterCourierData.load(mobData(), server);
-        if (entity == null || !CritterCourierData.uuidAvailable(entity, server)) {
-            player.displayClientMessage(Component.translatable("courier.release_failed"), true);
+        if (!(machine.level() instanceof ServerLevel server) || !occupied() || taken()) return false;
+        var entity = CritterCourierData.load(variables.get(occupant), server);
+        var front = machine.blockState().getValue(BlockStateProperties.HORIZONTAL_FACING);
+        var result = entity == null ? EntityPlacement.Result.INVALID_ENTITY
+            : EntityPlacement.place(entity, server, EntityPlacement.around(entity, machine.position(),
+                List.of(front, front.getClockWise(), front.getCounterClockWise(), front.getOpposite())));
+        if (result != EntityPlacement.Result.SUCCESS) {
+            player.displayClientMessage(Component.translatable(
+                result == EntityPlacement.Result.NO_SPACE || result == EntityPlacement.Result.SPAWN_REJECTED
+                    ? "courier.no_space" : "courier.release_failed"), true);
             return false;
         }
-        var pos = machine.position();
-        var front = machine.blockState().getValue(BlockStateProperties.HORIZONTAL_FACING);
-        double distance = Math.max(1, .55 + entity.getBbWidth() / 2.0);
-        for (var side : List.of(front, front.getClockWise(), front.getCounterClockWise(), front.getOpposite())) {
-            entity.moveTo(pos.getX() + .5 + side.getStepX() * distance, pos.getY(),
-                pos.getZ() + .5 + side.getStepZ() * distance, side.toYRot(), 0);
-            entity.setDeltaMovement(Vec3.ZERO);
-            var box = entity.getBoundingBox();
-            if (!server.hasChunksAt(BlockPos.containing(box.minX, box.minY, box.minZ),
-                BlockPos.containing(box.maxX, box.maxY, box.maxZ)) || !server.noCollision(entity)
-                || !server.getWorldBorder().isWithinBounds(box)) continue;
-            if (!server.addFreshEntity(entity)) break;
-            variables.update(() -> { variables.set(cooldown, 40); setMob(new CompoundTag()); });
-            server.playSound(null, pos, SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.BLOCKS, 1, 1);
-            return true;
-        }
-        player.displayClientMessage(Component.translatable("courier.no_space"), true);
-        return false;
-    }
-    public void placed(ItemStack stack) { setMob(CritterCourierData.read(stack)); }
-    public boolean hasContent(ItemStack stack) { return CritterCourierData.occupied(stack); }
-    public void creativeDestroy() { if (!occupied()) take(); }
-    public InteractionResult use(Player player, boolean secondary) {
-        if (!secondary) return InteractionResult.PASS;
-        if (!machine.level().isClientSide()) invoke(AnimalGym.id("pickup"), player);
-        return InteractionResult.sidedSuccess(machine.level().isClientSide());
+        variables.update(() -> { cooldown.start(40); variables.set(occupant, EntitySnapshot.EMPTY); });
+        server.playSound(null, machine.position(), SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.BLOCKS, 1, 1);
+        return true;
     }
     public InteractionResult useItem(UseOnContext context) {
         if (!CritterCourierData.occupied(context.getItemInHand())) return InteractionResult.PASS;
