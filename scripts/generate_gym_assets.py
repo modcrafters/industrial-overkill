@@ -317,15 +317,15 @@ for tag in ['mineable/pickaxe','needs_stone_tool']:
 js(ROOT/'data/industrial_overkill/recipe/animal_gym.json',{'type':'minecraft:crafting_shaped','pattern':['ILI','RHR','IPI'],'key':{'I':{'item':'minecraft:iron_ingot'},'L':{'item':'minecraft:lantern'},'R':{'item':'minecraft:redstone'},'H':{'item':'minecraft:hay_block'},'P':{'item':'minecraft:piston'}},'result':{'id':'industrial_overkill:animal_gym','count':1}})
 print('Generated gym models, pixel textures, language, tags and recipe.')
 
-# Mob Trap: the same steel/hazard palette, a flat armed plate and a raised cage.
+# Critter Courier: the same steel/hazard palette, a flat armed plate and a raised cage.
 # The floor is the base's top face, not a second coplanar inset.
-trap_front=[cube([.5,.5,-.03],[5.2,2.7,.12],'panel',{'north':'vent'}),
+courier_front=[cube([.5,.5,-.03],[5.2,2.7,.12],'panel',{'north':'vent'}),
  cube([5.6,.5,-.08],[9.5,2.7,.1],'gold',{'north':'display'}),
  cube([10,.5,-.03],[15.5,2.7,.12],'panel')]
-trap_front += [cube([x,.9,-.12],[x+.8,2.3,0],'green') for x in [10.6,12.1,13.6]]
-trap_base=[cube([0,0,0],[16,3,16],'trim',{'up':'dark'})]+four_sides(trap_front)
-cage=copy.deepcopy(trap_base)
-trap_base += [cube([0,3,0],[16,3.2,1],'hazard'),cube([0,3,15],[16,3.2,16],'hazard'),
+courier_front += [cube([x,.9,-.12],[x+.8,2.3,0],'green') for x in [10.6,12.1,13.6]]
+courier_base=[cube([0,0,0],[16,3,16],'trim',{'up':'dark'})]+four_sides(courier_front)
+cage=copy.deepcopy(courier_base)
+courier_base += [cube([0,3,0],[16,3.2,1],'hazard'),cube([0,3,15],[16,3.2,16],'hazard'),
  cube([0,3,1],[1,3.2,15],'hazard'),cube([15,3,1],[16,3.2,15],'hazard')]
 # Stop the cage's rim at the corner cuffs instead of overlapping their sides.
 cage += [cube([1.5,3,0],[14.5,3.2,1],'hazard'),cube([1.5,3,15],[14.5,3.2,16],'hazard'),
@@ -345,31 +345,30 @@ for x in [0,14]:
  for z in [0,14]:cage += [cube([x,14,z],[x+2,16.1,z+2],'gold')]
 cage += four_sides(lamp(4.5,11.5,13.4,-.05))
 
-for name,elements in [('mob_trap',trap_base),('mob_trap_occupied',cage)]:
+for name,elements in [('critter_courier_plate',courier_base),('critter_courier_cage',cage)]:
  elements=mirrored(elements)
  check_coplanar_faces(name,elements)
  js(A/'models/block'/f'{name}.json',{'parent':'minecraft:block/block','textures':tex|{'particle':tex['panel']},'elements':elements})
-js(A/'blockstates/mob_trap.json',{'variants':{f'facing={f},occupied={str(occupied).lower()}':{'model':'industrial_overkill:block/mob_trap'+('_occupied' if occupied else ''),'y':y} for f,y in rotations for occupied in [False,True]}})
-js(A/'models/item/mob_trap.json',{'parent':'industrial_overkill:block/mob_trap','overrides':[{'predicate':{'industrial_overkill:occupied':1},'model':'industrial_overkill:item/mob_trap_occupied'}]})
-js(A/'models/item/mob_trap_occupied.json',{'parent':'industrial_overkill:block/mob_trap_occupied'})
-lang.update({'block.industrial_overkill.mob_trap':'Mob Trap','item.industrial_overkill.mob_trap':'Mob Trap',
- 'trap.title':'Mob Trap','trap.armed':'Status: Armed','trap.occupied':'Status: Occupied','trap.waiting':'Waiting for a mob',
- 'trap.contains':'Contains: %s','trap.unknown':'Unknown mob (data preserved)','trap.release':'Release','trap.pickup':'Pick Up',
- 'trap.release_failed':'Cannot restore this mob here. Its data remains safe in the trap.',
- 'trap.release.tip':'Release the mob into clear space beside the cage.',
- 'trap.pickup.tip':'Pick up this trap with its occupant safely inside.',
- 'trap.no_space':'Clear space next to the trap before releasing the mob.',
- 'gym.trap':'Mob Trap','gym.trap.help':'Remove the trap to take the animal with you.',
+js(A/'models/item/critter_courier.json',{'parent':'industrial_overkill:block/critter_courier_plate','overrides':[{'predicate':{'industrial_overkill:occupied':1},'model':'industrial_overkill:item/critter_courier_occupied'}]})
+js(A/'models/item/critter_courier_occupied.json',{'parent':'industrial_overkill:block/critter_courier_cage'})
+lang.update({'block.industrial_overkill.critter_courier':'Critter Courier','item.industrial_overkill.critter_courier':'Critter Courier',
+ 'courier.title':'Critter Courier','courier.armed':'Status: Armed','courier.occupied':'Status: Occupied','courier.waiting':'Waiting for a mob',
+ 'courier.contains':'Contains: %s','courier.unknown':'Unknown mob (data preserved)','courier.release':'Release','courier.pickup':'Pick Up',
+ 'courier.release_failed':'Cannot restore this mob here. Its data remains safe in the courier.',
+ 'courier.release.tip':'Release the mob into clear space beside the cage.',
+ 'courier.pickup.tip':'Pick up this courier with its occupant safely inside.',
+ 'courier.no_space':'Clear space next to the courier before releasing the mob.',
+ 'gym.trap':'Critter Courier','gym.trap.help':'Remove the courier to take the animal with you.',
  'gym.status.unsupported':'This mob cannot train',
- 'gym.release.tip':'Release a loose animal, or return its occupied trap.',
- 'gym.help':'Lead an adult farm animal, cat or wolf onto the belt, or insert an occupied Mob Trap to keep it contained. Supply its food (cats: raw cod/salmon; wolves: meat) and connect an FE consumer. Release pauses work and returns an installed trap.'})
+ 'gym.release.tip':'Release a loose animal, or return its occupied courier.',
+ 'gym.help':'Lead an adult farm animal, cat or wolf onto the belt, or insert an occupied Critter Courier to keep it contained. Supply its food (cats: raw cod/salmon; wolves: meat) and connect an FE consumer. Release pauses work and returns an installed courier.'})
 js(A/'lang/en_us.json',lang)
 for tag in ['mineable/pickaxe','needs_stone_tool']:
  path=ROOT/'data/minecraft/tags/block'/f'{tag}.json'
- data=json.loads(path.read_text());data['values'].append('industrial_overkill:mob_trap');js(path,data)
-js(ROOT/'data/industrial_overkill/recipe/mob_trap.json',{'type':'minecraft:crafting_shaped','pattern':['B B','B B','IPI'],'key':{'B':{'item':'minecraft:iron_bars'},'I':{'item':'minecraft:iron_ingot'},'P':{'item':'minecraft:stone_pressure_plate'}},'result':{'id':'industrial_overkill:mob_trap','count':1}})
+ data=json.loads(path.read_text());data['values'].append('industrial_overkill:critter_courier');js(path,data)
+js(ROOT/'data/industrial_overkill/recipe/critter_courier.json',{'type':'minecraft:crafting_shaped','pattern':['B B','B B','IPI'],'key':{'B':{'item':'minecraft:iron_bars'},'I':{'item':'minecraft:iron_ingot'},'P':{'item':'minecraft:stone_pressure_plate'}},'result':{'id':'industrial_overkill:critter_courier','count':1}})
 # Ownership drops are handled exactly once by the block entity, including replacements.
-js(ROOT/'data/industrial_overkill/loot_table/blocks/mob_trap.json',{'type':'minecraft:block','pools':[]})
+js(ROOT/'data/industrial_overkill/loot_table/blocks/critter_courier.json',{'type':'minecraft:block','pools':[]})
 
 # Transparent GUI icons; native button frames and hover states remain MMDLib's.
 class Sprite(Canvas):
@@ -380,7 +379,7 @@ class Sprite(Canvas):
   def chunk(kind,data):return struct.pack('>I',len(data))+kind+data+struct.pack('>I',zlib.crc32(kind+data))
   raw=b''.join(b'\0'+bytes(c for rgba in row for c in rgba) for row in self.pixels)
   path.write_bytes(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',32,32,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(raw))+chunk(b'IEND',b''))
-def trap_icon(name,draw):
+def courier_icon(name,draw):
  im=Sprite('#00000000');draw(im)
  path=A/'textures/gui/sprites'/f'{name}.png';path.parent.mkdir(parents=True,exist_ok=True);im.save(path)
 def release_icon(d):
@@ -396,6 +395,6 @@ def pickup_icon(d):
  d.rectangle((14,10,18,24),fill='#ffcd39')
  d.polygon([(7,12),(16,2),(26,12)],fill='#ffcd39')
  d.line((14,12,14,21),fill='#fff39d')
-trap_icon('trap_release',release_icon);trap_icon('trap_pickup',pickup_icon)
-lang.update({'trap.health':'Health: %s / %s HP','trap.age.baby':'Age: Baby','trap.age.adult':'Age: Adult'})
+courier_icon('courier_release',release_icon);courier_icon('courier_pickup',pickup_icon)
+lang.update({'courier.health':'Health: %s / %s HP','courier.age.baby':'Age: Baby','courier.age.adult':'Age: Adult'})
 js(A/'lang/en_us.json',lang)

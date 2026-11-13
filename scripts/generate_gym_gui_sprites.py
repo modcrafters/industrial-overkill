@@ -33,7 +33,7 @@ def generate():
         for x in range(2, 14):
             if y in (2, 3, 12, 13) or x in (2, 6, 9, 13):
                 pixels[y][x] = (216, 220, 224, 255)
-    write('trap_slot', pixels)
+    write('courier_slot', pixels)
 
 
 if __name__ == '__main__':

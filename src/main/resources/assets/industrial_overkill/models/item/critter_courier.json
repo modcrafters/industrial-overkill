@@ -1,0 +1,11 @@
+{
+  "parent": "industrial_overkill:block/critter_courier_plate",
+  "overrides": [
+    {
+      "predicate": {
+        "industrial_overkill:occupied": 1
+      },
+      "model": "industrial_overkill:item/critter_courier_occupied"
+    }
+  ]
+}

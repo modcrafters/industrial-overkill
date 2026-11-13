@@ -1,11 +1,16 @@
 # Industrial Overkill
 
 NeoForge 1.21.1 / Java 21 mod using MMDLib. The entry point is
-`zone.moddev.mc.industrialoverkill.IndustrialOverkill`; the mod ID is
-`industrial_overkill`. Machines include **Animal Gym 2.0**, **Mob Trap**, and
+`net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill`; the mod ID is
+`industrial_overkill`. Machines include **Animal Gym 2.0**, **Critter Courier**, and
 **Rock Stew Factory**.
 
 This is a development version. MMDLib is a required, separate mod; JEI is optional.
+
+The current Critter Courier migration requires the accompanying MMDLib changes
+for stored processors, XML actions and conditional shapes. Use the local development
+workflow below until those changes are released and `mmdlib_version` is updated.
+The currently pinned public release does not contain these APIs.
 
 ## Getting started
 
@@ -188,7 +193,7 @@ Loose animals are held in place while working without disabling AI. Fitting scal
 model and hitbox, preserves existing scale modifiers, and restores the original
 size whenever work ends, the animal leaves, or the gym unloads. Temporary shrinking
 is never stored in animal saves. Pause, insufficient food, full storage, obstruction,
-unloading and teardown release loose animals. Animals installed through a Mob Trap
+unloading and teardown release loose animals. Animals installed through a Critter Courier
 remain contained in their trap through all of those conditions. Breaking any
 member dismantles the gym, drops remaining food and awards one machine item for a
 survival break. Stored FE is lost. Creative destruction and generic replacement
@@ -339,10 +344,26 @@ Very short durations can expire before the existing 56-tick eating/refill sequen
 finishes; the gym waits for the next serving without generating unpaid energy.
 The eating/refill animation timing is independent of recipe rates.
 
-## Mob Trap
+## Critter Courier
+
+The registry ID is `industrial_overkill:critter_courier`.
+Its block, item properties, conditional models/shapes and screen are defined in
+`mmdlib/machine/critter_courier.xml`. `CritterCourierProcessor` owns capture, transport,
+release and the declared Release/Pick Up actions on MMDLib's generic machine host.
+Release is disabled while empty and both actions recheck availability on the server.
+The standard status label reads the processor's stored `details` lines. Each line
+is translated independently, including health arguments and age. The standard
+`entity-portrait` reads the typed `occupant` variable and renders a display-only
+client entity; Courier needs no custom screen elements.
+MMDLib registers the block, item and block entity type automatically; Java integrations
+look them up through `MachineContent`, without a Courier-specific registration class.
+Old development block-entity saves are not migrated.
 
 All four sides share the paw display and status indicators; occupied cages also
 have an amber overhead lamp on each side.
+Occupied Courier items render their captured animal inside the cage in inventories,
+in hand and when dropped. The preview uses the saved appearance and pose without
+creating a world entity; empty items retain the armed plate model.
 
 Craft one with `B B / B B / IPI`: four iron bars, two iron ingots and a stone
 pressure plate. It is also in the Industrial Overkill creative tab. The compact
@@ -354,7 +375,7 @@ Pick Up icon buttons on the right; hover either icon for its action.
 3. Open its GUI and choose **Pick Up**, sneak-right-click with an empty hand,
    or break the cage. The resulting item contains the mob.
 4. Right-click any formed gym part with the occupied trap, or put it in the
-   gym's **Mob Trap** slot. Add the animal's food and extract the generated FE.
+   gym's **Critter Courier** slot. Add the animal's food and extract the generated FE.
 5. Take the trap out of the slot to carry the animal with you.
 6. Place the trap back in the world and press its **Release** button to restore
    the mob in clear space beside the cage.
@@ -400,8 +421,9 @@ The indicator and front/top face-texture switches are declared in its machine XM
 its casing override is `rock_stew_factory_base.json`, leaving the generated conditional
 root model intact. The asset generator writes idle/running textures and black-and-white
 emissive masks; component notifications update the appearance without tick polling.
-Use the pinned published MMDLib version or a local publication that provides these
-APIs. Local development is optional; CI always uses the pinned published version.
+Use a local publication that also provides the stored processor/action APIs used
+by Critter Courier. CI uses the pinned published version and will need a new
+MMDLib release and dependency update before this migration can be published.
 
 Then, in this project:
 
@@ -427,10 +449,10 @@ checks placement, real power generation, portrait and inventory synchronization,
 food-energy tooltips, recipe links, intensity and pause/resume clicks, and teardown in a client; screenshots are saved under
 `build/gym-client-smoke/screenshots`. Test classes and fixtures are excluded from
 the shipped jar and normal client/server runs. Add `-PgymUiOnly` to check the gym screen
-without the world-animation prelude. `./gradlew runMobTrapClientSmoke`
+without the world-animation prelude. `./gradlew runCritterCourierClientSmoke`
 checks ground capture, cage and GUI previews, pickup, gym installation through the
 normal block interaction, contained generation, pause, ejection and world release;
-its screenshots are under `build/trap-client-smoke/screenshots`.
+its screenshots are under `build/courier-client-smoke/screenshots`.
 
 `./gradlew runGymPerformance` benchmarks an empty scene, three working gyms with
 loose cows, and three with captive cows. Each case warms up for 100 server ticks
@@ -463,7 +485,7 @@ version pinned; use a new release version rather than overwriting it.
 
 ## Adding content
 
-Java code belongs under `src/main/java/zone/moddev/mc/industrialoverkill`.
+Java code belongs under `src/main/java/net/modcrafters/minecraft/industrialoverkill`.
 Assets and recipes belong under `src/main/resources/assets/industrial_overkill`
 and `src/main/resources/data/industrial_overkill`. MMDLib startup definitions use
 its root-level `src/main/resources/mmdlib/` layout; consult MMDLib's

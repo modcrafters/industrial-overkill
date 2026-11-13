@@ -1,12 +1,12 @@
 <screen xmlns="https://moddev.zone/mmdlib/screen" xmlns:gym="https://moddev.zone/industrial-overkill/screen"
         title="gym.title" title-fallback="Animal Gym 2.0"
-        block-entity="zone.moddev.mc.industrialoverkill.gym.AnimalGymEntity" extends="mmdlib:base_powered_machine">
+        block-entity="net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity" extends="mmdlib:base_powered_machine">
   <fill name="body">
     <hbox padding="7" spacing="8" align="start">
       <vbox spacing="6" align="center">
         <inventory storage="items">
-          <item-slot id="trap" index="3" icon="industrial_overkill:trap_slot"
-                     tooltip="gym.trap.help" tooltip-fallback="Insert an occupied trap. Remove it to take the animal with you."/>
+          <item-slot id="trap" index="3" icon="industrial_overkill:courier_slot"
+                     tooltip="gym.trap.help" tooltip-fallback="Insert an occupied courier. Remove it to take the animal with you."/>
         </inventory>
         <gym:jei-only>
           <button id="recipes" icon="minecraft:recipe_book/button" flat="true" jei-recipes="industrial_overkill:gym_animal"
