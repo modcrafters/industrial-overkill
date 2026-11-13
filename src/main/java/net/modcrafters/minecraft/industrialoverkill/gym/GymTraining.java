@@ -73,10 +73,10 @@ public final class GymTraining implements MachineFeature<CompoundTag> {
     }
     public record FoodReserve(long energy, long ticks) {
     }
-    /** Food energy and active runtime at the selected intensity; excludes stored FE and rests. */
-    public FoodReserve foodReserve() {
+    /** Current food recipient, including the occupant while paused or waiting for food. */
+    Animal foodAnimal() {
         if (!(gym.getLevel() instanceof ServerLevel level))
-            return new FoodReserve(0, 0);
+            return null;
         Animal animal = animal();
         if (!gym.captive.installed() && (animal == null || !gym.onBelt(animal)
             || !GymAnimalRecipe.eligible(animal))) {
@@ -85,6 +85,11 @@ public final class GymTraining implements MachineFeature<CompoundTag> {
                 a -> GymAnimalRecipe.eligible(a) && gym.onBelt(a)).stream()
                 .min(Comparator.comparing(a -> a.getUUID().toString())).orElse(null);
         }
+        return animal;
+    }
+    /** Food energy and active runtime at the selected intensity; excludes stored FE and rests. */
+    public FoodReserve foodReserve() {
+        Animal animal = foodAnimal();
         if (animal == null || !GymAnimalRecipe.eligible(animal))
             return new FoodReserve(0, 0);
         var data = animal.getPersistentData();

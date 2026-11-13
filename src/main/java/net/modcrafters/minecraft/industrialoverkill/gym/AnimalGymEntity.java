@@ -108,12 +108,16 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
         return CritterCourierData.occupied(offered) || GymAnimalRecipe.food(level, offered);
     }
     @Override
+    public int offerLimit(ItemStack held) {
+        return CritterCourierData.occupied(held) ? 1 : held.getCount();
+    }
+    @Override
     public Exchange receive(ItemStack offered, UseOnContext context) {
-        if (context.getLevel().isClientSide() || offered.getCount() != 1 || !accepts(offered) || !structureReady())
+        if (context.getLevel().isClientSide() || !accepts(offered) || !structureReady())
             return Exchange.reject();
         if (!CritterCourierData.occupied(offered))
             return receiveFood(offered);
-        if (!food.getStackInSlot(3).isEmpty() || !food.insertItem(3, offered, true).isEmpty())
+        if (offered.getCount() != 1 || !food.getStackInSlot(3).isEmpty() || !food.insertItem(3, offered, true).isEmpty())
             return Exchange.reject();
         if (!food.insertItem(3, offered, false).isEmpty())
             return Exchange.reject();
@@ -122,17 +126,22 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
         return Exchange.accept(ItemStack.EMPTY);
     }
     private Exchange receiveFood(ItemStack offered) {
+        var animal = training.foodAnimal();
+        if (animal != null ? !GymAnimalRecipe.foodFor(animal, offered) : captive.installed())
+            return Exchange.reject();
+        var remaining = offered.copy();
         // Top up existing stacks before using empty slots; slot 3 belongs to the occupant.
         for (boolean empty : new boolean[]{false, true}) {
             for (int slot = 0; slot < 3; slot++) {
-                if (food.getStackInSlot(slot).isEmpty() != empty
-                    || !food.insertItem(slot, offered, true).isEmpty())
+                if (food.getStackInSlot(slot).isEmpty() != empty)
                     continue;
-                return food.insertItem(slot, offered, false).isEmpty()
-                    ? Exchange.reusable(ItemStack.EMPTY) : Exchange.reject();
+                remaining = food.insertItem(slot, remaining, false);
+                if (remaining.isEmpty())
+                    return Exchange.reusable(ItemStack.EMPTY);
             }
         }
-        return Exchange.reject();
+        return remaining.getCount() < offered.getCount()
+            ? Exchange.reusable(remaining) : Exchange.reject();
     }
     private void inventoryChanged() {
         setChanged();
