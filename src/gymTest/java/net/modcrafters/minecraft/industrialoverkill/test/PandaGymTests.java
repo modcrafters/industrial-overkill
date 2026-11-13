@@ -35,8 +35,8 @@ public final class PandaGymTests {
         var carried = cage.take();
         require(((Panda) CritterCourierData.load(CritterCourierData.read(carried), h.getLevel())).isSitting(),
             "Trap preserves pose omitted by vanilla saves");
-        require(gym.food.insertItem(3, carried, false).isEmpty(), "Panda trap installed");
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 2), false);
+        require(gym.food.insertItem(3, carried, false).isEmpty(), "Panda trap installed");
         gym.serverTick();
         require(gym.getGeneration() == 0 && gym.food.getStackInSlot(0).getCount() == 2,
             "Panda refuses wheat");

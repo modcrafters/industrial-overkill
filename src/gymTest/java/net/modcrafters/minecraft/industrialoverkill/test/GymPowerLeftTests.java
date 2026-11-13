@@ -21,11 +21,11 @@ public final class GymPowerLeftTests {
     @GameTest(template = "gym_empty")
     public static void mixedFoodIncludesHeldServingAndPaidRationExactlyOnce(GameTestHelper h) {
         var gym = AnimalGymTests.place(h, Direction.NORTH);
+        gym.food.insertItem(2, new ItemStack(Items.SALMON, 10), false);
         gym.food.insertItem(3,
             CritterCourierData.stack(CritterCourierData.save(EntityType.HORSE.create(h.getLevel()))), false);
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 2), false);
         gym.food.insertItem(1, new ItemStack(Items.GOLDEN_CARROT, 3), false);
-        gym.food.insertItem(2, new ItemStack(Items.SALMON, 10), false);
         long total = 2 * 24 * 200 + 3 * 30 * 400;
         require(gym.getPowerLeft() == total, "Count each suitable food tier, excluding fish");
         require(gym.getFoodTicksLeft() == 1600,

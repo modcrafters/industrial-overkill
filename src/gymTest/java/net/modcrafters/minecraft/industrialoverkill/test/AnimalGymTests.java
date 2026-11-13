@@ -130,14 +130,14 @@ public final class AnimalGymTests {
     public static void catsAndDogsTrainWithTheirOwnFood(GameTestHelper helper) {
         var gym = place(helper, Direction.EAST);
         for (var type : java.util.List.of(EntityType.CAT, EntityType.WOLF)) {
+            var food = type == EntityType.CAT ? Items.SALMON : Items.COOKED_BEEF;
+            var wrong = type == EntityType.CAT ? Items.COOKED_BEEF : Items.SALMON;
+            require(gym.food.insertItem(0, new ItemStack(wrong, 2), false).isEmpty(),
+                "Empty gym accepts food before a pet arrives");
             var pet = (net.minecraft.world.entity.TamableAnimal) animal(helper, gym, type);
             var owner = java.util.UUID.randomUUID();
             pet.setTame(true, true);
             pet.setOwnerUUID(owner);
-            var food = type == EntityType.CAT ? Items.SALMON : Items.COOKED_BEEF;
-            var wrong = type == EntityType.CAT ? Items.COOKED_BEEF : Items.SALMON;
-            require(gym.food.insertItem(0, new ItemStack(wrong, 2), false).isEmpty(),
-                "Pet food accepted by inventory");
             gym.serverTick();
             require(gym.getGeneration() == 0 && gym.food.getStackInSlot(0).getCount() == 2,
                 "Pet does not eat another species' food");
@@ -170,8 +170,8 @@ public final class AnimalGymTests {
     @GameTest(template = "gym_empty")
     public static void foodDisplayUsesAvailableEdibleFoodOnlyWhileWorking(GameTestHelper helper) {
         var gym = place(helper, Direction.NORTH);
-        animal(helper, gym, EntityType.COW);
         gym.food.insertItem(0, new ItemStack(Items.CARROT, 8), false);
+        animal(helper, gym, EntityType.COW);
         gym.food.insertItem(1, new ItemStack(Items.WHEAT, 2), false);
         require(gym.displayFood().isEmpty(), "Idle gym has no food display");
         gym.serverTick();
@@ -260,8 +260,8 @@ public final class AnimalGymTests {
     @GameTest(template = "gym_empty")
     public static void speciesFoodEligibilityAndIntensity(GameTestHelper helper) {
         var gym = place(helper, Direction.NORTH);
-        var pig = animal(helper, gym, EntityType.PIG);
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 2), false);
+        var pig = animal(helper, gym, EntityType.PIG);
         gym.serverTick();
         require(gym.energy.stored() == 0 && gym.food.getStackInSlot(0).getCount() == 2,
             "Pig rejects wheat");

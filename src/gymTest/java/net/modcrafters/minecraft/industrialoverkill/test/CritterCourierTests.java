@@ -317,8 +317,10 @@ public final class CritterCourierTests {
         pig.discard();
         var zombie = mob(helper, cage, EntityType.ZOMBIE);
         require(cage.capture(zombie), "Ordinary hostile mobs can be transported");
-        gym.food.insertItem(3, cage.take(), false);
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 2), false);
+        gym.food.insertItem(3, cage.take(), false);
+        require(gym.food.insertItem(1, new ItemStack(Items.WHEAT, 2), false).getCount() == 2,
+            "An unsupported occupant rejects new food deposits");
         gym.serverTick();
         require(
             gym.captive.installed() && gym.energy.stored() == 0

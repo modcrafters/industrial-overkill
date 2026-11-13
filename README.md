@@ -369,7 +369,9 @@ classes or slot knowledge. Right-click any formed gym part with supported food t
 insert as much of the held stack as fits, topping up existing stacks first and
 leaving the rest in hand. With an animal installed or on the belt (even paused),
 only that animal's food is accepted; an empty gym accepts any supported animal
-food. Adding food does not interrupt training.
+food. GUI insertion and hopper automation use the same live food-slot filter.
+Changing animals preserves existing food, which can still be removed through the
+GUI. Adding food does not interrupt training.
 The shared right-click path also handles fluid buckets
 and compatible modded containers on fluid machines, returning the resulting
 container and leaving rejected exchanges unchanged.

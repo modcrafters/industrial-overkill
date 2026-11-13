@@ -75,11 +75,15 @@ public final class GymTraining implements MachineFeature<CompoundTag> {
     }
     /** Current food recipient, including the occupant while paused or waiting for food. */
     Animal foodAnimal() {
-        if (!(gym.getLevel() instanceof ServerLevel level))
+        var level = gym.getLevel();
+        if (level == null)
             return null;
-        Animal animal = animal();
-        if (!gym.captive.installed() && (animal == null || !gym.onBelt(animal)
-            || !GymAnimalRecipe.eligible(animal))) {
+        if (gym.hasCaptive())
+            return gym.captivePreview() instanceof Animal captive ? captive : null;
+        Animal animal = level.isClientSide
+            ? level.getEntity(gym.getAnimalId()) instanceof Animal synced ? synced : null
+            : animal();
+        if (animal == null || !gym.onBelt(animal) || !GymAnimalRecipe.eligible(animal)) {
             // Pausing releases the training claim. Inspect the occupant without reclaiming it.
             animal = level.getEntitiesOfClass(Animal.class, gym.beltBounds(),
                 a -> GymAnimalRecipe.eligible(a) && gym.onBelt(a)).stream()

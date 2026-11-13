@@ -40,7 +40,7 @@ import zone.moddev.mc.lib.machine.neoforge.MultiblockResources;
 
 public final class AnimalGymEntity extends BasePoweredMachine implements MultiblockResources, ItemReceiver {
     public final ItemStorage food = new ItemStorage(4)
-        .restrict(stack -> GymAnimalRecipe.food(level, stack), 0, 1, 2)
+        .restrict(this::acceptsFood, 0, 1, 2)
         .restrict(CritterCourierData::occupied, 3).onChange(this::inventoryChanged);
     public final GymCaptive captive = new GymCaptive(this);
     private CompoundTag clientCaptive = new CompoundTag();
@@ -125,10 +125,12 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
         synchronize();
         return Exchange.accept(ItemStack.EMPTY);
     }
-    private Exchange receiveFood(ItemStack offered) {
+    private boolean acceptsFood(ItemStack offered) {
         var animal = training.foodAnimal();
-        if (animal != null ? !GymAnimalRecipe.foodFor(animal, offered) : captive.installed())
-            return Exchange.reject();
+        return animal != null ? GymAnimalRecipe.foodFor(animal, offered)
+            : !hasCaptive() && GymAnimalRecipe.food(level, offered);
+    }
+    private Exchange receiveFood(ItemStack offered) {
         var remaining = offered.copy();
         // Top up existing stacks before using empty slots; slot 3 belongs to the occupant.
         for (boolean empty : new boolean[]{false, true}) {
@@ -171,6 +173,9 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
             captivePreview = CritterCourierData.load(clientCaptive, level);
         }
         return captivePreview;
+    }
+    boolean hasCaptive() {
+        return level != null && level.isClientSide ? !clientCaptive.isEmpty() : captive.installed();
     }
     @Override
     public MultiblockInstance multiblock() {

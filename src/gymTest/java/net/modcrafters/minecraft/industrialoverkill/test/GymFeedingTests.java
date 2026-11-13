@@ -11,6 +11,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
@@ -18,12 +19,14 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
+import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymFeeding;
+import zone.moddev.mc.lib.gui.runtime.MachineMenu;
 import zone.moddev.mc.lib.machine.multiblock.MultiblockInstance;
 import zone.moddev.mc.lib.machine.neoforge.MachineItemInteractions;
 
@@ -132,6 +135,65 @@ public final class GymFeedingTests {
         require(MachineItemInteractions.interact(new UseOnContext(player, InteractionHand.MAIN_HAND, hit)).consumesAction()
             && player.getMainHandItem().isEmpty() && gym.food.getStackInSlot(0).getCount() == 12
             && ItemStack.matches(installed, gym.food.getStackInSlot(3)), "Pig food enters food slots without changing the Courier");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void foodSlotsShareLiveDietRulesWithGuiAndAutomation(GameTestHelper h) {
+        var gym = place(h, Direction.NORTH);
+        var port = h.getLevel().getCapability(Capabilities.ItemHandler.BLOCK, gym.getBlockPos(), Direction.NORTH);
+        require(port != null, "Gym exposes its food insertion capability");
+        require(port.insertItem(0, new ItemStack(Items.WHEAT_SEEDS, 8), false).isEmpty(),
+            "Empty gym accepts supported food through automation");
+        var cow = animal(h, gym, EntityType.COW);
+        cow.setNoAi(true);
+        gym.control("toggle");
+        var player = h.makeMockServerPlayerInLevel();
+        var pos = gym.getBlockPos();
+        player.setPos(pos.getX(), pos.getY(), pos.getZ());
+        var menu = new MachineMenu(84, player.getInventory(), gym);
+        player.containerMenu = menu;
+        try {
+            var wheat = new ItemStack(Items.WHEAT, 4);
+            var seeds = new ItemStack(Items.WHEAT_SEEDS, 4);
+            for (int slot = 0; slot < 3; slot++) {
+                var guiSlot = menu.getSlot(menu.menuSlot(slot));
+                require(guiSlot.mayPlace(wheat) && !guiSlot.mayPlace(seeds), "Every GUI food slot follows the paused cow's diet");
+                require(port.isItemValid(slot, wheat) && !port.isItemValid(slot, seeds), "Hoppers see the same slot filter");
+                require(ItemStack.matches(port.insertItem(slot, seeds, true), seeds)
+                    && ItemStack.matches(port.insertItem(slot, seeds, false), seeds), "Simulation and insertion both reject wrong food");
+            }
+            menu.setCarried(seeds.copy());
+            menu.clicked(menu.menuSlot(1), 0, ClickType.PICKUP, player);
+            require(ItemStack.matches(menu.getCarried(), seeds) && gym.food.getStackInSlot(1).isEmpty(),
+                "Rejected GUI insertion keeps the cursor stack");
+            menu.setCarried(wheat.copy());
+            menu.clicked(menu.menuSlot(1), 0, ClickType.PICKUP, player);
+            require(menu.getCarried().isEmpty() && gym.food.getStackInSlot(1).getCount() == 4, "GUI inserts suitable food");
+            require(port.insertItem(2, wheat, true).isEmpty() && gym.food.getStackInSlot(2).isEmpty(),
+                "Hopper simulation accepts suitable food without changing storage");
+            require(port.insertItem(2, wheat, false).isEmpty() && gym.food.getStackInSlot(2).getCount() == 4,
+                "Hopper insertion stores suitable food");
+            gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(EntityType.PIG.create(h.getLevel()))), false);
+            var carrots = new ItemStack(Items.CARROT);
+            for (int slot = 0; slot < 3; slot++) {
+                var guiSlot = menu.getSlot(menu.menuSlot(slot));
+                require(!guiSlot.mayPlace(wheat) && guiSlot.mayPlace(carrots)
+                    && !port.isItemValid(slot, wheat) && port.isItemValid(slot, carrots),
+                    "An already-open GUI and cached hopper handler follow a new Courier occupant");
+            }
+            require(gym.food.getStackInSlot(0).getCount() == 8 && gym.food.getStackInSlot(1).getCount() == 4,
+                "Animal changes preserve previously stored food");
+            menu.clicked(menu.menuSlot(0), 0, ClickType.PICKUP, player);
+            require(menu.getCarried().is(Items.WHEAT_SEEDS) && menu.getCarried().getCount() == 8,
+                "Food the new animal cannot eat can still be removed through the GUI");
+            gym.food.extractItem(3, 1, false);
+            cow.discard();
+            require(menu.getSlot(menu.menuSlot(0)).mayPlace(seeds) && port.isItemValid(0, seeds)
+                && !port.isItemValid(0, new ItemStack(Items.STONE)), "Removing all animals restores supported-food filtering");
+        } finally {
+            menu.removed(player);
+        }
         h.succeed();
     }
 
