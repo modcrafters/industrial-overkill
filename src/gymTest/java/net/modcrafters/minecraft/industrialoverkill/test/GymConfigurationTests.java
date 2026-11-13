@@ -19,7 +19,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.api.capabilities.IoMode;
 import zone.moddev.mc.lib.api.capabilities.RelativeFace;
 import zone.moddev.mc.lib.api.redstone.RedstoneControl;
@@ -102,7 +102,7 @@ public final class GymConfigurationTests {
             var pet = EntityType.WOLF.create(level);
             pet.setTame(true, true);
             pet.setOwnerUUID(UUID.randomUUID());
-            var trap = CritterCourierData.stack(CritterCourierData.save(pet));
+            var trap = CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(pet));
             gym.food.insertItem(3, trap, false);
             require(food.extractItem(3, 1, false).isEmpty()
                 && !food.insertItem(3, trap, true).isEmpty(), "Trap is manual only");
@@ -131,7 +131,7 @@ public final class GymConfigurationTests {
                 !gym.foodSides.faceAvailable(RelativeFace.RIGHT)
                     && gym.foodSides.get(RelativeFace.RIGHT) == IoMode.DISABLED,
                 "Policy survives save/load and direct edits");
-            require(CritterCourierData.read(gym.food.getStackInSlot(3)).equals(CritterCourierData.read(trap)),
+            require(CritterCourierProcessor.OCCUPANT.read(gym.food.getStackInSlot(3)).equals(CritterCourierProcessor.OCCUPANT.read(trap)),
                 "Captive data preserved");
             gym.multiblock().dismantle(MultiblockInstance.Cause.CREATIVE);
         }
@@ -148,7 +148,7 @@ public final class GymConfigurationTests {
         pet.setOwnerUUID(owner);
         pet.setOrderedToSit(true);
         pet.setInSittingPose(true);
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(pet)), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(pet)), false);
         gym.food.insertItem(0, new ItemStack(Items.SALMON, 8), false);
         gym.serverTick();
         require(gym.getGeneration() > 0, "Captive training starts");
@@ -161,7 +161,7 @@ public final class GymConfigurationTests {
         require(rs.signal(Direction.NORTH) == 15, "Working output emits");
         rs.mode(front, RedstoneControl.Mode.READ);
         level.setBlock(gym.getBlockPos().north(), Blocks.REDSTONE_BLOCK.defaultBlockState(), 3);
-        var captiveBefore = CritterCourierData.read(gym.food.getStackInSlot(3));
+        var captiveBefore = CritterCourierProcessor.OCCUPANT.read(gym.food.getStackInSlot(3));
         var foodBefore = gym.food.getStackInSlot(0).getCount();
         gym.serverTick();
         require(gym.getGeneration() == 0 && gym.training.status().equals("redstone"),
@@ -171,7 +171,7 @@ public final class GymConfigurationTests {
             gym.serverTick();
         require(
             gym.food.getStackInSlot(0).getCount() == foodBefore
-                && CritterCourierData.read(gym.food.getStackInSlot(3)).equals(captiveBefore),
+                && CritterCourierProcessor.OCCUPANT.read(gym.food.getStackInSlot(3)).equals(captiveBefore),
             "Pause consumes no food and preserves captive");
         require(rs.signal(Direction.NORTH) == 0 && gym.displayFood().isEmpty(),
             "Working output and bait stop");
@@ -183,7 +183,7 @@ public final class GymConfigurationTests {
         gym.serverTick();
         require(gym.getGeneration() == 0 && !gym.training.enabled(),
             "Manual pause remains independent");
-        var restoredPet = CritterCourierData.load(CritterCourierData.read(gym.food.getStackInSlot(3)), level);
+        var restoredPet = CritterCourierProcessor.ENTITIES.createDetached(CritterCourierProcessor.OCCUPANT.read(gym.food.getStackInSlot(3)), level).orElse(null);
         require(
             restoredPet instanceof net.minecraft.world.entity.TamableAnimal tame
                 && owner.equals(tame.getOwnerUUID()) && tame.isOrderedToSit(),

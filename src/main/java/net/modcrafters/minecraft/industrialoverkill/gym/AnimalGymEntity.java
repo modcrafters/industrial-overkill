@@ -22,13 +22,15 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.items.IItemHandler;
 
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
+
 import zone.moddev.mc.lib.api.automation.AutomationInventory;
 import zone.moddev.mc.lib.api.automation.ResourceGroup;
 import zone.moddev.mc.lib.api.automation.ResourceType;
 import zone.moddev.mc.lib.api.capabilities.IoMode;
 import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.api.capabilities.SideConfig;
+import zone.moddev.mc.lib.api.entity.EntitySnapshot;
 import zone.moddev.mc.lib.api.redstone.RedstoneControl;
 import zone.moddev.mc.lib.api.redstone.RedstoneOutput;
 import zone.moddev.mc.lib.machine.feature.ItemReceiver;
@@ -41,9 +43,9 @@ import zone.moddev.mc.lib.machine.neoforge.MultiblockResources;
 public final class AnimalGymEntity extends BasePoweredMachine implements MultiblockResources, ItemReceiver {
     public final ItemStorage food = new ItemStorage(4)
         .restrict(this::acceptsFood, 0, 1, 2)
-        .restrict(CritterCourierData::occupied, 3).onChange(this::inventoryChanged);
+        .restrict(CritterCourierProcessor.OCCUPANT::hasContent, 3).onChange(this::inventoryChanged);
     public final GymCaptive captive = new GymCaptive(this);
-    private CompoundTag clientCaptive = new CompoundTag();
+    private EntitySnapshot clientCaptive = EntitySnapshot.EMPTY;
     private Mob captivePreview;
     public final GymFeeding feeding = new GymFeeding(this);
     private boolean captivePreviewResolved;
@@ -105,17 +107,17 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
     }
     @Override
     public boolean accepts(ItemStack offered) {
-        return CritterCourierData.occupied(offered) || GymAnimalRecipe.food(level, offered);
+        return CritterCourierProcessor.OCCUPANT.hasContent(offered) || GymAnimalRecipe.food(level, offered);
     }
     @Override
     public int offerLimit(ItemStack held) {
-        return CritterCourierData.occupied(held) ? 1 : held.getCount();
+        return CritterCourierProcessor.OCCUPANT.hasContent(held) ? 1 : held.getCount();
     }
     @Override
     public Exchange receive(ItemStack offered, UseOnContext context) {
         if (context.getLevel().isClientSide() || !accepts(offered) || !structureReady())
             return Exchange.reject();
-        if (!CritterCourierData.occupied(offered))
+        if (!CritterCourierProcessor.OCCUPANT.hasContent(offered))
             return receiveFood(offered);
         if (offered.getCount() != 1 || !food.getStackInSlot(3).isEmpty() || !food.insertItem(3, offered, true).isEmpty())
             return Exchange.reject();
@@ -170,7 +172,7 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
             return captive.mob();
         if (!captivePreviewResolved) {
             captivePreviewResolved = true;
-            captivePreview = CritterCourierData.load(clientCaptive, level);
+            captivePreview = CritterCourierProcessor.ENTITIES.createDetached(clientCaptive, level).orElse(null);
         }
         return captivePreview;
     }
@@ -368,7 +370,7 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
     @Override
     protected void saveClientData(CompoundTag tag, HolderLookup.Provider registries) {
         tag.put("feeding", feeding.save(registries));
-        tag.put("captive", CritterCourierData.read(food.getStackInSlot(3)));
+        tag.put("captive", CritterCourierProcessor.OCCUPANT.read(food.getStackInSlot(3)).data());
         tag.putInt("animal", getAnimalId());
         tag.putInt("generation", training.generation());
         var reserve = foodReserve();
@@ -380,18 +382,13 @@ public final class AnimalGymEntity extends BasePoweredMachine implements Multibl
     }
     @Override
     protected void loadClientData(CompoundTag tag, HolderLookup.Provider registries) {
-        var data = tag.getCompound("captive");
-        if (!data.equals(clientCaptive)) {
-            if (captivePreview != null && !data.isEmpty()
-                && data.getString("id").equals(clientCaptive.getString("id"))
-                && data.hasUUID("UUID") && data.getUUID("UUID").equals(captivePreview.getUUID())) {
-                captivePreview.load(data.copy());
-                CritterCourierData.restorePose(captivePreview, data);
-            } else {
+        var snapshot = new EntitySnapshot(tag.getCompound("captive"));
+        if (!snapshot.equals(clientCaptive)) {
+            if (captivePreview == null || !CritterCourierProcessor.ENTITIES.updateDetached(captivePreview, snapshot)) {
                 captivePreview = null;
                 captivePreviewResolved = false;
             }
-            clientCaptive = data.copy();
+            clientCaptive = snapshot;
         }
         clientAnimal = tag.getInt("animal");
         clientGeneration = tag.getInt("generation");

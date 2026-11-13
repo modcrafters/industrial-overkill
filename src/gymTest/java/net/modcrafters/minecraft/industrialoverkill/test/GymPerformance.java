@@ -34,7 +34,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.MMDLib;
 
 import jdk.jfr.Configuration;
@@ -209,7 +209,7 @@ public final class GymPerformance {
                 var gym = GYMS.get(i);
                 gym.training.reset();
                 var cow = ANIMALS.get(i);
-                var stack = CritterCourierData.stack(CritterCourierData.save(cow));
+                var stack = CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(cow));
                 cow.discard();
                 gym.food.insertItem(3, stack, false);
             }

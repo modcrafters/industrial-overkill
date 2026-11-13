@@ -17,7 +17,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 
 @GameTestHolder(IndustrialOverkill.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -33,7 +33,7 @@ public final class PandaGymTests {
         var uuid = panda.getUUID();
         require(cage.capture(panda), "Sitting panda captured");
         var carried = cage.take();
-        require(((Panda) CritterCourierData.load(CritterCourierData.read(carried), h.getLevel())).isSitting(),
+        require(((Panda) CritterCourierProcessor.ENTITIES.createDetached(CritterCourierProcessor.OCCUPANT.read(carried), h.getLevel()).orElse(null)).isSitting(),
             "Trap preserves pose omitted by vanilla saves");
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 2), false);
         require(gym.food.insertItem(3, carried, false).isEmpty(), "Panda trap installed");
@@ -58,10 +58,10 @@ public final class PandaGymTests {
         var saved = gym.saveWithFullMetadata(h.getLevel().registryAccess());
         gym.loadWithComponents(saved, h.getLevel().registryAccess());
         require(((Panda) gym.captive.animal()).isSitting(), "Pause/reload retains sitting pose");
-        var data = CritterCourierData.read(gym.food.extractItem(3, 1, false));
+        var data = CritterCourierProcessor.OCCUPANT.read(gym.food.extractItem(3, 1, false));
         h.getLevel().removeBlock(cage.getBlockPos(), false);
         cage = CritterCourierTests.trap(h, gym.getBlockPos().east(3));
-        cage.setMob(data);
+        cage.occupant(data);
         require(cage.release(h.makeMockPlayer(GameType.CREATIVE)),
             "Full-size panda releases beside trap");
         var released = (Panda) h.getLevel().getEntity(uuid);

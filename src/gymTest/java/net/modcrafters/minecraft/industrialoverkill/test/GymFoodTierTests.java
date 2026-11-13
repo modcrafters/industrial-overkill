@@ -18,7 +18,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 
 @GameTestHolder(IndustrialOverkill.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -48,7 +48,7 @@ public final class GymFoodTierTests {
                 .filter(rule -> rule.entity().matches(animal.getType()) && rule.food().test(food))
                 .count();
             require(matches == 1, "Exactly one default tier matches " + meal.food());
-            gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(animal)), false);
+            gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(animal)), false);
             require(gym.food.insertItem(0, food, false).isEmpty(), "Tier food accepted");
             gym.energy.setStored(0);
             gym.serverTick();
@@ -70,7 +70,7 @@ public final class GymFoodTierTests {
     public static void nextFoodTierDoesNotChangeTheCurrentlyPaidMeal(GameTestHelper h) {
         var gym = AnimalGymTests.place(h, Direction.NORTH);
         gym.food.insertItem(3,
-            CritterCourierData.stack(CritterCourierData.save(EntityType.HORSE.create(h.getLevel()))), false);
+            CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.HORSE.create(h.getLevel()))), false);
         gym.food.insertItem(0, new ItemStack(Items.WHEAT), false);
         gym.food.insertItem(1, new ItemStack(Items.GOLDEN_CARROT), false);
         for (int tick = 0; tick < 200; tick++)

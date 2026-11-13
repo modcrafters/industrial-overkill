@@ -304,7 +304,7 @@ public final class AnimalGymTests {
         helper.succeed();
     }
     @GameTest(template = "gym_empty")
-    public static void legacyBonusesClearOnWorldJoinAndTrapLoad(GameTestHelper helper) {
+    public static void courierPreservesAttributesAndGymOwnsLegacyWorldJoinCleanup(GameTestHelper helper) {
         var horse = EntityType.HORSE.create(helper.getLevel());
         var unrelated = AnimalGym.id("test_unrelated_health");
         var health = horse.getAttribute(Attributes.MAX_HEALTH);
@@ -321,26 +321,30 @@ public final class AnimalGymTests {
         var scores = new CompoundTag();
         scores.putInt("HEALTH", 10000);
         horse.getPersistentData().put("industrial_overkill:fitness", scores);
-        var saved = net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData.save(horse);
+        var saved = net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor.ENTITIES.capture(horse);
         var center = Vec3.atCenterOf(origin(helper));
         horse.setPos(center.x, center.y, center.z);
         helper.getLevel().addFreshEntity(horse);
-        var captive = (Animal) net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData.load(saved,
-            helper.getLevel());
-        require(captive != null, "Legacy captive decodes");
-        for (var animal : java.util.List.of(horse, captive)) {
-            for (int i = 0; i < ids.size(); i++)
-                require(
-                    !animal.getAttribute(attributes.get(i)).hasModifier(AnimalGym.id(ids.get(i))),
-                    "Retired gym bonus removed: " + ids.get(i));
-            require(animal.getMaxHealth() == normalHealth && animal.getHealth() == normalHealth
-                && animal.getAttribute(Attributes.MAX_HEALTH).hasModifier(unrelated),
-                "Health clamps to normal maximum while unrelated modifiers survive");
+        var captive = (Animal) net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor.ENTITIES.createDetached(saved,
+            helper.getLevel()).orElse(null);
+        require(captive != null, "Captive decodes without applying Gym migration policy");
+        for (int i = 0; i < ids.size(); i++)
+            require(captive.getAttribute(attributes.get(i)).hasModifier(AnimalGym.id(ids.get(i))),
+                "Courier preserves captured attributes without Gym-specific cleanup");
+        require(captive.getAttribute(Attributes.MAX_HEALTH).hasModifier(unrelated)
+            && captive.getPersistentData().getCompound("industrial_overkill:fitness").equals(scores),
+            "Courier preserves unrelated modifiers and stored scores");
+        for (int i = 0; i < ids.size(); i++)
             require(
-                animal.getPersistentData().getCompound("industrial_overkill:fitness")
-                    .equals(scores),
-                "Old scores remain dormant without being rewritten");
-        }
+                !horse.getAttribute(attributes.get(i)).hasModifier(AnimalGym.id(ids.get(i))),
+                "Retired gym bonus removed: " + ids.get(i));
+        require(horse.getMaxHealth() == normalHealth && horse.getHealth() == normalHealth
+            && horse.getAttribute(Attributes.MAX_HEALTH).hasModifier(unrelated),
+            "Health clamps to normal maximum while unrelated modifiers survive");
+        require(
+            horse.getPersistentData().getCompound("industrial_overkill:fitness")
+                .equals(scores),
+            "Old scores remain dormant without being rewritten");
         helper.succeed();
     }
     @GameTest(template = "gym_empty")

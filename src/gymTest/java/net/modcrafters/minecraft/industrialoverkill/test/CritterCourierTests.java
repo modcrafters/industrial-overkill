@@ -27,7 +27,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
 import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.machine.multiblock.MultiblockInstance;
 import zone.moddev.mc.lib.machine.neoforge.MultiblockPorts;
@@ -37,7 +36,7 @@ import zone.moddev.mc.lib.machine.neoforge.MachineContent;
 @PrefixGameTestTemplate(false)
 public final class CritterCourierTests {
     static CritterCourierProcessor trap(GameTestHelper helper, BlockPos pos) {
-        helper.getLevel().setBlock(pos, MachineContent.block(CritterCourierData.ID).defaultBlockState(), 3);
+        helper.getLevel().setBlock(pos, MachineContent.block(CritterCourierProcessor.ID).defaultBlockState(), 3);
         return CritterCourierProcessor.from(helper.getLevel().getBlockEntity(pos));
     }
     static <T extends Mob> T mob(GameTestHelper helper, CritterCourierProcessor trap, EntityType<T> type) {
@@ -72,8 +71,7 @@ public final class CritterCourierTests {
             AnimalGymTests.lamps(gym, 14);
             gym.training.reset();
             var carried = gym.food.extractItem(3, 1, false);
-            var restored = (net.minecraft.world.entity.TamableAnimal) CritterCourierData
-                .load(CritterCourierData.read(carried), helper.getLevel());
+            var restored = (net.minecraft.world.entity.TamableAnimal) CritterCourierProcessor.ENTITIES.createDetached(CritterCourierProcessor.OCCUPANT.read(carried), helper.getLevel()).orElse(null);
             require(restored != null && restored.isTame() && owner.equals(restored.getOwnerUUID())
                 && restored.isOrderedToSit() && restored.isInSittingPose()
                 && uuid.equals(restored.getUUID())
@@ -118,7 +116,7 @@ public final class CritterCourierTests {
         require(!placed.state().contains("details") && !placed.state().contains("occupied"),
             "Derived details and occupancy are reconstructed rather than persisted");
         var saved = host.saveWithFullMetadata(helper.getLevel().registryAccess());
-        placed.setMob(new net.minecraft.nbt.CompoundTag());
+        placed.occupant(zone.moddev.mc.lib.api.entity.EntitySnapshot.EMPTY);
         host.loadWithComponents(saved, helper.getLevel().registryAccess());
         require(detailLines.equals(placed.variable("details")), "Translated lines recompute identically after save/load");
         require(placed.release(player), "Mob releases into clear adjacent space");
@@ -144,14 +142,14 @@ public final class CritterCourierTests {
                 Blocks.STONE.defaultBlockState(), 3);
         }
         var player = helper.makeMockPlayer(GameType.SURVIVAL);
-        var before = trap.mobData();
-        require(!trap.release(player) && trap.mobData().equals(before),
+        var before = trap.occupant();
+        require(!trap.release(player) && trap.occupant().equals(before),
             "Blocked release keeps full occupant data");
         var invalid = new CompoundTag();
         invalid.putString("id", "missing_mod:unknown_mob");
         invalid.putString("custom_payload", "retain me");
-        trap.setMob(invalid);
-        require(!trap.release(player) && CritterCourierData.read(trap.take()).equals(invalid),
+        trap.occupant(new zone.moddev.mc.lib.api.entity.EntitySnapshot(invalid));
+        require(!trap.release(player) && CritterCourierProcessor.OCCUPANT.read(trap.take()).data().equals(invalid),
             "Undecodable occupants remain recoverable");
         helper.succeed();
     }
@@ -170,7 +168,7 @@ public final class CritterCourierTests {
         var use = new UseOnContext(player, InteractionHand.MAIN_HAND,
             new BlockHitResult(Vec3.atCenterOf(gym.getBlockPos().west()), Direction.UP,
                 gym.getBlockPos().west(), false));
-        require(MachineContent.item(CritterCourierData.ID).useOn(use).consumesAction() && stack.isEmpty(),
+        require(MachineContent.item(CritterCourierProcessor.ID).useOn(use).consumesAction() && stack.isEmpty(),
             "Right-click a gym part installs occupied trap");
         gym.serverTick();
         require(
@@ -210,7 +208,7 @@ public final class CritterCourierTests {
                     .getInt("industrial_overkill:gym_ration") == 1199,
             "Captive and paid food allowance survive gym reload");
         var returned = gym.food.extractItem(3, 1, false);
-        var decoded = (Animal) CritterCourierData.load(CritterCourierData.read(returned), helper.getLevel());
+        var decoded = (Animal) CritterCourierProcessor.ENTITIES.createDetached(CritterCourierProcessor.OCCUPANT.read(returned), helper.getLevel()).orElse(null);
         require(
             decoded.getUUID().equals(uuid)
                 && decoded.getPersistentData().getInt("industrial_overkill:gym_ration") == 1199,
@@ -223,25 +221,25 @@ public final class CritterCourierTests {
     public static void receiverOwnsInstallationAndRejectsWithoutChangingEitherSide(GameTestHelper helper) {
         var gym = AnimalGymTests.place(helper, Direction.NORTH);
         var cow = EntityType.COW.create(helper.getLevel());
-        var stack = CritterCourierData.stack(CritterCourierData.save(cow));
+        var stack = CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(cow));
         var player = helper.makeMockPlayer(GameType.CREATIVE);
         player.setItemInHand(InteractionHand.MAIN_HAND, stack);
         var member = gym.getBlockPos().west();
         var use = new UseOnContext(player, InteractionHand.MAIN_HAND,
             new BlockHitResult(Vec3.atCenterOf(member), Direction.UP, member, false));
-        require(MachineContent.item(CritterCourierData.ID).useOn(use).consumesAction(),
+        require(MachineContent.item(CritterCourierProcessor.ID).useOn(use).consumesAction(),
             "Shared item routing finds the gym receiver through a multiblock part");
         stack.setCount(1); // Vanilla restores this original reference after creative Item.useOn.
         require(player.getMainHandItem().isEmpty(), "Creative installation consumes unique contents despite vanilla count restoration");
         var installed = gym.food.getStackInSlot(3).copy();
-        require(CritterCourierData.read(installed).getUUID("UUID").equals(cow.getUUID()), "Receiver preserves the carried identity");
-        var second = CritterCourierData.stack(CritterCourierData.save(EntityType.SHEEP.create(helper.getLevel())));
+        require(CritterCourierProcessor.OCCUPANT.read(installed).uuid().orElseThrow().equals(cow.getUUID()), "Receiver preserves the carried identity");
+        var second = CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.SHEEP.create(helper.getLevel())));
         player.setItemInHand(InteractionHand.MAIN_HAND, second);
         var before = second.copy();
         var training = gym.training.state();
         use = new UseOnContext(player, InteractionHand.MAIN_HAND,
             new BlockHitResult(Vec3.atCenterOf(member), Direction.UP, member, false));
-        require(MachineContent.item(CritterCourierData.ID).useOn(use) == net.minecraft.world.InteractionResult.FAIL,
+        require(MachineContent.item(CritterCourierProcessor.ID).useOn(use) == net.minecraft.world.InteractionResult.FAIL,
             "Full receiver rejects the exchange without placing the courier beside it");
         require(ItemStack.matches(player.getMainHandItem(), before) && ItemStack.matches(gym.food.getStackInSlot(3), installed),
             "Failed exchange leaves both items unchanged");
@@ -251,7 +249,7 @@ public final class CritterCourierTests {
         player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         var offhand = new UseOnContext(player, InteractionHand.OFF_HAND,
             new BlockHitResult(Vec3.atCenterOf(member), Direction.UP, member, false));
-        require(MachineContent.item(CritterCourierData.ID).useOn(offhand).consumesAction()
+        require(MachineContent.item(CritterCourierProcessor.ID).useOn(offhand).consumesAction()
             && player.getOffhandItem().isEmpty(), "Offhand exchanges use the same ownership rules");
         helper.succeed();
     }
@@ -260,7 +258,7 @@ public final class CritterCourierTests {
         GameTestHelper helper) {
         var gym = AnimalGymTests.place(helper, Direction.NORTH);
         var cow = EntityType.COW.create(helper.getLevel());
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(cow)), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(cow)), false);
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 64), false);
         var cached = gym.captive.mob();
         for (int tick = 0; tick < 25; tick++) {
@@ -268,12 +266,12 @@ public final class CritterCourierTests {
             require(gym.captive.mob() == cached, "Training must reuse the decoded captive");
         }
         var returned = gym.food.extractItem(3, 1, false);
-        var decoded = (Animal) CritterCourierData.load(CritterCourierData.read(returned), helper.getLevel());
+        var decoded = (Animal) CritterCourierProcessor.ENTITIES.createDetached(CritterCourierProcessor.OCCUPANT.read(returned), helper.getLevel()).orElse(null);
         require(decoded.getPersistentData().getInt("industrial_overkill:gym_ration") == 275,
             "Immediate extraction preserves every tick between visual updates");
         require(!gym.captive.installed() && gym.captive.mob() == null, "Removal invalidates cache");
         var other = EntityType.COW.create(helper.getLevel());
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(other)), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(other)), false);
         require(gym.captive.mob().getUUID().equals(other.getUUID()) && gym.captive.mob() != cached,
             "Replacement must decode the new occupant");
         helper.succeed();
@@ -288,17 +286,17 @@ public final class CritterCourierTests {
         helper.getLevel().destroyBlock(cage.getBlockPos(), true);
         var drops = helper.getLevel().getEntitiesOfClass(ItemEntity.class,
             new AABB(cage.getBlockPos()).inflate(2));
-        var traps = drops.stream().filter(e -> e.getItem().is(MachineContent.item(CritterCourierData.ID))).toList();
+        var traps = drops.stream().filter(e -> e.getItem().is(MachineContent.item(CritterCourierProcessor.ID))).toList();
         require(
             traps.size() == 1
-                && CritterCourierData.read(traps.getFirst().getItem()).getUUID("UUID").equals(uuid),
+                && CritterCourierProcessor.OCCUPANT.read(traps.getFirst().getItem()).uuid().orElseThrow().equals(uuid),
             "Breaking trap drops one intact occupant");
         gym.food.insertItem(3, traps.getFirst().getItem().copy(), false);
         traps.getFirst().discard();
         gym.multiblock().dismantle(MultiblockInstance.Cause.SURVIVAL);
         var gymDrops = helper.getLevel().getEntitiesOfClass(ItemEntity.class,
             new AABB(gym.getBlockPos()).inflate(5));
-        require(gymDrops.stream().filter(e -> CritterCourierData.occupied(e.getItem())).count() == 1
+        require(gymDrops.stream().filter(e -> CritterCourierProcessor.OCCUPANT.hasContent(e.getItem())).count() == 1
             && helper.getLevel().getEntity(uuid) == null,
             "Gym teardown returns occupied trap, never a loose animal");
         helper.succeed();

@@ -13,7 +13,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 
 @GameTestHolder(IndustrialOverkill.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -23,7 +23,7 @@ public final class GymPowerLeftTests {
         var gym = AnimalGymTests.place(h, Direction.NORTH);
         gym.food.insertItem(2, new ItemStack(Items.SALMON, 10), false);
         gym.food.insertItem(3,
-            CritterCourierData.stack(CritterCourierData.save(EntityType.HORSE.create(h.getLevel()))), false);
+            CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.HORSE.create(h.getLevel()))), false);
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 2), false);
         gym.food.insertItem(1, new ItemStack(Items.GOLDEN_CARROT, 3), false);
         long total = 2 * 24 * 200 + 3 * 30 * 400;
@@ -85,7 +85,7 @@ public final class GymPowerLeftTests {
         var gym = AnimalGymTests.place(h, Direction.NORTH);
         var cow = EntityType.COW.create(h.getLevel());
         cow.getPersistentData().putInt("industrial_overkill:gym_ration", Integer.MAX_VALUE);
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(cow)), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(cow)), false);
         require(gym.getPowerLeft() == (long) Integer.MAX_VALUE * 8,
             "Legacy paid ration retains 8 FE rate without integer overflow");
         gym.captive.animal().getPersistentData().putInt("industrial_overkill:gym_ration_power", 10000);

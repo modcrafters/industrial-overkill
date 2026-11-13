@@ -22,7 +22,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.api.MaterialEventTypes;
 import zone.moddev.mc.lib.api.MaterialExtensions;
 import zone.moddev.mc.lib.api.capabilities.RelativeFace;
@@ -100,7 +100,7 @@ public final class AnimalGym {
                 .icon(() -> new ItemStack(ITEM.get()))
                 .displayItems((parameters, output) -> {
                     output.accept(ITEM.get());
-                    output.accept(MachineContent.item(CritterCourierData.ID));
+                    output.accept(MachineContent.item(CritterCourierProcessor.ID));
                     output.accept(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
                         id("rock_stew_factory")));
                 }).build());

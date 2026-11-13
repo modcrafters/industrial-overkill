@@ -18,7 +18,7 @@ import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsE
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.gui.client.WidgetRenderers;
 import zone.moddev.mc.lib.machine.neoforge.MachineContent;
 
@@ -29,8 +29,8 @@ public final class GymClient {
     @SubscribeEvent
     public static void setup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            ItemProperties.register(MachineContent.item(CritterCourierData.ID), AnimalGym.id("occupied"),
-                (stack, level, entity, seed) -> CritterCourierData.occupied(stack) ? 1 : 0);
+            ItemProperties.register(MachineContent.item(CritterCourierProcessor.ID), AnimalGym.id("occupied"),
+                (stack, level, entity, seed) -> CritterCourierProcessor.OCCUPANT.hasContent(stack) ? 1 : 0);
             WidgetRenderers.GLOBAL.register(AnimalGym.id("gym_status"), context -> {
                 var font = Minecraft.getInstance().font;
                 var text = context.value() instanceof Component component
@@ -76,11 +76,11 @@ public final class GymClient {
             public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 return CritterCourierItemRenderer.instance();
             }
-        }, MachineContent.item(CritterCourierData.ID));
+        }, MachineContent.item(CritterCourierProcessor.ID));
     }
     @SubscribeEvent
     public static void itemModels(ModelEvent.ModifyBakingResult event) {
-        var id = net.minecraft.client.resources.model.ModelResourceLocation.inventory(CritterCourierData.ID);
+        var id = net.minecraft.client.resources.model.ModelResourceLocation.inventory(CritterCourierProcessor.ID);
         event.getModels().computeIfPresent(id, (key, model) -> new CritterCourierItemModel(model));
     }
     @SubscribeEvent
@@ -92,6 +92,6 @@ public final class GymClient {
     @SubscribeEvent
     public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(AnimalGym.CONTROLLER_TYPE.get(), GymRenderer::new);
-        event.registerBlockEntityRenderer(MachineContent.entityType(CritterCourierData.ID), CritterCourierRenderer::new);
+        event.registerBlockEntityRenderer(MachineContent.entityType(CritterCourierProcessor.ID), CritterCourierRenderer::new);
     }
 }

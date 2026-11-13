@@ -16,14 +16,14 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.api.entity.EntityPreviewCache;
 
 /** Item previews are detached entities; they never join or tick in the client world. */
 @EventBusSubscriber(modid = IndustrialOverkill.MOD_ID, value = Dist.CLIENT)
 public final class CritterCourierItemRenderer extends BlockEntityWithoutLevelRenderer {
     private static CritterCourierItemRenderer instance;
-    private final EntityPreviewCache<Mob> previews = new EntityPreviewCache<>(64, CritterCourierData::load);
+    private final EntityPreviewCache<Mob> previews = new EntityPreviewCache<>(CritterCourierProcessor.ENTITIES, 64);
     private boolean renderingAnimal;
 
     private CritterCourierItemRenderer() {
@@ -45,7 +45,7 @@ public final class CritterCourierItemRenderer extends BlockEntityWithoutLevelRen
     }
 
     private Mob preview(ItemStack stack) {
-        return previews.get(Minecraft.getInstance().level, CritterCourierData.snapshot(stack));
+        return previews.get(Minecraft.getInstance().level, CritterCourierProcessor.OCCUPANT.read(stack));
     }
 
     @Override

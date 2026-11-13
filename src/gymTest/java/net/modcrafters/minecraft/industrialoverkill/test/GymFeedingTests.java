@@ -24,7 +24,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymFeeding;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
 import zone.moddev.mc.lib.machine.multiblock.MultiblockInstance;
@@ -123,7 +123,7 @@ public final class GymFeedingTests {
         var gym = place(h, Direction.NORTH);
         animal(h, gym, EntityType.COW).setNoAi(true);
         var pig = EntityType.PIG.create(h.getLevel());
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(pig)), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(pig)), false);
         var installed = gym.food.getStackInSlot(3).copy();
         var player = h.makeMockPlayer(GameType.SURVIVAL);
         var hit = new BlockHitResult(Vec3.atCenterOf(gym.getBlockPos()), Direction.UP, gym.getBlockPos(), false);
@@ -174,7 +174,7 @@ public final class GymFeedingTests {
                 "Hopper simulation accepts suitable food without changing storage");
             require(port.insertItem(2, wheat, false).isEmpty() && gym.food.getStackInSlot(2).getCount() == 4,
                 "Hopper insertion stores suitable food");
-            gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(EntityType.PIG.create(h.getLevel()))), false);
+            gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.PIG.create(h.getLevel()))), false);
             var carrots = new ItemStack(Items.CARROT);
             for (int slot = 0; slot < 3; slot++) {
                 var guiSlot = menu.getSlot(menu.menuSlot(slot));

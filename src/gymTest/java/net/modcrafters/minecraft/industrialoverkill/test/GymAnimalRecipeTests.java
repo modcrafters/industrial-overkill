@@ -22,7 +22,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 
 import io.netty.buffer.Unpooled;
 
@@ -48,7 +48,7 @@ public final class GymAnimalRecipeTests {
                     """))));
             var gym = AnimalGymTests.place(h, Direction.NORTH);
             gym.food.insertItem(3,
-                CritterCourierData.stack(CritterCourierData.save(EntityType.PANDA.create(level))), false);
+                CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.PANDA.create(level))), false);
             gym.food.insertItem(0, new ItemStack(Items.BAMBOO, 3), false);
             gym.control("intensity");
             gym.control("intensity");
@@ -115,7 +115,7 @@ public final class GymAnimalRecipeTests {
                 "Tooltip samples cannot mutate recipe ingredients");
             var gym = AnimalGymTests.place(h, Direction.NORTH);
             gym.food.insertItem(3,
-                CritterCourierData.stack(CritterCourierData.save(EntityType.PANDA.create(level))), false);
+                CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.PANDA.create(level))), false);
             gym.food.insertItem(0, new ItemStack(Items.BAMBOO, 2), false);
             gym.control("intensity");
             gym.control("intensity");
@@ -178,7 +178,7 @@ public final class GymAnimalRecipeTests {
             require(GymAnimalRecipe.foodFor(parrot, new ItemStack(Items.APPLE)),
                 "Recipe overrides vanilla animal diet");
             var gym = AnimalGymTests.place(h, Direction.NORTH);
-            gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(parrot)), false);
+            gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(parrot)), false);
             require(gym.food.insertItem(0, new ItemStack(Items.APPLE, 4), false).isEmpty(),
                 "Custom recipe updates inventory filter");
             gym.serverTick();

@@ -18,7 +18,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymScreenElements;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.gui.model.Common;
 import zone.moddev.mc.lib.gui.model.ProcessorButtonState;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
@@ -79,7 +79,7 @@ public final class GymDemandTests {
     public static void fullBufferWaitSurvivesReloadAndResumesAtSeventyFivePercent(GameTestHelper h) {
         var gym = AnimalGymTests.place(h, Direction.NORTH);
         var cow = EntityType.COW.create(h.getLevel());
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(cow)), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(cow)), false);
         gym.food.insertItem(0, new ItemStack(Items.WHEAT, 4), false);
         gym.serverTick();
         gym.energy.setStored(32000);

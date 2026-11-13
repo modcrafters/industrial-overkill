@@ -40,7 +40,6 @@ import net.neoforged.neoforge.common.CommonHooks;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
 import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import zone.moddev.mc.lib.MMDLib;
 import zone.moddev.mc.lib.gui.client.MachineScreen;
@@ -135,13 +134,13 @@ public final class CritterCourierClientSmoke {
     private static void occupiedHand(ServerPlayer player) {
         int found = -1;
         for (int i = 0; i < player.getInventory().getContainerSize(); i++)
-            if (CritterCourierData.occupied(player.getInventory().getItem(i))) {
+            if (CritterCourierProcessor.OCCUPANT.hasContent(player.getInventory().getItem(i))) {
                 check(found < 0, "Duplicate occupied traps");
                 found = i;
             }
         check(found >= 0, "Occupied trap returned to player");
         var stack = player.getInventory().removeItemNoUpdate(found);
-        check(CritterCourierData.read(stack).getUUID("UUID").equals(occupant),
+        check(CritterCourierProcessor.OCCUPANT.read(stack).uuid().orElseThrow().equals(occupant),
             "Captured identity preserved");
         player.setItemInHand(InteractionHand.MAIN_HAND, stack);
     }
@@ -179,7 +178,7 @@ public final class CritterCourierClientSmoke {
                 player.setItemInHand(InteractionHand.MAIN_HAND,
                     new ItemStack(AnimalGym.ITEM.get()));
                 place(player, GYM);
-                player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(MachineContent.item(CritterCourierData.ID)));
+                player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(MachineContent.item(CritterCourierProcessor.ID)));
                 place(player, TRAP);
                 player.connection.teleport(5.5, 100, -3.3, 38, 12);
             });
@@ -243,7 +242,7 @@ public final class CritterCourierClientSmoke {
                     "Courier uses the standard MMDLib entity portrait");
                 var portraitData = screen.getMenu().elementStates().get(portrait,
                     zone.moddev.mc.lib.gui.model.elements.EntityPortraitElement.ENTITY);
-                check(portraitData.data().getUUID("UUID").equals(occupant),
+                check(portraitData.uuid().orElseThrow().equals(occupant),
                     "Portrait receives the stored occupant through element synchronization");
                 check(courierPortraitRendered, "The standard portrait renders the captured living entity");
                 var details = screen.getMenu().elements.stream()
@@ -272,7 +271,7 @@ public final class CritterCourierClientSmoke {
                         .insertItem(0, new ItemStack(Items.WHEAT_SEEDS, 32), false);
                     player.connection.teleport(2.2, 100, -2.7, 38, 10);
                 });
-            } else if (stage == 31 && CritterCourierData.occupied(mc.player.getMainHandItem())) {
+            } else if (stage == 31 && CritterCourierProcessor.OCCUPANT.hasContent(mc.player.getMainHandItem())) {
                 check(courierItemRendered, "Held Courier renders its captured animal");
                 check(mc.getItemRenderer().getModel(mc.player.getMainHandItem(), mc.level, mc.player, 0)
                     .isCustomRenderer(), "Occupied model override retains the item renderer");
@@ -308,7 +307,7 @@ public final class CritterCourierClientSmoke {
                 var slot = screen.getMenu().nativeSlots().entries().stream().filter(
                     e -> e.element() != null && e.element().common().id().orElse("").equals("trap"))
                     .findFirst().orElseThrow();
-                check(CritterCourierData.occupied(slot.slot().getItem()),
+                check(CritterCourierProcessor.OCCUPANT.hasContent(slot.slot().getItem()),
                     "Occupied trap is in real synchronized gym slot");
                 shot("critter-courier-gym-screen.png");
                 click(screen, "toggle");
@@ -380,7 +379,7 @@ public final class CritterCourierClientSmoke {
                             .getBlockEntity(GYM);
                         serverGym.control("release");
                         var carried = serverGym.food.extractItem(3, 1, false);
-                        var data = CritterCourierData.read(carried);
+                        var data = CritterCourierProcessor.OCCUPANT.read(carried).data();
                         check(data.getBoolean("Sleeping") == (petIndex == 2)
                             && data.getBoolean(petIndex == 4
                                 ? "industrial_overkill:panda_sitting"
@@ -388,9 +387,9 @@ public final class CritterCourierClientSmoke {
                             "Ejected item retains sleeping/sitting state");
                         player().serverLevel().removeBlock(TRAP, false);
                         player().serverLevel().setBlock(TRAP,
-                            MachineContent.block(CritterCourierData.ID).defaultBlockState(), 3);
+                            MachineContent.block(CritterCourierProcessor.ID).defaultBlockState(), 3);
                         var cage = CritterCourierProcessor.from(player().serverLevel().getBlockEntity(TRAP));
-                        cage.setMob(CritterCourierData.read(carried));
+                        cage.occupant(CritterCourierProcessor.OCCUPANT.read(carried));
                         check(cage.release(player()), "Trained pet released");
                         var released = (Animal) player().serverLevel().getEntity(occupant);
                         check(released != null && originalPose(released),
@@ -399,7 +398,7 @@ public final class CritterCourierClientSmoke {
                             check(player().getUUID().equals(tame.getOwnerUUID()),
                                 "Release preserves owner");
                         else if (released instanceof Fox fox)
-                            check(CritterCourierData.save(fox).getList("Trusted", 11)
+                            check(CritterCourierProcessor.ENTITIES.capture(fox).data().getList("Trusted", 11)
                                 .contains(net.minecraft.nbt.NbtUtils.createUUID(player().getUUID()))
                                 && fox
                                     .getVariant() == (petIndex == 2 ? Fox.Type.SNOW : Fox.Type.RED),
@@ -464,7 +463,7 @@ public final class CritterCourierClientSmoke {
         var level = player().serverLevel();
         var gym = (AnimalGymEntity) level.getBlockEntity(GYM);
         level.removeBlock(TRAP, false);
-        level.setBlock(TRAP, MachineContent.block(CritterCourierData.ID).defaultBlockState(), 3);
+        level.setBlock(TRAP, MachineContent.block(CritterCourierProcessor.ID).defaultBlockState(), 3);
         var cage = CritterCourierProcessor.from(level.getBlockEntity(TRAP));
         var pet = (Animal) (petIndex == 0
             ? EntityType.CAT
@@ -480,7 +479,7 @@ public final class CritterCourierClientSmoke {
             panda.setHiddenGene(Panda.Gene.BROWN);
             panda.sit(true);
         } else {
-            var data = CritterCourierData.save(pet);
+            var data = CritterCourierProcessor.ENTITIES.capture(pet).data();
             data.putBoolean("Sleeping", petIndex == 2);
             data.putBoolean("Sitting", petIndex == 3);
             data.putString("Type", petIndex == 2 ? "snow" : "red");

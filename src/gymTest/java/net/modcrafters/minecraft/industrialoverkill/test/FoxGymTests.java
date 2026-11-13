@@ -21,7 +21,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 
 @GameTestHolder(IndustrialOverkill.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -34,7 +34,7 @@ public final class FoxGymTests {
             var cage = CritterCourierTests.trap(h, gym.getBlockPos().east(3));
             var fox = CritterCourierTests.mob(h, cage, EntityType.FOX);
             var trusted = UUID.randomUUID();
-            var original = CritterCourierData.save(fox);
+            var original = CritterCourierProcessor.ENTITIES.capture(fox).data();
             var trust = new ListTag();
             trust.add(NbtUtils.createUUID(trusted));
             original.put("Trusted", trust);
@@ -44,8 +44,8 @@ public final class FoxGymTests {
             fox.load(original);
             var uuid = fox.getUUID();
             require(cage.capture(fox), "Resting fox captured");
-            require(gym.food.insertItem(3, cage.take(), false).isEmpty(), "Fox trap installed");
             gym.food.insertItem(0, new ItemStack(Items.WHEAT, 2), false);
+            require(gym.food.insertItem(3, cage.take(), false).isEmpty(), "Fox trap installed");
             if (!gym.training.enabled())
                 gym.control("toggle");
             gym.serverTick();
@@ -67,14 +67,15 @@ public final class FoxGymTests {
             var saved = gym.saveWithFullMetadata(h.getLevel().registryAccess());
             gym.loadWithComponents(saved, h.getLevel().registryAccess());
             var carried = gym.food.extractItem(3, 1, false);
-            var data = CritterCourierData.read(carried);
+            var snapshot = CritterCourierProcessor.OCCUPANT.read(carried);
+            var data = snapshot.data();
             require(
                 data.getBoolean("Sleeping") == sleeping && data.getBoolean("Sitting") != sleeping
                     && data.getList("Trusted", 11).equals(trust),
                 "Reload/ejection preserve resting state and trusted players");
             h.getLevel().removeBlock(cage.getBlockPos(), false);
             cage = CritterCourierTests.trap(h, gym.getBlockPos().east(3));
-            cage.setMob(data);
+            cage.occupant(snapshot);
             require(cage.release(h.makeMockPlayer(GameType.CREATIVE)),
                 "Trained fox releases safely");
             var released = (Fox) h.getLevel().getEntity(uuid);

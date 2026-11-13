@@ -20,7 +20,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
-import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierData;
+import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymScreenElements;
 import zone.moddev.mc.lib.gui.model.Common;
@@ -56,14 +56,14 @@ public final class GymFoodTooltipTests {
         }
         require(hasKey(slots.get(0).tooltip(gym, ItemStack.EMPTY), "gym.food.unsuitable"), "Leftover unsuitable food keeps its warning");
         require(hasKey(slots.get(1).tooltip(gym, ItemStack.EMPTY), "gym.food.total_energy"), "Suitable food keeps its energy details");
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(EntityType.HORSE.create(h.getLevel()))), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.HORSE.create(h.getLevel()))), false);
         var horseLines = slots.get(2).tooltip(gym, ItemStack.EMPTY);
         for (var item : List.of(Items.WHEAT, Items.APPLE, Items.SUGAR, Items.HAY_BLOCK, Items.GOLDEN_APPLE, Items.GOLDEN_CARROT))
             require(horseLines.contains(foodLine(item)), "Courier occupant lists every horse food tier: " + item);
         for (var food : GymAnimalRecipe.foodsFor(gym.captive.animal()))
             require(gym.food.isItemValid(0, food), "Every listed food matches insertion filtering");
         gym.food.extractItem(3, 1, false);
-        gym.food.insertItem(3, CritterCourierData.stack(CritterCourierData.save(EntityType.ZOMBIE.create(h.getLevel()))), false);
+        gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.ZOMBIE.create(h.getLevel()))), false);
         require(hasKey(slots.get(2).tooltip(gym, ItemStack.EMPTY), "gym.food.none"), "Unsupported Courier does not show the loose cow's diet");
         gym.food.extractItem(3, 1, false);
         cow.discard();
