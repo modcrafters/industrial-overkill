@@ -1,21 +1,28 @@
 # Industrial Overkill
 
 NeoForge 1.21.1 / Java 21 mod using MMDLib. The entry point is
-`zone.moddev.mc.industrialoverkill.IndustrialOverkill`; the mod ID is
-`industrial_overkill`. Machines include **Animal Gym 2.0**, **Mob Trap**, and
+`net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill`; the mod ID is
+`industrial_overkill`. Machines include **Animal Gym 2.0**, **Critter Courier**, and
 **Rock Stew Factory**.
 
 This is a development version. MMDLib is a required, separate mod; JEI is optional.
 
+The current Critter Courier and Rock Stew migrations require the accompanying
+MMDLib changes for stored processors, XML actions, conditional shapes, recipe
+chains and restoration of resource reservations before the first tick. Use the
+local development workflow below until those changes are released and `mmdlib_version` is updated.
+The currently pinned public release does not contain these APIs.
+
 ## Getting started
 
-Install Java 21, clone this repository, and build against the pinned public MMDLib
-release:
+Install Java 21 and clone this repository. This development checkout currently
+requires the local MMDLib workflow below; the published pin must be updated after
+the required library APIs are released:
 
 ```sh
 git clone https://github.com/modcrafters/industrial-overkill.git
 cd industrial-overkill
-./gradlew build -PmmdlibUseLocal=false
+./gradlew build
 ```
 
 On Windows, use `gradlew.bat` in place of `./gradlew`. `build` includes the server
@@ -29,25 +36,158 @@ Resources-category trim and a cobblestone display. Craft it with
 `ICI / BFB / IRI`: four iron ingots, cobblestone, two empty buckets, a furnace,
 and redstone. It is also in the Industrial Overkill creative tab.
 
-The small input slot beside the processor is a **ghost inventory slot**. Open the
-machine, view its recipes in JEI, and click **+** to select the recipe's sample.
-This works without owning the sample or filling the tanks first. You can also click
-the slot with any supported block, or drop that ingredient from JEI. It records a
-one-item sample without taking the item. Right-click clears the sample. Recipes
-match that sample as an ordinary item input, while the ghost storage prevents it
-from being consumed, dropped, recovered or accessed by automation.
+Supply FE, water and lava. The two tanks each hold **4,000 mB** and accept buckets
+through their vertical gauges on the left or fluids through configured input faces. Every
+source requires **at least 1,000 mB of each fluid before starting**. Source consumption
+comes out of that amount: if either tank falls below 1,000 mB, generation waits for refill.
+Downstream furnaces need only their consumed lava and can drain the tank to zero. Fluid tanks and the
+energy gauge use the standard three-slot height.
 
-Every recipe requires **1,000 mB water and 1,000 mB lava** in the two static
-left-hand tanks. Fill these manually by clicking their screen gauges with buckets.
-They are never consumed and have no automation group or side configuration.
+A new machine waits for a selected production path. Click any active processor sprite
+to open JEI when available, or the recipes drawer otherwise. The vanilla recipe-book
+side tab always toggles the drawer, keeping the processing screen in place.
+Use the top arrows to choose a source and the bottom
+arrows or mouse wheel to page through its paths.
+Each recipe occupies its own row, repeating the source and intermediate steps:
+`[water] [lava] -> source -> grinding/smelting/crafting products`.
+Drawer and JEI path tanks show a full ghosted 1000 ml background, with source-cycle
+consumption overlaid from the bottom at full opacity. Their tooltips show only the
+fluid and consumed amount; main-screen tanks explain the 1000 ml rock reserve.
+In JEI, use the standard **+** button to apply a path to the open Rock Stew.
+The machine's front displays the selected final product, even while idle or blocked.
+No product appears until a path is selected. The display reads the synchronized
+`$processors.rock_stew.display_product` variable, independently of the inventory or open GUI.
+The front preview is declared with MMDLib's `<item-display>` in the machine XML;
+Rock Stew needs no custom block-entity renderer.
+Five independent front lights show the current cycle of processors 1 through 5.
+The visual variables `$processors.rock_stew.progress_lights_1` through
+`$processors.rock_stew.progress_lights_5` select eight-frame strips: 0 for idle or
+unused stages, and 1–7 for seven equal portions of active cycle progress. Pauses,
+redstone holds and energy stalls retain each stage's frame. Completion clears it
+or starts at frame 1 when another cycle begins immediately; changing the path or
+resetting clears all five. The original `progress_lights` binding retains its
+three-band generator behavior for older resource packs.
+MMDLib `<face-overlay>` regions layer the lights and independent front/top activity
+glows over the static casing without replacing faces or requiring a custom renderer.
+In the drawer, click a row to request its final product and return to processing. Generation uses a
+blue-grey slot background, grinding a light stone-grey, smelting a warm shade,
+and crafting a green-grey. Hover an item to see its operation.
 
-Energy is **160 FE (RF) per point of vanilla block hardness** per output block.
-All recipes produce one block. Most take 40 processing ticks (2 seconds); obsidian
-scales to 400 ticks (20 seconds). These are ordinary, editable datapack costs.
+The drawer fills the main panel height with the standard 4 px top/bottom insets and preserves native GUI icon size. It opens beside the machine where space
+permits and overlaps the panel on narrower screens. MMDLib's `RecipePresentation`
+supplies both the drawer and JEI with the same ingredient positions, roles, fluid
+requirements, tooltips and artwork; JEI supplies its native ingredient slots.
 
-| Output | Consumed from third tank | Energy | Time |
+Recipe tanks show a full ghosted 1,000 ml background with consumed fluid drawn
+solid from the bottom on the same scale. For example, stone overlays 100 ml lava;
+obsidian overlays the whole 1,000 ml. Tooltips report only the consumed amount.
+These amounts are per source-generation cycle; downstream crafting batches may
+require several source cycles. Rock Stew discovers deterministic grinding, ordinary smelting
+and single-material shaped/shapeless crafting, including multi-item batches:
+
+`Cobblestone -> Gravel -> Sand -> Glass -> Glass Panes`
+
+The XML declares one `<io:stew-line/>`; its model generates the repeated stage
+columns with stable slot indices and control IDs. Stages run concurrently using shared FE. Each column has an extractable output,
+a recipe-opening processor sprite, progress and a stock setting: **None / One Run /
+Full Stack**. The controls show a crossed square, one cube, and stacked cubes.
+Processors use Minecraft item icons: the selected base product for generation,
+a crafting table for crafting, a grindstone for grinding and a furnace for smelting.
+Progress bars show activity; processor icons have no custom animation. Unused
+processors show a faint dash. Clicking an active-path icon opens recipe selection.
+Tooltips show the setting with a short grey explanation for None and One Run.
+None keeps no independent stock: existing downstream items can satisfy demand
+without the source running. One Run keeps the input quantity for one cycle of
+the next processor (six glass for panes); the final stage keeps one output batch.
+One Run caps that stage's buffer at this batch size. A ready buffer does not
+consume more from the previous processor merely because the final output is
+set to Full Stack. It refills as its batch is consumed or extracted.
+Choose One Run or Full Stack on the source if you want base material available there. These are refill goals. Processing claims its next batch first; any
+surplus remains available to clicks, hoppers and pipes. Blocked outputs stop passing demand upstream; each earlier processor can still refill its own stock target. A six-glass pane recipe
+can protect three glass while waiting for the rest. Pausing releases pending
+batch protection while retaining reservations and paid progress for active work.
+
+Processor tooltips start with the product name in light blue, followed by
+**Output blocked** only if that processor's output is incompatible or lacks room
+for a full batch. The energy line is light red: `FE / t (FE / cycle)`, calculated
+from the recipe duration (560 FE over 40 ticks is 14 FE/t). The choose-path hint
+appears only before selection. Operation, switch-status and tick-count lines are
+omitted; progress remains on the bar. Other occupied outputs do not block a
+processor with valid inputs and output room.
+
+Available paths have at most **five steps including generation**: one source
+plus up to four crafting, grinding or smelting operations. A strict building-block
+allowlist applies to sources, intermediate products and final outputs. Buttons,
+pressure plates, gears and functional blocks such as furnaces are not included.
+Stone building variants, stairs, slabs, walls, glass, sand and gravel remain available.
+Ingot exclusions also take precedence over the allowlist. Both the
+recipes drawer and JEI use the same filtered graph; the server also rejects
+selections outside it.
+
+Configure allowed and excluded **item tags** in the world's
+`serverconfig/industrial_overkill-server.toml`:
+
+```toml
+[rockStew]
+allowedItemTags = ["industrial_overkill:rock_stew_building_blocks"]
+excludedItemTags = ["c:ingots", "c:ingots/*"]
+```
+
+Entries are namespaced tag IDs, without `#`. An exact entry matches only that
+tag; a trailing `/*` matches descendant tag paths, including deeper paths, but
+not the parent tag. For example, `c:ingots/*` matches `c:ingots/obsidian` but
+not `c:ingots` or `other:ingots/obsidian`. Add entries such as `c:gems` and
+`c:gems/*` to exclude more categories, or use `[]` to disable tag exclusions.
+Each list replaces its defaults. An empty `allowedItemTags` permits no products;
+an empty `excludedItemTags` removes exclusions but still requires allowlist membership.
+These are item-tag patterns, not item IDs or
+arbitrary regular expressions. Invalid entries are rejected by config validation.
+
+Extend the default allowlist with a datapack file at
+`data/industrial_overkill/tags/item/rock_stew_building_blocks.json`:
+
+```json
+{
+  "replace": false,
+  "values": ["your_mod:decorative_stone"]
+}
+```
+
+Use `"replace": true` to supply your own complete list. Modded building blocks in
+the referenced stairs/slabs/walls/fences and common stone/glass tags are included;
+other decorative blocks need explicit entries. Merely being placeable does not
+make an item eligible. Datapack tag edits take effect on `/reload`.
+
+Reopen the world or restart the server after editing. NeoForge synchronizes the
+server setting to joining clients, so the recipes drawer and JEI follow the same
+policy. A `defaultconfigs/industrial_overkill-server.toml` file supplies defaults
+for newly created worlds. Existing stored products are preserved if a changed
+policy invalidates their production path.
+
+The complete selected processing line is visible at once with five columns and
+no stage scrolling or paging. Unused output slots and progress tracks fade into
+the panel grey, with softly outlined disabled stock buttons. Legacy storage
+slots remain intact so items from older, longer paths can still be extracted.
+Resource groups use subtle background tints; their outlines appear when the
+group controls are highlighted. Recipes with unrelated ingredients, special
+behavior, remainders or chance products are excluded. Discovery is bounded and
+rebuilt after recipe/tag reload.
+
+Selecting a different path immediately cancels unfinished work, releases its
+reservations and resets progress. Stored items and fluids stay in place; already
+spent FE is not refunded and canceled work produces no outputs. The new path
+starts wherever its own inputs and output space permit, without waiting for all
+old products to be removed. Leftovers beyond a shorter path remain extractable.
+Selecting the same healthy path preserves its current work and stock settings.
+If saved work cannot be restored, clicking a stock setting or selecting a valid
+path cancels that unrecoverable work and restarts the admitted path. Stored items,
+fluids and spent FE are preserved; the original failed snapshot is kept separately.
+
+Source generation retains its previous time and FE costs:
+
+| Output | Consumed above catalyst floor | Energy | Time |
 |---|---|---:|---:|
-| Cobblestone (default) | None | 320 FE | 2 s |
+| Cobblestone | None | 320 FE | 2 s |
 | Cobbled Deepslate | None | 560 FE | 2 s |
 | Stone, Andesite, Diorite, Granite, Tuff | 100 mB lava | 240 FE | 2 s |
 | Deepslate | 200 mB lava | 480 FE | 2 s |
@@ -57,48 +197,38 @@ scales to 400 ticks (20 seconds). These are ordinary, editable datapack costs.
 | Calcite | 100 mB lava | 120 FE | 2 s |
 | Obsidian | 1,000 mB lava | 8,000 FE | 20 s |
 
-The screen order is: static water, static lava, ghost sample, progress arrow,
-2x2 output slots, reagent tank, energy gauge. The third (reagent) tank holds
-1,000 mB and accepts water or lava through its gauge, bucket interaction or pipes.
-Changing the sample does not replace its contents: empty the reagent tank manually
-before switching fluids. Cobblestone and cobbled deepslate need no reagent. Supply FE to run; the
-processor takes one additional tick to select each cycle. Hoppers and pipes can
-extract output; they cannot insert items or drain the tanks. JEI shows each recipe
-and its costs, including both full static tanks for every recipe.
+Grinding cobblestone into gravel and gravel into sand costs 320 FE over 40 ticks
+per step. Adapted smelting costs 800 FE and **100 mB lava per cycle** over
+100 ticks, with no water or minimum lava reserve requirement. Crafting costs 160 FE over
+20 ticks. Furnace fuel is shown on its processor and recipe-step tooltips; the
+leading recipe tanks continue to show source-generation requirements. Full crafting batches can exceed the selected stock target; their
+surplus is retained. The power buffer holds 100,000 FE.
 
-The ghost sample is saved with the machine. Changing or clearing it affects the
-next cycle; already running or paused work retains its original costs and paid
-progress. Missing resources never cause production of a different selected stone.
-The default sample is Cobblestone, including old saves. A removed recipe starts no
-new work, while an already reserved cycle may finish.
+The XML definition owns storage, appearance and the composed screen;
+`stew/RockStewProcessor` owns source/path selection, saved bindings and transitions.
+Datapack source recipes live in `recipe/rock_stew/`, and grinding recipes in
+`recipe/rock_stew_grinding/`. Source recipes use water/lava/energy groups and a
+single deterministic `output`; there is no ghost item input. JEI displays source
+and grinding recipes with reusable fluid requirements separate from consumed costs.
+JEI provides one production-path recipe per row, searchable by its final product.
+Reusable fluids are indexed as catalysts and consumed fluid as inputs. When
+opened from Rock Stew, the standard JEI + button applies its destination through the same
+server validation as the built-in drawer. Source and grinding cost categories remain available.
 
-The storage declaration is `<slots id="input" count="1" role="input" type="ghost"
-default-item="minecraft:cobblestone"/>`. Recipes name it under `inputs.input`, for
-example `[{"items":{"item":"minecraft:stone"},"count":1}]`. This uses the normal recipe
-matcher, with no machine-specific output-selection rule.
+Save/reload restores active reservations before the first tick. Earlier active
+single-source work finishes with its saved plan; old reagent water/lava merges
+into the corresponding new tank when it fits. Unknown or incompatible saved
+content is retained for recovery rather than discarded. Old output stock remains
+extractable. Saved pending selections from the earlier drain-before-switch design
+are upgraded to immediate selections, releasing the canceled work's claims. Breaking drops stored
+items; stored FE and fluids are lost. Active fluid reservations remain protected
+while paused, so finish active work before draining those fluids to relocate.
 
-Storage `name` attributes supply the display names: Water Catalyst, Lava Catalyst,
-Reagent, Rock Selection and Products. MMDLib generates English translations under
-`industrial_overkill:rock_stew_factory.group.<id>`; language files can override
-these keys. Manual tank names remain visible without enabling automation.
-
-The shared MMDLib screen includes progress, all three tanks, energy, pause/resume,
-side automation and redstone controls. Power loss preserves paid progress;
-full output storage stops new work without spending FE. Fluid reservations
-protect the catalysts while a cycle runs; pause before removing them through
-the screen. Save/reload preserves tanks, output, settings and processing progress.
-Breaking the block drops its output; stored FE and tank fluids are lost.
-Pause and recover the catalysts with empty buckets before dismantling it.
-
-The machine uses MMDLib's XML runtime. Its ordinary datapack recipes are in
-`data/industrial_overkill/recipe/rock_stew/`; override them and `/reload` to change
-time, power cost, fluid consumption or output. Every recipe reserves
-static water/lava with `"consumed": false` on each reusable input. They remain in their
-tanks throughout processing and need no matching outputs. JEI marks these inputs
-and the ghost stone sample as not consumed. These appear faded before a colon,
-separate from the consumed ingredients. Fluid fills use whole 1,000 mB scales.
-Regenerate the 32px textures with `py -3 scripts/generate_rock_stew_assets.py`.
-Run its real-client check with `gradlew.bat runRockStewClientSmoke --offline`.
+The focused server runner is `gradlew.bat runGameTestServer -ProckStewOnly`.
+The screen runner is `gradlew.bat runRockStewClientSmoke` (JEI production paths); add
+`-PwithoutJei` to exercise the built-in fallback panel. Its screenshots are in
+`build/rock-stew-client-smoke/screenshots`. JEI has a separate
+`runRockStewJeiSmoke` runner. Routine validation is left to CI.
 
 ## Animal Gym 2.0
 
@@ -188,16 +318,18 @@ Loose animals are held in place while working without disabling AI. Fitting scal
 model and hitbox, preserves existing scale modifiers, and restores the original
 size whenever work ends, the animal leaves, or the gym unloads. Temporary shrinking
 is never stored in animal saves. Pause, insufficient food, full storage, obstruction,
-unloading and teardown release loose animals. Animals installed through a Mob Trap
+unloading and teardown release loose animals. Animals installed through a Critter Courier
 remain contained in their trap through all of those conditions. Breaking any
 member dismantles the gym, drops remaining food and awards one machine item for a
 survival break. Stored FE is lost. Creative destruction and generic replacement
 do not award a machine item. Missing/undecodable saved food is retained in Recovered
 Gym Supplies; right-click a gym with that item after restoring the missing content.
 
-The screen places the occupied-trap slot to the left of the live animal portrait,
-with a recipe-book button below it when JEI is installed. Food slots sit directly
-under the portrait; their tooltips show power and food duration at the selected intensity,
+The screen places the occupied-trap slot beside the food slots below the live animal
+portrait, keeping the main panel compact. The recipe drawer is always available from
+its side tab. Clicking the animal portrait opens JEI when installed, otherwise the
+drawer. Both viewers share animal cards, accepted foods and power calculations;
+drawer rates follow the machine's selected intensity. Food tooltips show power and food duration at the selected intensity,
 plus total FE per item for the current animal. Total FE stays constant across intensities.
 The right end of that row holds a larger three-light yellow intensity indicator
 (click the indicator to cycle 1–3; no button frame).
@@ -339,10 +471,59 @@ Very short durations can expire before the existing 56-tick eating/refill sequen
 finishes; the gym waits for the next serving without generating unpaid energy.
 The eating/refill animation timing is independent of recipe rates.
 
-## Mob Trap
+## Critter Courier
+
+The registry ID is `industrial_overkill:critter_courier`.
+Its block, item properties, conditional models/shapes and screen are defined in
+`mmdlib/machine/critter_courier.xml`. `CritterCourierProcessor` owns capture, transport,
+release and the declared Release/Pick Up actions on MMDLib's generic machine host.
+Release is disabled while empty and both actions recheck availability on the server.
+The standard status label reads the processor's stored `details` lines. Each line
+is translated independently, including health arguments and age. The standard
+`entity-portrait` reads the typed `occupant` variable and renders a display-only
+client entity; Courier needs no custom screen elements. The portrait uses the
+occupant declaration's snapshot policy, including its saved panda resting pose.
+MMDLib registers the block, item and block entity type automatically; Java integrations
+look them up through `MachineContent`, without a Courier-specific registration class.
+`CritterCourierProcessor` is the sole Courier gameplay class. Its shared
+`OCCUPANT` portable-variable reference declares the processor value and provides
+typed item access for Animal Gym and rendering. Its `ENTITIES` snapshot policy
+pairs capture and restore hooks, preserving panda pose consistently during
+transport and preview updates. Consumers keep `EntitySnapshot` values until NBT
+serialization boundaries; there is no separate Courier data utility or Gym
+migration logic in the Courier. Animal Gym uses the library's cached portable
+reader to avoid decoding unchanged item components. Release returns a standard
+action result, including translated failure messages, for the library to deliver.
+The library handles item transfer, placement and the standard `mmdlib:pickup` action,
+which is shared by the button and sneak-use. Occupancy and status lines are cached
+derived variables, updated when the occupant changes or loads. The release
+cooldown uses a persisted idle-only timer, and placement checks and detached
+preview caching use shared entity helpers. Capture rules, wording, pose extensions
+and Animal Gym installation remain mod-owned.
+Animal Gym implements MMDLib's item receiver contract, so Courier needs no gym
+classes or slot knowledge. Right-click any formed gym part with supported food to
+insert as much of the held stack as fits, topping up existing stacks first and
+leaving the rest in hand. With an animal installed or on the belt (even paused),
+only that animal's food is accepted; an empty gym accepts any supported animal
+food. GUI insertion and hopper automation use the same live food-slot filter.
+Changing animals preserves existing food, which can still be removed through the
+GUI. Adding food does not interrupt training.
+Hover any food slot, empty or occupied, to see the current animal's accepted
+foods across all recipe tiers. Suitable stored food also shows its energy details.
+The shared right-click path also handles fluid buckets
+and compatible modded containers on fluid machines, returning the resulting
+container and leaving rejected exchanges unchanged.
+Old development block-entity saves are not migrated.
 
 All four sides share the paw display and status indicators; occupied cages also
 have an amber overhead lamp on each side.
+Occupied Courier items render their captured animal inside the cage in inventories,
+in hand and when dropped. The preview uses the saved appearance and pose without
+creating a world entity; empty items retain the armed plate model.
+The XML `entity-display` supplies both block and item previews, their fit bounds,
+and the occupied-item model predicate. MMDLib handles renderer registration and
+model wrapping; Courier has no dedicated renderer classes. Carried-item tooltips
+show both the custom name and species, for example **Bessie (Cow)**.
 
 Craft one with `B B / B B / IPI`: four iron bars, two iron ingots and a stone
 pressure plate. It is also in the Industrial Overkill creative tab. The compact
@@ -354,7 +535,7 @@ Pick Up icon buttons on the right; hover either icon for its action.
 3. Open its GUI and choose **Pick Up**, sneak-right-click with an empty hand,
    or break the cage. The resulting item contains the mob.
 4. Right-click any formed gym part with the occupied trap, or put it in the
-   gym's **Mob Trap** slot. Add the animal's food and extract the generated FE.
+   gym's **Critter Courier** slot. Add the animal's food and extract the generated FE.
 5. Take the trap out of the slot to carry the animal with you.
 6. Place the trap back in the world and press its **Release** button to restore
    the mob in clear space beside the cage.
@@ -366,7 +547,12 @@ Food automation cannot insert or extract the trap slot.
 
 Traps preserve entity identity, names, health, equipment, variants, existing scale,
 and remaining food allowance. They capture ordinary mobs, including hostile
-mobs; players, bosses and riding/passenger groups are excluded. A lead is dropped
+mobs; players and riding/passenger groups are excluded. The entity-type tag
+`industrial_overkill:critter_courier_blacklist` excludes the wither and ender dragon
+by default. Datapacks can extend or replace it at
+`data/industrial_overkill/tags/entity_type/critter_courier_blacklist.json`.
+This restriction applies to new captures; already carried mobs remain releasable.
+A lead is dropped
 when its mob is captured. Only the gym's supported adult animals can power the gym; other
 occupants stay safely stored and can be removed. A trapped mob's aging and AI are
 suspended. Blocked releases, missing mob types and duplicate loaded UUIDs leave the
@@ -400,8 +586,10 @@ The indicator and front/top face-texture switches are declared in its machine XM
 its casing override is `rock_stew_factory_base.json`, leaving the generated conditional
 root model intact. The asset generator writes idle/running textures and black-and-white
 emissive masks; component notifications update the appearance without tick polling.
-Use the pinned published MMDLib version or a local publication that provides these
-APIs. Local development is optional; CI always uses the pinned published version.
+Use a local publication that also provides the stored processor/action APIs used
+by Critter Courier, plus RecipeChain, RecipeOperations and the resource-restoration
+hook used by Rock Stew. CI uses the pinned published version and will need a new
+MMDLib release and dependency update before this migration can be published.
 
 Then, in this project:
 
@@ -427,10 +615,10 @@ checks placement, real power generation, portrait and inventory synchronization,
 food-energy tooltips, recipe links, intensity and pause/resume clicks, and teardown in a client; screenshots are saved under
 `build/gym-client-smoke/screenshots`. Test classes and fixtures are excluded from
 the shipped jar and normal client/server runs. Add `-PgymUiOnly` to check the gym screen
-without the world-animation prelude. `./gradlew runMobTrapClientSmoke`
+without the world-animation prelude. `./gradlew runCritterCourierClientSmoke`
 checks ground capture, cage and GUI previews, pickup, gym installation through the
 normal block interaction, contained generation, pause, ejection and world release;
-its screenshots are under `build/trap-client-smoke/screenshots`.
+its screenshots are under `build/courier-client-smoke/screenshots`.
 
 `./gradlew runGymPerformance` benchmarks an empty scene, three working gyms with
 loose cows, and three with captive cows. Each case warms up for 100 server ticks
@@ -463,7 +651,7 @@ version pinned; use a new release version rather than overwriting it.
 
 ## Adding content
 
-Java code belongs under `src/main/java/zone/moddev/mc/industrialoverkill`.
+Java code belongs under `src/main/java/net/modcrafters/minecraft/industrialoverkill`.
 Assets and recipes belong under `src/main/resources/assets/industrial_overkill`
 and `src/main/resources/data/industrial_overkill`. MMDLib startup definitions use
 its root-level `src/main/resources/mmdlib/` layout; consult MMDLib's

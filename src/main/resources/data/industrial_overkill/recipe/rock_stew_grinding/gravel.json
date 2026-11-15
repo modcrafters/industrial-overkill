@@ -1,0 +1,29 @@
+{
+  "type": "industrial_overkill:rock_stew_grinding",
+  "inputs": {
+    "input": [
+      {
+        "items": {
+          "item": "minecraft:cobblestone"
+        },
+        "count": 1
+      }
+    ],
+    "energy": [
+      {
+        "energy": 320
+      }
+    ]
+  },
+  "outputs": {
+    "output": [
+      {
+        "item": {
+          "id": "minecraft:gravel",
+          "count": 1
+        }
+      }
+    ]
+  },
+  "time": 40
+}

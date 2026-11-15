@@ -127,14 +127,15 @@ neoForge {
             gameDirectory = layout.buildDirectory.dir('gym-gametest')
             sourceSet = sourceSets.gymTest
             loadedMods = [neoForge.mods.gymTest]
-            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', providers.gradleProperty('rockStewOnly').isPresent()
+                    ? 'industrial_overkill_stew' : "${mod_id},industrial_overkill_stew"
         }
-        mobTrapClientSmoke {
+        critterCourierClientSmoke {
             client()
-            gameDirectory = layout.buildDirectory.dir('trap-client-smoke')
+            gameDirectory = layout.buildDirectory.dir('courier-client-smoke')
             sourceSet = sourceSets.gymTest
             loadedMods = [neoForge.mods.gymTest]
-            systemProperty 'industrialoverkill.trapSmoke', 'true'
+            systemProperty 'industrialoverkill.courierSmoke', 'true'
             programArguments.addAll '--width', '1280', '--height', '960'
         }
         gymClientSmoke {
@@ -242,16 +243,16 @@ tasks.named('runGymPerformance') {
     }
 }
 
-tasks.named('runMobTrapClientSmoke') {
+tasks.named('runCritterCourierClientSmoke') {
     doFirst {
-        def folder = layout.buildDirectory.dir('trap-client-smoke').get().asFile
+        def folder = layout.buildDirectory.dir('courier-client-smoke').get().asFile
         folder.mkdirs()
         new File(folder, 'options.txt').text = 'guiScale:2\nmaxFps:30\nonboardAccessibility:false\npauseOnLostFocus:false\nrenderDistance:8\n'
     }
     doLast {
-        def log = layout.buildDirectory.file('trap-client-smoke/logs/latest.log').get().asFile
-        if (!log.exists() || !log.text.contains('MOB_TRAP_CLIENT_PASS') || log.text.contains('MOB_TRAP_CLIENT_FAIL'))
-            throw new GradleException('Mob Trap client smoke failed; inspect ' + log)
+        def log = layout.buildDirectory.file('courier-client-smoke/logs/latest.log').get().asFile
+        if (!log.exists() || !log.text.contains('CRITTER_COURIER_CLIENT_PASS') || log.text.contains('CRITTER_COURIER_CLIENT_FAIL'))
+            throw new GradleException('Critter Courier client smoke failed; inspect ' + log)
     }
 }
 

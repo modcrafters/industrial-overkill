@@ -1,40 +1,33 @@
 <screen xmlns="https://moddev.zone/mmdlib/screen" xmlns:gym="https://moddev.zone/industrial-overkill/screen"
         title="gym.title" title-fallback="Animal Gym 2.0"
-        block-entity="zone.moddev.mc.industrialoverkill.gym.AnimalGymEntity" extends="mmdlib:base_powered_machine">
+        block-entity="net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity" extends="mmdlib:base_powered_machine">
   <fill name="body">
-    <hbox padding="7" spacing="8" align="start">
-      <vbox spacing="6" align="center">
+    <vbox padding="7" spacing="6">
+      <hbox spacing="8" align="start">
+        <custom id="portrait" type="industrial_overkill:animal_portrait" width="64" height="64" value="#getAnimalId"
+                tooltip="gym.recipes" tooltip-fallback="Show Animal Gym recipes"/>
+        <hbox spacing="8" align="center">
+          <custom id="status" type="industrial_overkill:gym_status" width="146" height="64" value="#getStatusText"/>
+          <energy-gauge id="energy" length="3s"/>
+        </hbox>
+      </hbox>
+      <hbox spacing="6" align="center">
         <inventory storage="items">
-          <item-slot id="trap" index="3" icon="industrial_overkill:trap_slot"
-                     tooltip="gym.trap.help" tooltip-fallback="Insert an occupied trap. Remove it to take the animal with you."/>
+          <item-slot id="trap" index="3" icon="industrial_overkill:courier_slot"
+                     tooltip="gym.trap.help" tooltip-fallback="Insert an occupied courier. Remove it to take the animal with you."/>
         </inventory>
-        <gym:jei-only>
-          <button id="recipes" icon="minecraft:recipe_book/button" flat="true" jei-recipes="industrial_overkill:gym_animal"
-                  tooltip="gym.recipes" tooltip-fallback="Show Animal Gym recipes"/>
-        </gym:jei-only>
-      </vbox>
-      <vbox spacing="6">
-        <custom id="portrait" type="industrial_overkill:animal_portrait" width="64" height="64" value="#getAnimalId"/>
         <inventory storage="items" columns="3">
           <gym:food-slot id="food0" index="0"/>
           <gym:food-slot id="food1" index="1"/>
           <gym:food-slot id="food2" index="2"/>
         </inventory>
-      </vbox>
-      <vbox spacing="6">
-        <hbox spacing="8" align="center">
-          <custom id="status" type="industrial_overkill:gym_status" width="146" height="64" value="#getStatusText"/>
-          <energy-gauge id="energy" length="3s"/>
-        </hbox>
-        <hbox align="center">
-          <spacer/>
-          <meter id="intensity" orientation="horizontal" thickness="10" length="42" segment="12" gap="2"
-                 color="#EEC437" offset-y="4" value="#getIntensity" max="#getMaxIntensity"
-                 on-click="industrial_overkill:intensity" tooltip="gym.intensity.tip"
-                 tooltip-fallback="Intensity: {value} / 3. Click to change."/>
-        </hbox>
-      </vbox>
-    </hbox>
+        <spacer/>
+        <meter id="intensity" orientation="horizontal" thickness="10" length="42" segment="12" gap="2"
+               color="#EEC437" offset-y="4" value="#getIntensity" max="#getMaxIntensity"
+               on-click="industrial_overkill:intensity" tooltip="gym.intensity.tip"
+               tooltip-fallback="Intensity: {value} / 3. Click to change."/>
+      </hbox>
+    </vbox>
   </fill>
   <fill name="inventory_controls">
     <inventory-controls id="inventory_controls"><gym:run-button id="toggle"/></inventory-controls>

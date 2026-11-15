@@ -1,14 +1,6 @@
 {
   "type": "industrial_overkill:rock_stew",
   "inputs": {
-    "input": [
-      {
-        "items": {
-          "item": "minecraft:cobblestone"
-        },
-        "count": 1
-      }
-    ],
     "water": [
       {
         "fluids": "minecraft:water",

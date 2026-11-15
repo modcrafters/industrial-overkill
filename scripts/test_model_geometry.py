@@ -12,7 +12,7 @@ def box(lo, hi, face='up'):
 
 
 class ModelGeometryTests(unittest.TestCase):
-    def test_original_trap_floor_overlap(self):
+    def test_original_courier_floor_overlap(self):
         self.assertTrue(coplanar_overlaps([
             box([0,0,0],[16,3,16]), box([1,2.9,1],[15,3,15])]))
 
@@ -57,7 +57,7 @@ class ModelGeometryTests(unittest.TestCase):
                 check_coplanar_faces(path.name, elements)
                 for e in elements:
                     self.assertTrue(all(-16 <= p <= 32 for key in ['from','to'] for p in e[key]))
-        for name in ['mob_trap','mob_trap_occupied']:
+        for name in ['critter_courier_plate','critter_courier_cage']:
             elements = json.loads((root/'block'/f'{name}.json').read_text())['elements']
             displays = [face for e in elements for face,value in e['faces'].items()
                         if value['texture']=='#display']
