@@ -1,14 +1,6 @@
 {
   "type": "industrial_overkill:rock_stew",
   "inputs": {
-    "input": [
-      {
-        "items": {
-          "item": "minecraft:diorite"
-        },
-        "count": 1
-      }
-    ],
     "water": [
       {
         "fluids": "minecraft:water",
@@ -21,9 +13,7 @@
         "fluids": "minecraft:lava",
         "amount": 1000,
         "consumed": false
-      }
-    ],
-    "reagent": [
+      },
       {
         "fluids": "minecraft:lava",
         "amount": 100

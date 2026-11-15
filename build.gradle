@@ -127,7 +127,8 @@ neoForge {
             gameDirectory = layout.buildDirectory.dir('gym-gametest')
             sourceSet = sourceSets.gymTest
             loadedMods = [neoForge.mods.gymTest]
-            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', providers.gradleProperty('rockStewOnly').isPresent()
+                    ? 'industrial_overkill_stew' : "${mod_id},industrial_overkill_stew"
         }
         critterCourierClientSmoke {
             client()

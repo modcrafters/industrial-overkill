@@ -332,7 +332,7 @@ public final class GymClientSmoke {
                 if (++frames < 10)
                     return;
                 if (mc.screen == null || mc.screen instanceof MachineScreen)
-                    throw new AssertionError("Recipe button did not open JEI");
+                    throw new AssertionError("Animal portrait did not open JEI");
                 shot("animal-gym-recipes.png");
                 mc.screen.onClose();
                 stage = 1;
@@ -371,9 +371,10 @@ public final class GymClientSmoke {
                         + toolbarBounds.height() / 2)
                     throw new AssertionError(
                         "Run control must align with the right of the colour toolbar");
-                if (trapBounds.right() >= portraitBounds.x()
+                if (trapBounds.right() >= foodBounds.x()
+                    || trapBounds.y() != foodBounds.y()
+                    || trapBounds.x() != portraitBounds.x()
                     || foodBounds.y() < portraitBounds.bottom()
-                    || foodBounds.x() != portraitBounds.x()
                     || intensityBounds.x() <= foodBounds.right())
                     throw new AssertionError("Trap/portrait/food/intensity layout");
                 for (String removed : java.util.List.of("release", "speed", "strength", "health",
@@ -394,18 +395,42 @@ public final class GymClientSmoke {
                 if (mc.font.split(statusText, statusBounds.width()).size() * 11 > statusBounds.height())
                     throw new AssertionError("Power left must fit within the status panel");
                 assertFoodTooltip(screen, 1, 16, "15");
-                var recipes = definition.find("recipes").orElseThrow();
-                boolean jei = net.neoforged.fml.ModList.get().isLoaded("jei");
-                if (screen.visible(recipes) != jei)
-                    throw new AssertionError(
-                        "Recipe button visibility must follow JEI availability");
+                if (definition.find("recipes").isPresent())
+                    throw new AssertionError("Standalone recipe button was removed");
+                var drawer = (zone.moddev.mc.lib.gui.client.recipe.RecipeDrawer) screen.drawers().entries().stream()
+                    .filter(d -> d.id().equals(net.modcrafters.minecraft.industrialoverkill.gym.GymScreenElements.RECIPE_DRAWER_ID))
+                    .findFirst().orElseThrow();
                 shot("animal-gym-menu.png");
+                var tab = drawer.tabBounds();
+                screen.mouseClicked(tab.x() + 8, tab.y() + 8, 0);
+                if (!drawer.open() || drawer.visibleRecipes().isEmpty() || mc.screen != screen
+                    || drawer.visibleRecipes().getFirst().presentation().items().isEmpty())
+                    throw new AssertionError("Recipe tab opens populated drawer independently of JEI");
+                if (!drawer.selection().key().equals("minecraft:cow"))
+                    throw new AssertionError("Recipe drawer starts with the animal on the treadmill");
+                stage = 11;
+                frames = 0;
+            } else if (stage == 11) {
+                if (++frames < 10) return;
+                boolean jei = net.neoforged.fml.ModList.get().isLoaded("jei");
+                var drawer = (zone.moddev.mc.lib.gui.client.recipe.RecipeDrawer) screen.drawers().entries().stream()
+                    .filter(d -> d.id().equals(net.modcrafters.minecraft.industrialoverkill.gym.GymScreenElements.RECIPE_DRAWER_ID))
+                    .findFirst().orElseThrow();
+                if (!drawer.open()) throw new AssertionError("Recipe drawer remains open while rendered");
+                shot(jei ? "animal-gym-drawer-with-jei.png" : "animal-gym-drawer-without-jei.png");
+                var tab = drawer.tabBounds();
+                screen.mouseClicked(tab.x() + 8, tab.y() + 8, 0);
+                if (drawer.open()) throw new AssertionError("Recipe tab toggles closed");
+                click(screen, "portrait");
                 if (jei) {
-                    click(screen, "recipes");
                     stage = 10;
                     frames = 0;
-                } else
+                } else {
+                    if (!drawer.open() || mc.screen != screen)
+                        throw new AssertionError("Animal portrait opens recipe drawer without JEI");
+                    drawer.close();
                     stage = 1;
+                }
             } else if (stage == 1) {
                 click(screen, "intensity");
                 stage = 2;

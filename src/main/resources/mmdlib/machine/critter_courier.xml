@@ -8,10 +8,10 @@
           when="!$processors.courier.occupied"/>
     <part id="cage" model="industrial_overkill:block/critter_courier_cage"
           when="$processors.courier.occupied"/>
+    <entity-display variable="$processors.courier.occupant"
+                    offset="0.5 0.2 0.5" width="0.62" height="0.45" item-yaw="180"
+                    item-property="industrial_overkill:occupied"/>
   </appearance>
-  <entity-display variable="$processors.courier.occupant"
-                  offset="0.5 0.2 0.5" width="0.62" height="0.45" item-yaw="180"
-                  item-property="industrial_overkill:occupied"/>
   <storage/>
   <shapes>
     <shape id="plate" bounds="0 0 0 16 3 16" when="!$processors.courier.occupied"/>

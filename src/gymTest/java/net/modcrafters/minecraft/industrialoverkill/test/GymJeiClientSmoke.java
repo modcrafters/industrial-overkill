@@ -24,6 +24,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 import net.modcrafters.minecraft.industrialoverkill.client.jei.GymRecipeCategory;
+import net.modcrafters.minecraft.industrialoverkill.client.GymRecipeDisplay;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
 import zone.moddev.mc.lib.MMDLib;
@@ -148,7 +149,7 @@ public final class GymJeiClientSmoke implements IModPlugin {
                     show(entries, EntityType.RABBIT);
                 }
                 case 4 -> {
-                    var rabbit = (net.minecraft.world.entity.animal.Rabbit) ((GymRecipeCategory.Entry) visibleLayouts()
+                    var rabbit = (net.minecraft.world.entity.animal.Rabbit) ((GymRecipeDisplay.Entry) visibleLayouts()
                         .getFirst().getRecipe()).animal();
                     check(rabbit.jumpDuration > 0 && rabbit.walkAnimation.position() > 0,
                         "Rabbit previews use their native hopping gait");
@@ -256,7 +257,7 @@ public final class GymJeiClientSmoke implements IModPlugin {
             .getRecipeCategory(GymRecipeCategory.TYPE);
         check(category.intensity() == intensity, "Shared intensity is selected");
         for (var layout : visibleLayouts()) {
-            var entry = (GymRecipeCategory.Entry) layout.getRecipe();
+            var entry = (GymRecipeDisplay.Entry) layout.getRecipe();
             for (var tier : entry.tiers())
                 check(category.power(tier) == tier.energyPerTick() * intensity
                     && Math.abs(category.durationSeconds(tier)
@@ -270,7 +271,7 @@ public final class GymJeiClientSmoke implements IModPlugin {
         double rate = 0;
         int count = 0;
         for (var layout : visibleLayouts()) {
-            var animal = ((GymRecipeCategory.Entry) layout.getRecipe()).animal();
+            var animal = ((GymRecipeDisplay.Entry) layout.getRecipe()).animal();
             check(Math.abs(animal.walkAnimation.speed() - (.35f + .15f * intensity)) < .001,
                 "Rendered stride follows the selected intensity");
             var previous = previousPhases.put(animal.getType(), animal.walkAnimation.position());
@@ -292,7 +293,7 @@ public final class GymJeiClientSmoke implements IModPlugin {
         }
         sampledAt = now;
     }
-    private void checkFood(List<GymRecipeCategory.Entry> entries, EntityType<?> type,
+    private void checkFood(List<GymRecipeDisplay.Entry> entries, EntityType<?> type,
         net.minecraft.world.item.Item item, int power, int duration) {
         var focus = runtime.getJeiHelpers().getFocusFactory().createFocus(
             RecipeIngredientRole.INPUT,
@@ -314,12 +315,12 @@ public final class GymJeiClientSmoke implements IModPlugin {
     private void checkGroupedCard(int tiers) throws Exception {
         var layouts = visibleLayouts();
         check(layouts.size() == 1, "All food groups share one animal card");
-        var entry = (GymRecipeCategory.Entry) layouts.getFirst().getRecipe();
+        var entry = (GymRecipeDisplay.Entry) layouts.getFirst().getRecipe();
         check(entry.tiers().size() == tiers, "Every distinct food effect has its own row");
         check(14 + tiers * 24 <= layouts.getFirst().getRect().getHeight(),
             "Food rows fit within the card");
     }
-    private void show(List<GymRecipeCategory.Entry> entries, EntityType<?> type) {
+    private void show(List<GymRecipeDisplay.Entry> entries, EntityType<?> type) {
         runtime.getRecipesGui().showRecipes(
             runtime.getRecipeManager().getRecipeCategory(GymRecipeCategory.TYPE),
             entries.stream().filter(entry -> entry.animal().getType() == type).toList(), List.of());

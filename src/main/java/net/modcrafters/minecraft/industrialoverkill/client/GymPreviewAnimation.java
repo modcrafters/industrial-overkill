@@ -1,9 +1,8 @@
-package net.modcrafters.minecraft.industrialoverkill.client.jei;
+package net.modcrafters.minecraft.industrialoverkill.client;
 
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.Rabbit;
 
-import net.modcrafters.minecraft.industrialoverkill.client.GymAnimalAnimation;
 
 /** Advances only visual state, without ticking a preview's AI or adding it to the world. */
 final class GymPreviewAnimation {

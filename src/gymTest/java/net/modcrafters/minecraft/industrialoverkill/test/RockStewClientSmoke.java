@@ -9,7 +9,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Difficulty;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
@@ -29,7 +28,6 @@ import zone.moddev.mc.lib.MMDLib;
 import zone.moddev.mc.lib.gui.client.MachineScreen;
 import zone.moddev.mc.lib.gui.runtime.ScreenRuntime;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
-import zone.moddev.mc.lib.machine.neoforge.MachineContent;
 
 @EventBusSubscriber(modid = IndustrialOverkill.MOD_ID, value = Dist.CLIENT)
 public final class RockStewClientSmoke {
@@ -83,9 +81,26 @@ public final class RockStewClientSmoke {
                 player.setGameMode(GameType.SURVIVAL);
                 RockStewTests.fillStaticTanks(machine, player);
                 machine.energy.setStored(32000);
+                net.modcrafters.minecraft.industrialoverkill.stew.RockStewProcessor.from(machine).select(
+                    net.modcrafters.minecraft.industrialoverkill.stew.RockStewRecipes.DEFAULT,
+                    new net.minecraft.world.item.ItemStack(Items.GLASS_PANE));
                 player.connection.teleport(2.8, 100.8, -3.0, 33, 27);
             });
         } catch (Throwable error) { fail(error); }
+    }
+
+    @SubscribeEvent
+    public static void hoverDrawer(net.neoforged.neoforge.client.event.ScreenEvent.Render.Pre event) {
+        if (!active() || stage != 30 || !(event.getScreen() instanceof MachineScreen screen)) return;
+        var drawer = (zone.moddev.mc.lib.gui.client.recipe.RecipeDrawer) screen.drawers().entries().stream()
+            .filter(d -> d.id().equals(net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen.RECIPE_DRAWER_ID))
+            .findFirst().orElseThrow();
+        var content = zone.moddev.mc.lib.gui.layout.RecipeDrawerLayout.content(drawer.bodyBounds());
+        // Render through the real screen pass, with a deterministic hover over the first recipe.
+        event.setCanceled(true);
+        screen.render(event.getGuiGraphics(),
+            content.x() + net.modcrafters.minecraft.industrialoverkill.client.RockStewTreeRenderer.ITEM_X + 8,
+            content.y() + 8, event.getPartialTick());
     }
 
     @SubscribeEvent
@@ -109,37 +124,45 @@ public final class RockStewClientSmoke {
                 // Wait for the tracking snapshot; no menu has been opened yet.
                 if (variables == null || !Boolean.TRUE.equals(variables.get("processors.rock_stew.running"))) return;
                 var blockState = machine.getBlockState();
-                var inactive = net.neoforged.neoforge.client.model.data.ModelData.builder()
-                    .with(zone.moddev.mc.lib.machine.neoforge.MachineVisualState.VARIABLES,
-                        java.util.Map.<String, Object>of("processors.rock_stew.running", false)).build();
                 for (var facing : Direction.Plane.HORIZONTAL) {
                     var rotatedState = blockState.setValue(
                         net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_FACING, facing);
                     var rotatedModel = mc.getBlockRenderer().getBlockModel(rotatedState);
-                    var runningData = rotatedModel.getModelData(mc.level, POS, rotatedState, machine.getModelData());
-                    var idleData = rotatedModel.getModelData(mc.level, POS, rotatedState, inactive);
-                    for (var face : Direction.values()) {
-                        var runningFace = rotatedModel.getQuads(rotatedState, face,
-                            net.minecraft.util.RandomSource.create(0), runningData, null);
-                        var idleFace = rotatedModel.getQuads(rotatedState, face,
-                            net.minecraft.util.RandomSource.create(0), idleData, null);
-                        String expected = face == facing ? "rock_stew_front_active"
-                            : face == Direction.UP ? "rock_stew_top_active"
-                            : face == Direction.DOWN ? "rock_stew_bottom" : "rock_stew_side";
-                        check(runningFace.getFirst().getSprite().contents().name().equals(
-                            ResourceLocation.parse("industrial_overkill:block/" + expected)),
-                            "Conditional face texture follows machine facing " + facing + "/" + face);
-                        check(idleFace.getFirst().getSprite().contents().name().equals(
-                            ResourceLocation.parse("industrial_overkill:block/" + expected.replace("_active", ""))),
-                            "Unmatched condition restores the base face texture " + facing + "/" + face);
-                        if (face == facing || face == Direction.UP) {
-                            String maskName = face == facing ? "rock_stew_front_emissive" : "rock_stew_top_emissive";
-                            var mask = mc.getTextureAtlas(net.minecraft.client.renderer.texture.TextureAtlas.LOCATION_BLOCKS)
-                                .apply(ResourceLocation.parse("industrial_overkill:block/" + maskName));
-                            checkMaskedFace(runningFace, idleFace, mask);
-                        } else {
-                            check(runningFace.equals(idleFace), "Unswitched faces retain the original quads");
+                    for (int lamps = 0; lamps <= 7; lamps++) for (boolean paused : new boolean[]{false, true}) {
+                        var snapshot = net.neoforged.neoforge.client.model.data.ModelData.builder()
+                            .with(zone.moddev.mc.lib.machine.neoforge.MachineVisualState.VARIABLES,
+                                java.util.Map.<String, Object>of("processors.rock_stew.running", true,
+                                    "processors.rock_stew.paused", paused, "processors.rock_stew.progress_lights_1", lamps,
+                                    "processors.rock_stew.progress_lights_2", (lamps + 1) % 8, "processors.rock_stew.progress_lights_3", (lamps + 2) % 8,
+                                    "processors.rock_stew.progress_lights_4", (lamps + 3) % 8, "processors.rock_stew.progress_lights_5", (lamps + 4) % 8)).build();
+                        var data = rotatedModel.getModelData(mc.level, POS, rotatedState, snapshot);
+                        for (var side : Direction.values()) {
+                            var base = rotatedModel.getQuads(rotatedState, side, net.minecraft.util.RandomSource.create(0), data, null);
+                            String expected = side == facing ? "rock_stew_front" : side == Direction.UP ? "rock_stew_top"
+                                : side == Direction.DOWN ? "rock_stew_bottom" : "rock_stew_side";
+                            check(base.size() == 1 && base.getFirst().getSprite().contents().name().getPath().equals("block/" + expected),
+                                "Overlay retains the original base face: " + facing + "/" + side);
                         }
+                        var overlays = rotatedModel.getQuads(rotatedState, null, net.minecraft.util.RandomSource.create(0), data, null);
+                        check(overlays.size() == (paused ? 5 : 7), "Independent progress and activity overlays coexist");
+                        var stageLights = overlays.stream().filter(quad -> quad.getSprite().contents().name().getPath().equals("block/rock_stew_proc_lights")).toList();
+                        check(stageLights.size() == 5, "All five stage overlays are present");
+                        var actualFrames = new java.util.ArrayList<Integer>();
+                        for (var light : stageLights) {
+                            check(light.getDirection() == facing, "Lamps follow the machine facing");
+                            float minV = Float.POSITIVE_INFINITY;
+                            for (int vertex = 0; vertex < 4; vertex++) {
+                                int offset = vertex * net.neoforged.neoforge.client.model.IQuadTransformer.STRIDE;
+                                minV = Math.min(minV, light.getSprite().getVOffset(Float.intBitsToFloat(light.getVertices()[offset
+                                    + net.neoforged.neoforge.client.model.IQuadTransformer.UV0 + 1])));
+                                check(light.getVertices()[offset + net.neoforged.neoforge.client.model.IQuadTransformer.UV2]
+                                    == net.minecraft.client.renderer.LightTexture.FULL_BRIGHT, "Lamp overlay is emissive");
+                            }
+                            actualFrames.add(Math.round(minV * 8));
+                        }
+                        final int firstFrame = lamps;
+                        var expectedFrames = java.util.stream.IntStream.range(0, 5).map(i -> (firstFrame + i) % 8).sorted().boxed().toList();
+                        check(actualFrames.stream().sorted().toList().equals(expectedFrames), "Each stage selects its own frame, including while paused");
                     }
                 }
                 shot("rock-stew-factory-in-game.png");
@@ -148,7 +171,16 @@ public final class RockStewClientSmoke {
                 frames = 0;
                 server(() -> {
                     var player = mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
-                    check(ScreenRuntime.open(player, player.serverLevel().getBlockEntity(POS)), "Open factory screen");
+                    var serverMachine = (DefinedMachineEntity) player.serverLevel().getBlockEntity(POS);
+                    var processor = net.modcrafters.minecraft.industrialoverkill.stew.RockStewProcessor.from(serverMachine);
+                    serverMachine.items.restoreStack(3, new net.minecraft.world.item.ItemStack(Items.GLASS, 8));
+                    serverMachine.serverTick();
+                    check(processor.chain().cycle(4).plan().isPresent(), "Prepare active work for the reported reload failure");
+                    serverMachine.items.restoreStack(3, new net.minecraft.world.item.ItemStack(Items.GLASS, 2));
+                    var saved = serverMachine.saveWithoutMetadata(player.registryAccess());
+                    serverMachine.loadWithComponents(saved, player.registryAccess());
+                    check(!processor.problem().isEmpty(), "Reproduce the recovery lock before clicking the real screen");
+                    check(ScreenRuntime.open(player, serverMachine), "Open factory screen");
                 });
             } else if (stage == 2 && mc.screen instanceof MachineScreen screen) {
                 var menu = screen.getMenu();
@@ -159,125 +191,181 @@ public final class RockStewClientSmoke {
                         && fluid.getAmount() == 1000 && fluid.getFluid() == (tank == 0 ? Fluids.WATER : Fluids.LAVA),
                         "Catalyst gauge synchronized");
                 }
-                var reagent = menu.bound.screen().find("tank_2").orElseThrow();
-                check(menu.value(reagent, false) instanceof net.neoforged.neoforge.fluids.FluidStack fluid
-                    && fluid.isEmpty(), "Cobblestone leaves reagent tank empty");
-                var water = menu.bound.screen().find("tank_0").orElseThrow();
-                var lava = menu.bound.screen().find("tank_1").orElseThrow();
-                check(screen.bounds(water).x() < screen.bounds(lava).x()
-                    && screen.bounds(lava).x() < screen.bounds(ghostSlot(screen)).x()
-                    && screen.bounds(ghostSlot(screen)).x() < screen.bounds(reagent).x(), "Static tanks precede ghost; reagent follows production");
-                check(menu.slots.stream().anyMatch(s -> s.getItem().is(Items.COBBLESTONE)), "Output synchronized");
+                check(menu.bound.screen().find("tank_2").isEmpty(), "Exactly two tanks");
+                var water = screen.bounds(menu.bound.screen().find("tank_0").orElseThrow());
+                var lava = screen.bounds(menu.bound.screen().find("tank_1").orElseThrow());
+                for (int tank = 0; tank < 2; tank++) {
+                    var gauge = menu.bound.screen().find("tank_" + tank).orElseThrow();
+                    var bounds = screen.bounds(gauge);
+                    check(screen.tooltipLines(gauge, bounds.x() + 5, bounds.y() + 5).stream()
+                        .anyMatch(lineText -> lineText.getString().equals("1000 ml gets reserved for rocks")),
+                        "Main tank tooltip explains the reusable reserve");
+                }
+                check(water.height() > water.width() && lava.height() > lava.width()
+                    && water.y() == lava.y() && water.right() <= lava.x(), "Vertical tanks sit side by side");
                 var energy = menu.bound.screen().find("energy").orElseThrow();
-                var progress = menu.bound.screen().find("generated_progress").orElseThrow();
-                var out0 = screen.bounds(menu.bound.screen().find("slot_0").orElseThrow());
-                var out1 = screen.bounds(menu.bound.screen().find("slot_1").orElseThrow());
-                var out2 = screen.bounds(menu.bound.screen().find("slot_2").orElseThrow());
-                var out3 = screen.bounds(menu.bound.screen().find("slot_3").orElseThrow());
-                check(out0.y() == out1.y() && out2.y() == out3.y()
-                    && out0.x() == out2.x() && out1.x() == out3.x()
-                    && out0.x() < out1.x() && out0.y() < out2.y(), "Outputs form a 2x2 grid");
-                check(screen.bounds(ghostSlot(screen)).x() < screen.bounds(progress).x()
-                    && screen.bounds(progress).x() < out0.x() && out1.x() < screen.bounds(reagent).x()
-                    && screen.bounds(reagent).x() < screen.bounds(energy).x(), "Arrow, outputs, reagent and energy follow requested order");
+                var line = menu.bound.screen().find("processing_line").orElseThrow();
+                check(line.actions().isEmpty(), "Processing line has no scrolling action");
+                check(menu.elementStates().get(line, net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen.Line.COUNT) == 5,
+                    "All five products of the pane route are visible together");
+                int previousX = -1, outputY = -1;
+                var operationItems = new net.minecraft.world.item.Item[]{Items.COBBLESTONE, Items.GRINDSTONE,
+                    Items.GRINDSTONE, Items.FURNACE, Items.CRAFTING_TABLE};
+                for (int i = 0; i < 5; i++) {
+                    var output = screen.bounds(menu.bound.screen().find("stage_item_" + i).orElseThrow());
+                    var processor = menu.bound.screen().find("stage_processor_" + i).orElseThrow();
+                    check(menu.value(processor, false) instanceof net.minecraft.world.item.ItemStack icon && icon.is(operationItems[i]),
+                        "Processor uses the correct Minecraft item icon");
+                    var glyph = screen.bounds(processor);
+                    var stock = screen.bounds(menu.bound.screen().find("stage_stock_" + i).orElseThrow());
+                    check(output.x() > previousX && (outputY == -1 || output.y() == outputY), "Five aligned output columns");
+                    check(lava.right() < output.x(), "Both tanks sit left of processing");
+                    if (previousX >= 0) check(output.x() - previousX <= 24, "Processor columns stay compact");
+                    check(glyph.y() > output.y() && stock.y() > glyph.y(), "Output, processor and stock order");
+                    check(processor.actions().contains(
+                        net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen.SELECT), "Every processor opens recipes and accepts selections");
+                    previousX = output.x(); outputY = output.y();
+                }
+                check(screen.bounds(energy).x() > previousX, "Energy on the right");
+                check(water.height() == 54 && lava.height() == 54 && screen.bounds(energy).height() == 54,
+                    "Fluid and energy gauges use the standard three-slot height");
+                check(menu.bound.screen().find("mix").isEmpty(), "Combining sprite removed");
                 check(java.math.BigInteger.valueOf(100000).equals(menu.value(energy, true)), "Energy capacity synchronized");
-                check(!MachineContent.recipeType(ResourceLocation.parse("industrial_overkill:rock_stew"))
-                    .recipes(mc.level.getRecipeManager()).isEmpty(), "Machine recipe synchronized");
+                check(!net.modcrafters.minecraft.industrialoverkill.stew.RockStewRecipes.SOURCES
+                    .recipes(mc.level.getRecipeManager()).isEmpty(), "Source recipes synchronized");
                 shot("rock-stew-factory-screen.png");
-                var ghost = ghostSlot(screen);
-                var bounds = screen.bounds(ghost);
-                check(bounds.width() == 18 && bounds.height() == 18, "Ghost input occupies one normal slot");
-                check(menu.slot(ghost).getItem().is(Items.COBBLESTONE), "Default ghost sample synchronized");
-                dropGhost(screen, ghost, Items.STONE);
+                var stock = screen.bounds(menu.bound.screen().find("stage_stock_0").orElseThrow());
+                check(screen.mouseClicked(stock.x() + 8, stock.y() + 8, 0), "Cycle stage stock setting");
+                check(menu.bound.screen().find("recipe_book").isEmpty()
+                    && menu.bound.screen().find("previous_stage").isEmpty()
+                    && menu.bound.screen().find("next_stage").isEmpty(), "No redundant button row");
+                var source = screen.bounds(menu.bound.screen().find("stage_processor_2").orElseThrow());
+                check(screen.mouseClicked(source.x() + 8, source.y() + 8, 0), "Open recipes from an intermediate processor");
+                if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+                    check(mc.screen != screen, "Processor opens JEI when its runtime is available");
+                    mc.screen.onClose();
+                    check(mc.screen == screen, "Closing JEI returns to the machine");
+                    var recipeTab = screen.drawers().entries().stream().filter(d -> d.id().equals(
+                        net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen.RECIPE_DRAWER_ID)).findFirst().orElseThrow();
+                    var bounds = recipeTab.tabBounds();
+                    check(screen.mouseClicked(bounds.x() + 8, bounds.y() + 8, 0), "Recipe-book tab opens drawer even with JEI installed");
+                }
                 stage = 3;
                 frames = 0;
             } else if (stage == 3 && mc.screen instanceof MachineScreen screen) {
-                var ghost = ghostSlot(screen);
-                if (!screen.getMenu().slot(ghost).getItem().is(Items.STONE)) return;
-                shot("rock-stew-ghost-input.png");
-                dropGhost(screen, ghost, Items.BASALT);
+                var menu = screen.getMenu();
+                var drawer = (zone.moddev.mc.lib.gui.client.recipe.RecipeDrawer) screen.drawers().entries().stream()
+                    .filter(d -> d.id().equals(net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen.RECIPE_DRAWER_ID))
+                    .findFirst().orElseThrow();
+                check(drawer.open(), "Recipe drawer opens through its tab or the no-JEI processor fallback");
+                var info = screen.drawers().entries().stream().filter(d -> d instanceof zone.moddev.mc.lib.gui.client.PopoutDrawer)
+                    .findFirst().orElseThrow();
+                var infoTab = info.tabBounds();
+                check(screen.mouseClicked(infoTab.x() + 8, infoTab.y() + 8, 0), "Info tab stays clickable while recipe drawer is open");
+                check(info.open() && !drawer.open(), "Info tab switches drawers");
+                var recipeTab = drawer.tabBounds();
+                check(screen.mouseClicked(recipeTab.x() + 8, recipeTab.y() + 8, 0) && drawer.open(), "Recipe-book tab reopens drawer");
+                check(screen.mouseClicked(recipeTab.x() + 8, recipeTab.y() + 8, 0) && !drawer.open(), "Recipe-book tab toggles closed");
+                check(screen.mouseClicked(recipeTab.x() + 8, recipeTab.y() + 8, 0) && drawer.open(), "Recipe-book tab toggles open");
+                check(screen.visible(menu.bound.screen().find("processing_line").orElseThrow()), "Drawer keeps processing controls visible");
+                check(menu.bound.screen().find("stew_panel").isEmpty(), "Recipes no longer replace the main view");
+                drawer.restore(new zone.moddev.mc.lib.gui.client.Drawer.Selection("industrial_overkill:rock_stew/stone", 0));
+                var choices = drawer.visibleRecipes();
+                check(!choices.isEmpty(), "Drawer lists synced recipes");
+                var presentation = choices.getFirst().presentation();
+                check(presentation.items().size() == 1 && presentation.items().getFirst().stack().is(Items.STONE), "First row is the source-only path");
+                check(presentation.fluids().stream().anyMatch(f -> f.stack().getFluid() == Fluids.LAVA
+                    && f.stack().getAmount() == 1000 && f.role() == zone.moddev.mc.lib.gui.client.recipe.RecipePresentation.Role.CATALYST), "Ghost catalyst indexed separately");
+                check(presentation.fluids().stream().anyMatch(f -> f.stack().getFluid() == Fluids.LAVA
+                    && f.stack().getAmount() == 100 && f.role() == zone.moddev.mc.lib.gui.client.recipe.RecipePresentation.Role.INPUT), "Consumed fluid indexed separately");
+                var body = drawer.bodyBounds();
+                check(body.x() >= 4 && body.right() <= screen.width - 4, "Recipe drawer fits the GUI viewport");
+                check(screen.exclusions().contains(body), "JEI excludes the open drawer");
+                var rail = zone.moddev.mc.lib.gui.layout.SideDrawerLayout.rail(drawer.tabBounds(), body);
+                check(screen.exclusions().contains(rail), "Recipe drawer includes the full tab rail in JEI exclusions");
+                check(drawer.covers(rail.x() + 1, rail.bottom() - 1), "Tab rail blocks underlying machine hover");
+                mc.getSingleplayerServer().submit(() -> {
+                    var processor = net.modcrafters.minecraft.industrialoverkill.stew.RockStewProcessor
+                        .from(mc.getSingleplayerServer().overworld().getBlockEntity(POS));
+                    check(processor.problem().isEmpty() && processor.stockMode(0) == 1 && processor.chain().target(0) == 1,
+                        "Real stock click clears recovery and changes None to One Run on the server");
+                }).join();
+                shot("rock-stew-recipe-drawer.png");
+                stage = 30;
+                frames = 0;
+            } else if (stage == 30 && mc.screen instanceof MachineScreen screen) {
+                shot("rock-stew-drawer-tooltip.png");
+                var drawer = (zone.moddev.mc.lib.gui.client.recipe.RecipeDrawer) screen.drawers().entries().stream()
+                    .filter(d -> d.id().equals(net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen.RECIPE_DRAWER_ID))
+                    .findFirst().orElseThrow();
+                drawer.restore(new zone.moddev.mc.lib.gui.client.Drawer.Selection("industrial_overkill:rock_stew/stone", 0));
+                var body = drawer.bodyBounds();
+                check(screen.mouseClicked(body.x() + 62, body.y() + 32, 0), "Choose source-only path from drawer");
+                check(!drawer.open(), "Submitted path closes the drawer");
                 stage = 4;
                 frames = 0;
-            } else if (stage == 4 && mc.screen instanceof MachineScreen screen) {
-                var ghost = ghostSlot(screen);
-                if (!screen.getMenu().slot(ghost).getItem().is(Items.BASALT)) return;
-                var bounds = screen.bounds(ghost);
-                check(screen.mouseClicked(bounds.x() + 8, bounds.y() + 8, 1), "Clear ghost input");
+            } else if (stage == 4) {
+                if (net.neoforged.fml.ModList.get().isLoaded("jei")) {
+                    if (!RockStewJeiClientSmoke.selectTreeFromMachine()) return;
+                    RockStewJeiClientSmoke.returnToMachine();
+                }
+                mc.getSingleplayerServer().submit(() -> {
+                    var machine = mc.getSingleplayerServer().overworld().getBlockEntity(POS);
+                    var processor = net.modcrafters.minecraft.industrialoverkill.stew.RockStewProcessor.from(machine);
+                    check(processor.chain().target(0) == 64, "New source-only path uses its final-output Stack default");
+                    check(!processor.switching() && processor.route().destination().is(Items.STONE),
+                        "Recipe selection replaces the old route immediately");
+                }).join();
                 stage = 5;
                 frames = 0;
             } else if (stage == 5 && mc.screen instanceof MachineScreen screen) {
-                if (!screen.getMenu().slot(ghostSlot(screen)).getItem().isEmpty()) return;
+                var menu = screen.getMenu();
+                for (int i = 1; i < 5; i++) {
+                    var control = (net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen.Control)
+                        menu.bound.screen().find("stage_stock_" + i).orElseThrow();
+                    check(screen.visible(control) && !control.enabled(menu.elementStates()), "Unused stock buttons are visible and disabled");
+                    var glyph = screen.bounds(menu.bound.screen().find("stage_processor_" + i).orElseThrow());
+                    // The vanilla container may consume an otherwise unhandled click.
+                    // Verify navigation state after the server has had time to respond.
+                    screen.mouseClicked(glyph.x() + 8, glyph.y() + 8, 0);
+                    check(mc.screen == screen, "Unused processor cannot open JEI");
+                }
+                stage = 6;
+                frames = 0;
+            } else if (stage == 6 && mc.screen instanceof MachineScreen screen) {
+                check(screen.visible(screen.getMenu().bound.screen().find("processing_line").orElseThrow()),
+                    "Unused processor clicks leave the processing view open after server synchronization");
+                shot("rock-stew-disabled-processors.png");
+                var button = screen.bounds(screen.getMenu().bound.screen().find("stage_stock_0").orElseThrow());
+                screen.mouseClicked(button.x() + 8, button.y() + 8, 0);
+                screen.mouseReleased(button.x() + 8, button.y() + 8, 0);
+                stage = 7;
+                frames = 0;
+            } else if ((stage == 7 || stage == 8) && mc.screen instanceof MachineScreen screen) {
+                int expected = stage == 7 ? 0 : 1;
+                mc.getSingleplayerServer().submit(() -> {
+                    var processor = net.modcrafters.minecraft.industrialoverkill.stew.RockStewProcessor
+                        .from(mc.getSingleplayerServer().overworld().getBlockEntity(POS));
+                    check(processor.stockMode(0) == expected, "Exactly one stock transition per client click");
+                    check(processor.chain().target(0) == expected, "Source-only target follows None or One Run");
+                }).join();
+                var control = screen.getMenu().bound.screen().find("stage_stock_0").orElseThrow();
+                check(((Number) screen.getMenu().value(control, false)).intValue() == expected,
+                    "Displayed stock icon agrees with the server mode");
+                if (stage == 7) {
+                    var button = screen.bounds(control);
+                    screen.mouseClicked(button.x() + 8, button.y() + 8, 0);
+                    screen.mouseReleased(button.x() + 8, button.y() + 8, 0);
+                    stage = 8;
+                    frames = 0;
+                    return;
+                }
+                shot("rock-stew-one-run.png");
                 finished = true;
-                MMDLib.LOGGER.info("ROCK_STEW_CLIENT_PASS: model, fluids, output, declared ghost input, ghost drops and clear");
+                MMDLib.LOGGER.info("ROCK_STEW_CLIENT_PASS: model, two left-side tanks, compact stage columns, stock click and recipe selection");
                 mc.stop();
             }
         } catch (Throwable error) { fail(error); }
-    }
-
-    private static zone.moddev.mc.lib.gui.model.elements.SlotElement ghostSlot(MachineScreen screen) {
-        return screen.getMenu().elements.stream()
-            .filter(zone.moddev.mc.lib.gui.model.elements.SlotElement.class::isInstance)
-            .map(zone.moddev.mc.lib.gui.model.elements.SlotElement.class::cast)
-            .filter(zone.moddev.mc.lib.gui.model.elements.SlotElement::ghost).findFirst().orElseThrow();
-    }
-
-    private static void dropGhost(MachineScreen screen, zone.moddev.mc.lib.gui.model.elements.SlotElement ghost,
-        net.minecraft.world.item.Item item) {
-        var sample = new ItemStack(item, 64);
-        var drop = screen.presentation().capability(ghost,
-            zone.moddev.mc.lib.gui.client.IngredientDropHandler.class).orElseThrow();
-        var targets = drop.targets(zone.moddev.mc.lib.gui.client.IngredientTypes.ITEM, sample);
-        check(targets.size() == 1 && targets.getFirst().accept().test(sample), "Normal ghost-slot JEI drop accepted");
-        check(sample.getCount() == 64, "Sample is not consumed");
-    }
-
-    private static void checkMaskedFace(
-        java.util.List<net.minecraft.client.renderer.block.model.BakedQuad> running,
-        java.util.List<net.minecraft.client.renderer.block.model.BakedQuad> idle,
-        net.minecraft.client.renderer.texture.TextureAtlasSprite mask) {
-        int stride = net.neoforged.neoforge.client.model.IQuadTransformer.STRIDE;
-        int uv = net.neoforged.neoforge.client.model.IQuadTransformer.UV0;
-        int light = net.neoforged.neoforge.client.model.IQuadTransformer.UV2;
-        double area = 0;
-        int glowing = 0, ordinary = 0;
-        for (var quad : running) {
-            float u0 = Float.POSITIVE_INFINITY, v0 = u0;
-            float u1 = Float.NEGATIVE_INFINITY, v1 = u1;
-            for (int vertex = 0; vertex < 4; vertex++) {
-                float u = quad.getSprite().getUOffset(Float.intBitsToFloat(quad.getVertices()[vertex * stride + uv]));
-                float v = quad.getSprite().getVOffset(Float.intBitsToFloat(quad.getVertices()[vertex * stride + uv + 1]));
-                u0 = Math.min(u0, u); u1 = Math.max(u1, u);
-                v0 = Math.min(v0, v); v1 = Math.max(v1, v);
-            }
-            area += (u1 - u0) * (v1 - v0);
-            int x = Math.clamp((int) ((u0 + u1) * 0.5f * mask.contents().width()), 0, mask.contents().width() - 1);
-            int y = Math.clamp((int) ((v0 + v1) * 0.5f * mask.contents().height()), 0, mask.contents().height() - 1);
-            boolean expectedGlow = (mask.contents().getOriginalImage().getPixelRGBA(x, y) & 255) >= 128;
-            if (expectedGlow) {
-                glowing++;
-                check(!quad.isShade() && !quad.hasAmbientOcclusion(), "Only mask-selected pixels disable shading");
-                for (int vertex = 0; vertex < 4; vertex++)
-                    check(quad.getVertices()[vertex * stride + light] == net.minecraft.client.renderer.LightTexture.FULL_BRIGHT,
-                        "Mask-selected pixels render at full brightness");
-            } else {
-                ordinary++;
-                check(quad.isShade() == idle.getFirst().isShade()
-                    && quad.hasAmbientOcclusion() == idle.getFirst().hasAmbientOcclusion(),
-                    "Unmasked metal keeps ordinary lighting");
-            }
-        }
-        var base = idle.getFirst();
-        float minU = Float.POSITIVE_INFINITY, minV = minU;
-        float maxU = Float.NEGATIVE_INFINITY, maxV = maxU;
-        for (int vertex = 0; vertex < 4; vertex++) {
-            float u = base.getSprite().getUOffset(Float.intBitsToFloat(base.getVertices()[vertex * stride + uv]));
-            float v = base.getSprite().getVOffset(Float.intBitsToFloat(base.getVertices()[vertex * stride + uv + 1]));
-            minU = Math.min(minU, u); maxU = Math.max(maxU, u);
-            minV = Math.min(minV, v); maxV = Math.max(maxV, v);
-        }
-        check(Math.abs(area - (maxU - minU) * (maxV - minV)) < 0.0001,
-            "Mask partitions the face without overlapping glow geometry or losing area");
-        check(glowing > 0 && ordinary > 0, "Each switched face contains both cyan and normally lit metal");
     }
 
     private static void shot(String name) {

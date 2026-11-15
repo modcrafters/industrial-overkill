@@ -13,21 +13,16 @@ import javax.xml.namespace.QName;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
-import net.neoforged.fml.ModList;
 
 import zone.moddev.mc.lib.api.redstone.RedstoneControl;
 import zone.moddev.mc.lib.gui.load.ScreenAttribute;
 import zone.moddev.mc.lib.gui.load.ScreenTag;
 import zone.moddev.mc.lib.gui.load.ScreenTags;
-import zone.moddev.mc.lib.gui.model.Align;
 import zone.moddev.mc.lib.gui.model.Common;
-import zone.moddev.mc.lib.gui.model.Element;
 import zone.moddev.mc.lib.gui.model.ElementSnapshot;
 import zone.moddev.mc.lib.gui.model.ProcessorButtonState;
 import zone.moddev.mc.lib.gui.model.SlotKind;
 import zone.moddev.mc.lib.gui.model.SlotSize;
-import zone.moddev.mc.lib.gui.model.containers.BoxElement;
-import zone.moddev.mc.lib.gui.model.containers.SelectiveContainer;
 import zone.moddev.mc.lib.gui.model.elements.ItemSlotElement;
 import zone.moddev.mc.lib.gui.model.elements.ProcessorButtonElement;
 import zone.moddev.mc.lib.gui.runtime.ScreenClick;
@@ -36,10 +31,17 @@ import zone.moddev.mc.lib.gui.sync.ElementStateView;
 
 /** Gym-specific policies using MMDLib's standard slot and control presentation. */
 public final class GymScreenElements {
+    public static final net.minecraft.resources.ResourceLocation RECIPE_DRAWER = AnimalGym.id("gym_recipes");
+    public static final String RECIPE_DRAWER_ID = "gym_recipes";
     private static final String NAMESPACE = "https://moddev.zone/industrial-overkill/screen";
     private GymScreenElements() {
     }
     public static void register() {
+        zone.moddev.mc.lib.gui.drawer.DrawerRegistry.GLOBAL.register(RECIPE_DRAWER, context ->
+            context.screen().id().equals(AnimalGym.id("animal_gym"))
+                ? List.of(new zone.moddev.mc.lib.gui.drawer.DrawerDefinition(RECIPE_DRAWER, RECIPE_DRAWER_ID,
+                    zone.moddev.mc.lib.gui.drawer.DrawerPlacement.top(zone.moddev.mc.lib.gui.model.Edge.LEFT, 50)))
+                : List.of());
         ScreenTags.GLOBAL.register(new QName(NAMESPACE, "food-slot"),
             ScreenTag
                 .element(FoodSlot.class,
@@ -49,9 +51,7 @@ public final class GymScreenElements {
         ScreenTags.GLOBAL.register(new QName(NAMESPACE, "run-button"),
             ScreenTag.element(RunButton.class, xml -> new RunButton(xml.common())).group("buttons")
                 .build());
-        ScreenTags.GLOBAL.register(new QName(NAMESPACE, "jei-only"),
-            ScreenTag.element(JeiOnly.class, xml -> new JeiOnly(xml.common(), xml.children()))
-                .children("widget", 1, -1).build());
+
     }
 
     public static final class FoodSlot extends ItemSlotElement {
@@ -136,14 +136,4 @@ public final class GymScreenElements {
         }
     }
 
-    /** Keep the same definition on both sides; JEI links are client-only interactions. */
-    public static final class JeiOnly extends BoxElement implements SelectiveContainer {
-        public JeiOnly(Common common, List<Element> children) {
-            super(common, true, 0, 0, Align.CENTER, children);
-        }
-        @Override
-        public boolean childVisible(Element child, ElementStateView state) {
-            return ModList.get().isLoaded("jei");
-        }
-    }
 }

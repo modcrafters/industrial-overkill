@@ -30,18 +30,17 @@ import net.neoforged.neoforge.common.NeoForge;
 
 import zone.moddev.mc.lib.MMDLib;
 import zone.moddev.mc.lib.client.jei.MachineRecipeCategory;
-import zone.moddev.mc.lib.machine.neoforge.MachineContent;
+import net.modcrafters.minecraft.industrialoverkill.stew.RockStewRecipes;
 import zone.moddev.mc.lib.machine.recipe.MachineRecipe;
 import zone.moddev.mc.lib.machine.recipe.MachineRecipeEntry;
 
 /** Isolated JEI layout check, including a partial-fluid example for visual verification. */
 @JeiPlugin
 public final class RockStewJeiClientSmoke implements IModPlugin {
-    private IJeiRuntime runtime;
+    private static IJeiRuntime runtime;
+    private static boolean treeShown;
     private boolean started, shown, finished;
     private int ticks;
-    private int transferStage;
-    private zone.moddev.mc.lib.gui.client.MachineScreen transferScreen;
     private final long deadline = System.currentTimeMillis() + 180000;
 
     public RockStewJeiClientSmoke() {
@@ -56,7 +55,7 @@ public final class RockStewJeiClientSmoke implements IModPlugin {
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
-        this.runtime = runtime;
+        RockStewJeiClientSmoke.runtime = runtime;
     }
 
     @Override
@@ -80,10 +79,16 @@ public final class RockStewJeiClientSmoke implements IModPlugin {
             if (runtime == null || mc.level == null || mc.player == null || ++ticks < 40) return;
             ticks = 0;
             if (shown) {
-                checkGhostTransfer();
+                Screenshot.grab(mc.gameDirectory, "rock-stew-jei.png", mc.getMainRenderTarget(), ignored -> {});
+                var grinding = MachineRecipeCategory.recipeType(RockStewRecipes.GRINDING);
+                check(runtime.getRecipeManager().createRecipeLookup(grinding).get().count() == 2,
+                    "Both grinding recipes registered");
+                finished = true;
+                MMDLib.LOGGER.info("ROCK_STEW_JEI_PASS: source and grinding categories, fluid roles, amounts and layouts");
+                mc.stop();
                 return;
             }
-            var type = MachineContent.recipeType(ResourceLocation.parse("industrial_overkill:rock_stew"));
+            var type = RockStewRecipes.SOURCES;
             var jeiType = MachineRecipeCategory.recipeType(type);
             var manager = runtime.getRecipeManager();
             var category = manager.getRecipeCategory(jeiType);
@@ -93,7 +98,7 @@ public final class RockStewJeiClientSmoke implements IModPlugin {
                 var layout = manager.createRecipeLayoutDrawable(category, recipe,
                     runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup()).orElseThrow();
                 var slots = layout.getRecipeSlotsView();
-                check(slots.getSlotViews(RecipeIngredientRole.RENDER_ONLY).size() == 1, "One ghost sample");
+                check(slots.getSlotViews(RecipeIngredientRole.RENDER_ONLY).isEmpty(), "No ghost sample");
                 int reusable = 2;
                 check(slots.getSlotViews(RecipeIngredientRole.CATALYST).size() == reusable, "Reusable fluid catalysts");
                 for (var catalyst : slots.getSlotViews(RecipeIngredientRole.CATALYST)) {
@@ -104,7 +109,8 @@ public final class RockStewJeiClientSmoke implements IModPlugin {
                     check(tooltip.stream().anyMatch(line -> line.getString().equals("Not consumed")),
                         "Amount and non-consumption are both shown");
                 }
-                check(slots.getSlotViews(RecipeIngredientRole.INPUT).size() == (recipe.value().recipe().inputs().containsKey("reagent") ? 1 : 0), "Only consumed fluids are inputs");
+                check(slots.getSlotViews(RecipeIngredientRole.INPUT).size() == recipe.value().recipe().inputs().values().stream().flatMap(List::stream)
+                    .filter(part -> part instanceof zone.moddev.mc.lib.machine.ingredient.MachineIngredient.FluidPart fluid && fluid.consumed()).count(), "Only consumed fluids are inputs");
                 check(slots.getSlotViews(RecipeIngredientRole.OUTPUT).size() == 1, "One product");
             }
             var example = MachineRecipe.CODEC.codec().parse(mc.level.registryAccess().createSerializationContext(JsonOps.INSTANCE),
@@ -133,87 +139,60 @@ public final class RockStewJeiClientSmoke implements IModPlugin {
         }
     }
 
+    /** Exercises the registered handler behind JEI's native + button against the open machine menu. */
     @SuppressWarnings("removal")
-    private void checkGhostTransfer() {
-        var mc = Minecraft.getInstance();
-        var pos = new net.minecraft.core.BlockPos(0, 100, 0);
-        if (transferStage == 0) {
-            Screenshot.grab(mc.gameDirectory, "rock-stew-jei-ghosts.png", mc.getMainRenderTarget(), ignored -> {});
-            mc.getSingleplayerServer().submit(() -> {
-                var player = mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
-                var level = player.serverLevel();
-                for (int x = -3; x <= 3; x++)
-                    for (int z = -3; z <= 3; z++)
-                        level.setBlock(new net.minecraft.core.BlockPos(x, 99, z),
-                            net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 3);
-                level.setBlock(pos, net.minecraft.core.registries.BuiltInRegistries.BLOCK
-                    .get(RockStewTests.ID).defaultBlockState(), 3);
-                player.setGameMode(GameType.SURVIVAL);
-                player.getInventory().clearContent();
-                player.connection.teleport(2.5, 100, 2.5, 0, 0);
-            }).join();
-            transferStage = 1;
-            return;
-        }
-        if (transferStage == 1) {
-            if (mc.level.getBlockEntity(pos) == null) return;
-            mc.getSingleplayerServer().submit(() -> {
-                var player = mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
-                check(zone.moddev.mc.lib.gui.runtime.ScreenRuntime.open(player, player.serverLevel().getBlockEntity(pos)),
-                    "Open machine after its block entity reaches the client");
-            }).join();
-            transferStage = 2;
-            return;
-        }
-        if (transferStage == 2) {
-            if (!(mc.screen instanceof zone.moddev.mc.lib.gui.client.MachineScreen screen)) return;
-            transferScreen = screen;
-        }
-        var menu = transferScreen.getMenu();
-        var ghost = menu.elements.stream()
-            .filter(zone.moddev.mc.lib.gui.model.elements.SlotElement.class::isInstance)
-            .map(zone.moddev.mc.lib.gui.model.elements.SlotElement.class::cast)
-            .filter(zone.moddev.mc.lib.gui.model.elements.SlotElement::ghost).findFirst().orElseThrow();
-        var type = MachineRecipeCategory.recipeType(MachineContent.recipeType(ResourceLocation.parse("industrial_overkill:rock_stew")));
+    public static boolean selectTreeFromMachine() {
+        if (runtime == null) return false;
+        var type = net.modcrafters.minecraft.industrialoverkill.client.jei.RockStewTreeCategory.TYPE;
         var manager = runtime.getRecipeManager();
         var category = manager.getRecipeCategory(type);
-        var recipe = manager.createRecipeLookup(type).get()
-            .filter(holder -> holder.id().getPath().equals("rock_stew/basalt")).findFirst().orElseThrow();
-        var layout = manager.createRecipeLayoutDrawable(category, recipe,
+        var entry = manager.createRecipeLookup(type).get()
+            .filter(page -> page.source().equals(RockStewRecipes.id("rock_stew/stone")) && page.node() == 0).findFirst().orElseThrow();
+        if (!treeShown) {
+            var obsidian = manager.createRecipeLookup(type).get()
+                .filter(page -> page.source().equals(RockStewRecipes.id("rock_stew/obsidian")) && page.node() == 0)
+                .findFirst().orElseThrow();
+            runtime.getRecipesGui().showRecipes(category, List.of(entry, obsidian), List.of());
+            treeShown = true;
+            return false;
+        }
+        var parent = runtime.getRecipesGui().getParentScreen().orElse(null);
+        check(parent instanceof zone.moddev.mc.lib.gui.client.MachineScreen, "JEI retains the machine as its parent");
+        var layout = manager.createRecipeLayoutDrawable(category, entry,
             runtime.getJeiHelpers().getFocusFactory().getEmptyFocusGroup()).orElseThrow();
+        check(category.getHeight() == net.modcrafters.minecraft.industrialoverkill.client.RockStewTreeRenderer.ROW_HEIGHT,
+            "Each JEI recipe occupies one row");
+        check(layout.getRecipeSlotsView().getSlotViews(RecipeIngredientRole.OUTPUT).size() == 1,
+            "Only the destination is the recipe output");
+        var shared = ((net.modcrafters.minecraft.industrialoverkill.client.jei.RockStewTreeCategory) category).presentation(entry);
+        check(shared.items().getFirst().x() == 49 && shared.items().getFirst().stack().is(net.minecraft.world.item.Items.STONE),
+            "JEI delegates to the same native-scale item positions and stacks as the drawer");
+        check(entry.row().lava().retained() == 1000 && entry.row().lava().consumed() == 100,
+            "JEI uses the same retained and consumed source-fluid amounts");
+        check(shared.tooltips().get(0).lines().stream().map(net.minecraft.network.chat.Component::getString).toList()
+            .equals(List.of("Water", "0 ml consumed")), "Water recipe tooltip shows only consumption");
+        check(shared.tooltips().get(1).lines().stream().map(net.minecraft.network.chat.Component::getString).toList()
+            .equals(List.of("Lava", "100 ml consumed")), "Lava recipe tooltip omits retained and total requirements");
+        var mc = Minecraft.getInstance();
+        Screenshot.grab(mc.gameDirectory, "rock-stew-jei-fluids.png", mc.getMainRenderTarget(), ignored -> {});
+        layout.setPosition(0, 0);
+        layout.tick(); // JEI creates recipe extras lazily on the first draw/tick.
+        var menu = ((zone.moddev.mc.lib.gui.client.MachineScreen) parent).getMenu();
         var handler = runtime.getRecipeTransferManager().getRecipeTransferHandler(menu, category).orElseThrow();
-        if (transferStage == 2) {
-            check(mc.player.getInventory().isEmpty(), "Selection needs no sample item in inventory");
-            check(handler.transferRecipe(menu, recipe, layout.getRecipeSlotsView(), mc.player, false, false) == null,
-                "JEI plus button enabled with empty inventory, tanks and energy");
-            check(menu.slot(ghost).getItem().is(net.minecraft.world.item.Items.COBBLESTONE),
-                "Transfer validation does not alter the ghost");
-            runtime.getRecipesGui().showRecipes(category, List.of(recipe), List.of());
-            transferStage = 3;
-            return;
-        }
-        if (transferStage == 3) {
-            Screenshot.grab(mc.gameDirectory, "rock-stew-jei-select-button.png", mc.getMainRenderTarget(), ignored -> {});
-            check(handler.transferRecipe(menu, recipe, layout.getRecipeSlotsView(), mc.player, true, true) == null,
-                "JEI transfer selects the ghost while recipes cover the machine screen");
-            transferStage = 4;
-            return;
-        }
-        if (!menu.slot(ghost).getItem().is(net.minecraft.world.item.Items.BASALT)) return;
-        mc.getSingleplayerServer().submit(() -> {
-            var player = mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
-            var machine = (zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity) player.serverLevel().getBlockEntity(pos);
-            check(machine.screenGhost("input", 0).is(net.minecraft.world.item.Items.BASALT)
-                && machine.screenGhost("input", 0).getCount() == 1, "Server accepted exactly one ghost sample");
-            check(player.getInventory().isEmpty() && machine.energy.stored() == 0, "Selection creates no items or energy");
-            for (int tank = 0; tank < 3; tank++)
-                check(machine.fluids.getFluidInTank(tank).isEmpty(), "Selection does not fill tanks");
-            for (int slot = 0; slot < machine.items.getSlots(); slot++)
-                check(machine.items.getStackInSlot(slot).isEmpty(), "Selection does not create output");
-        }).join();
-        finished = true;
-        MMDLib.LOGGER.info("ROCK_STEW_JEI_PASS: ghost roles, amounts, layouts and JEI recipe selection synchronized to server");
-        mc.stop();
+        check(handler.getRecipeType().equals(type), "Production paths register a native JEI Apply handler");
+        var player = Minecraft.getInstance().player;
+        var target = menu.bound.screen().find("stage_processor_0").orElseThrow();
+        check(!menu.elementPending(target), "No request pending before Apply availability check");
+        check(handler.transferRecipe(menu, entry, layout.getRecipeSlotsView(), player, false, false) == null,
+            "JEI enables Apply without requiring recipe ingredients in player inventory");
+        check(!menu.elementPending(target), "Checking Apply availability does not submit a selection");
+        check(handler.transferRecipe(menu, entry, layout.getRecipeSlotsView(), player, false, true) == null,
+            "JEI Apply submits the selected path");
+        return true;
+    }
+
+    public static void returnToMachine() {
+        Minecraft.getInstance().setScreen(runtime.getRecipesGui().getParentScreen().orElseThrow());
     }
 
     private static void check(boolean value, String message) {
