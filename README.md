@@ -7,23 +7,18 @@ NeoForge 1.21.1 / Java 21 mod using MMDLib. The entry point is
 
 This is a development version. MMDLib is a required, separate mod; JEI is optional.
 
-The XML machines require the accompanying MMDLib changes for inherited machine
-features, stored processors, XML actions, conditional shapes, recipe chains, and
-restoration of resource reservations before the first tick. Use the local
-development workflow below until those changes are released and `mmdlib_version`
-is updated.
-The currently pinned public release does not contain these APIs.
+The XML machines use MMDLib's inherited machine features, stored processors,
+XML actions, conditional shapes, recipe chains, and resource reservation
+restoration. The published MMDLib dependency is pinned in `gradle.properties`.
 
 ## Getting started
 
-Install Java 21 and clone this repository. This development checkout currently
-requires the local MMDLib workflow below; the published pin must be updated after
-the required library APIs are released:
+Install Java 21, clone this repository, and build against the published MMDLib pin.
 
 ```sh
 git clone https://github.com/modcrafters/industrial-overkill.git
 cd industrial-overkill
-./gradlew build
+./gradlew build -PmmdlibUseLocal=false
 ```
 
 On Windows, use `gradlew.bat` in place of `./gradlew`. `build` includes the server
@@ -248,9 +243,6 @@ the MMDLib creative tab. XML binds it with `capacitor-slot="upgrades/5"` on `<up
 
 Upgrades are permanent and never wear out. MMDLib's `machine-upgrades`
 element supplies this layout; mods can replace the component icons in XML.
-These controls require the new local
-MMDLib working-area and upgrades-drawer APIs; the published dependency pin still
-needs a release containing this work.
 
 ## Ranch Controller
 
@@ -861,10 +853,9 @@ Animal Gym uses MMDLib's **multiblock implementation**. Rock Stew Factory uses
 `rock_stew_factory_casing.json` for the casing and declares its powered overlays
 and per-stage progress lights in its machine XML. Component notifications update
 the appearance as processor state changes.
-Use a local publication that also provides the stored processor/action APIs used
-by Critter Courier, plus RecipeChain, RecipeOperations and the resource-restoration
-hook used by Rock Stew. CI uses the pinned published version and will need a new
-MMDLib release and dependency update before this migration can be published.
+Use a local publication that provides the stored processor and action APIs used
+by Critter Courier, plus RecipeChain, RecipeOperations, and the resource
+restoration hook used by Rock Stew. CI uses the pinned published version.
 
 Then, in this project:
 
