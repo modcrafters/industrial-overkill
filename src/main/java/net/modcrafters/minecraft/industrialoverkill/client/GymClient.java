@@ -2,6 +2,7 @@ package net.modcrafters.minecraft.industrialoverkill.client;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Mob;
 
@@ -10,6 +11,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.ModelEvent;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
@@ -81,10 +83,21 @@ public final class GymClient {
         });
     }
     @SubscribeEvent
-    public static void models(
-        net.neoforged.neoforge.client.event.ModelEvent.RegisterAdditional event) {
+    public static void models(ModelEvent.RegisterAdditional event) {
+        event.register(GymRenderer.POWERED_SIDES);
+        event.register(GymRenderer.POWERED_DISPLAY);
+        for (var model : GymRenderer.EFFORT_LIGHTS)
+            event.register(model);
         for (var model : GymRenderer.LAMPS)
             event.register(model);
+    }
+    @SubscribeEvent
+    public static void controllerLighting(ModelEvent.ModifyBakingResult event) {
+        var controller = AnimalGym.id("animal_gym");
+        event.getModels().replaceAll((location, model) ->
+            location.id().equals(controller)
+                && !location.variant().equals(ModelResourceLocation.INVENTORY_VARIANT)
+                ? new GymControllerModel(model) : model);
     }
     @SubscribeEvent
     public static void renderers(EntityRenderersEvent.RegisterRenderers event) {

@@ -70,6 +70,7 @@ public final class RockStewProcessor extends StoredProcessor {
         return Processors.find(host, "rock_stew", RockStewProcessor.class).orElse(null);
     }
     private DefinedMachineEntity owner() { return (DefinedMachineEntity) machine; }
+    private zone.moddev.mc.lib.api.capabilities.ItemStorage output() { return owner().items.inventory("output"); }
     public RecipeChain chain() { return chain; }
     public Route route() { return route; }
     public Route displayRoute() { return route; }
@@ -77,8 +78,8 @@ public final class RockStewProcessor extends StoredProcessor {
         var shown = displayRoute();
         int count = Math.max(5, shown == null ? 0 : shown.steps().size());
         // Old outputs beyond a shorter new path must remain available for extraction.
-        for (int i = count; i < owner().items.getSlots(); i++)
-            if (!owner().items.getStackInSlot(i).isEmpty()) count = i + 1;
+        for (int i = count; i < output().getSlots(); i++)
+            if (!output().getStackInSlot(i).isEmpty()) count = i + 1;
         return count;
     }
     public int stockMode(int index) {
@@ -109,10 +110,10 @@ public final class RockStewProcessor extends StoredProcessor {
         var shown = displayRoute();
         if (shown == null || index < 0 || index >= shown.steps().size()) return false;
         var product = shown.steps().get(index).product();
-        var held = owner().items.getStackInSlot(index);
+        var held = output().getStackInSlot(index);
         if (!held.isEmpty() && !ItemStack.isSameItemSameComponents(held, product)) return true;
         return (long) held.getCount() + product.getCount()
-            > Math.min(owner().items.getSlotLimit(index), product.getMaxStackSize());
+            > Math.min(output().getSlotLimit(index), product.getMaxStackSize());
     }
 
     public boolean switching() { return chain != null && chain.draining(); }
@@ -191,19 +192,15 @@ public final class RockStewProcessor extends StoredProcessor {
     }
 
     private void installClaims() {
-        var items = owner().items;
-        for (var storage : java.util.stream.IntStream.range(0, items.getSlots()).mapToObj(items::storage).distinct().toList()) {
-            // All output stages share this named physical inventory.
-            storage.pendingClaims(index -> chain != null && index < chain.size()
-                && !paused() && executionStatus() != ProcessState.HELD && fault.isEmpty()
-                ? chain.pendingTake(index) : 0);
-        }
+        output().pendingClaims(index -> chain != null && index < chain.size()
+            && !paused() && executionStatus() != ProcessState.HELD && fault.isEmpty()
+            ? chain.pendingTake(index) : 0);
     }
 
     private RecipeChain bind(Route selected) {
         var host = owner();
         var outputs = java.util.stream.IntStream.range(0, selected.steps().size())
-            .mapToObj(i -> StorageGroups.items(host.items, i)).toList();
+            .mapToObj(i -> StorageGroups.items(output(), i)).toList();
         var steps = new ArrayList<RecipeChain.Step>();
         for (int i = 0; i < selected.steps().size(); i++) {
             var inventory = MachineInventory.builder().group("output", outputs.get(i))
@@ -264,16 +261,21 @@ public final class RockStewProcessor extends StoredProcessor {
             return result == RecipeCycle.Result.STALLED ? ProcessState.STALLED
                 : result == RecipeCycle.Result.BLOCKED ? ProcessState.BLOCKED : ProcessState.RUNNING;
         }
+        boolean usedEnergy = false;
         if (chain != null) {
+            var energy = owner().energy;
+            var usedBefore = energy.used();
             chain.paused(false);
             chain.held(false);
             chain.tick(context.level().random, stage -> stage != 0 || sourceFluidsReady());
+            usedEnergy = !energy.used().equals(usedBefore);
         }
         boolean active = chain != null && java.util.stream.IntStream.range(0, chain.size())
             .anyMatch(i -> chain.cycle(i).plan().isPresent());
         boolean stalled = active && java.util.stream.IntStream.range(0, chain.size())
             .anyMatch(i -> chain.result(i) == RecipeCycle.Result.STALLED);
-        variables.set(running, active && !stalled);
+        // A later stage can stall after earlier stages have already done work.
+        variables.set(running, usedEnergy || (active && !stalled));
         updateProgressLights();
         persist();
         return stalled ? ProcessState.STALLED : active ? ProcessState.RUNNING
@@ -431,7 +433,7 @@ public final class RockStewProcessor extends StoredProcessor {
     private MachineInventory legacyInventory() {
         var host = owner();
         return MachineInventory.builder()
-            .group("output", StorageGroups.items(host.items, java.util.stream.IntStream.range(0, host.items.getSlots()).toArray()))
+            .group("output", StorageGroups.items(output(), java.util.stream.IntStream.range(0, output().getSlots()).toArray()))
             .group("water", StorageGroups.fluids(host.fluids, 0)).group("lava", StorageGroups.fluids(host.fluids, 1))
             .group("energy", StorageGroups.energy(host.energy)).build();
     }

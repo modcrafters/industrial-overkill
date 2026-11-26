@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
+         extends="industrial_overkill:base_powered_machine" name="Ranch Controller">
+  <appearance preset="model" model="industrial_overkill:block/ranch_controller_body">
+    <part id="powered_sides" model="industrial_overkill:block/machine/ranching_powered_sides"
+          when="$energy.energy.stored &gt;= 100 &amp;&amp; !$processors.ranch.paused &amp;&amp; !$processors.ranch.held"/>
+  </appearance>
+  <visualizers range-color="#F4C85B" work-color="#FFD66F"/>
+  <feature id="upgrades" range-storage="upgrades"/>
+  <feature id="ranch_client_state" type="industrial_overkill:ranch_client_state"/>
+  <storage>
+    <items id="items">
+      <slots id="food" name="Feed" count="6" role="input" filter-processor="ranch"/>
+      <slots id="shears" name="Shears" count="1" role="input" limit="1" item-tag="c:tools/shear" filter-processor="ranch"/>
+      <slots id="containers" name="Fluid Containers" count="1" role="input" filter-processor="ranch"/>
+      <slots id="couriers" name="Empty Critter Couriers" count="1" role="input" filter-processor="ranch"/>
+      <slots id="output" name="Ranch Output" count="9" role="output"/>
+      <slots id="upgrades" name="Upgrades" count="9" role="manual" automation="false"
+             item-tag="industrial_overkill:ranch_upgrades"/>
+    </items>
+    <fluids id="fluids">
+      <tank id="milk" name="Milk" capacity="10000" role="output" fluid="minecraft:milk"/>
+    </fluids>
+  </storage>
+  <processor id="ranch" class="net.modcrafters.minecraft.industrialoverkill.ranch.RanchControllerProcessor"/>
+  <screen xmlns="https://moddev.zone/mmdlib/screen" xmlns:ranch="https://moddev.zone/industrial-overkill/screen">
+    <fill name="machine">
+      <hbox spacing="6" align="center">
+        <inventory id="ranch_food" storage="food" columns="2" spacing="2" slot-tooltip="ranch.feed"/>
+        <vbox spacing="2" align="center">
+          <inventory storage="shears">
+            <ranch:tool-slot id="ranch_shears_slot" tool="shears" tooltip="ranch.shears"/>
+          </inventory>
+          <inventory storage="containers">
+            <ranch:tool-slot id="ranch_containers_slot" tool="bucket" tooltip="ranch.containers"/>
+          </inventory>
+          <inventory storage="couriers">
+            <ranch:tool-slot id="ranch_couriers_slot" tool="courier" tooltip="ranch.couriers"/>
+          </inventory>
+        </vbox>
+        <sprite id="ranch_flow" sprite="industrial_overkill:ranch_flow" width="16" height="16"/>
+        <inventory id="ranch_output" storage="output" columns="3" spacing="2" slot-tooltip="ranch.output"/>
+      </hbox>
+    </fill>
+    <fill name="inventory_controls">
+      <inventory-controls id="inventory_controls">
+        <processor-button id="toggle_0"/>
+        <working-area-button id="working_area"/>
+      </inventory-controls>
+    </fill>
+    <fill name="upgrades">
+      <upgrades-drawer id="upgrades">
+        <machine-upgrades storage="upgrades"/>
+        <ranch:ranch-settings id="ranch_adults_target_settings">
+          <label text="ranch.adults_target"/>
+          <hbox spacing="2" align="center">
+            <button id="adults_target_down" processor="ranch" on-click="industrial_overkill:adults_target_down"
+                    flat="true" icon="industrial_overkill:ranch_target_minus" tooltip="ranch.adults_target.down"/>
+            <label id="adults_target" variable="$processors.ranch.adults_target" width="16" height="10"/>
+            <button id="adults_target_up" processor="ranch" on-click="industrial_overkill:adults_target_up"
+                    flat="true" icon="industrial_overkill:ranch_target_plus" tooltip="ranch.adults_target.up"/>
+          </hbox>
+        </ranch:ranch-settings>
+      </upgrades-drawer>
+    </fill>
+  </screen>
+</machine>

@@ -1,0 +1,6 @@
+<machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
+         abstract="true" extends="mmdlib:base_powered_machine">
+  <feature id="redstone" default-mode="pause-while-powered">
+    <drawer order="20"/>
+  </feature>
+</machine>

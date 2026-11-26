@@ -113,6 +113,12 @@ public final class CritterCourierClientSmoke {
         if (!value)
             throw new AssertionError(message);
     }
+    private static void checkBreakParticles(Minecraft mc) {
+        var model = mc.getBlockRenderer().getBlockModel(mc.level.getBlockState(TRAP));
+        var sprite = model.getParticleIcon().contents().name();
+        check(sprite.equals(AnimalGym.id("block/gym_panel")),
+            "Courier break particles use the steel panel texture, got " + sprite);
+    }
     private static ServerPlayer player() {
         return Minecraft.getInstance().getSingleplayerServer().getPlayerList().getPlayers()
             .getFirst();
@@ -201,6 +207,7 @@ public final class CritterCourierClientSmoke {
                 mc.options.hideGui = true;
                 if (frames < 40)
                     return;
+                checkBreakParticles(mc);
                 shot("critter-courier-armed.png");
                 next(101);
                 server(() -> player().connection.teleport(4.5, 101.5, -2.5, 34, 39));
@@ -215,6 +222,7 @@ public final class CritterCourierClientSmoke {
                     player().serverLevel().addFreshEntity(chicken);
                 });
             } else if (stage == 1 && trap != null && trap.occupied()) {
+                checkBreakParticles(mc);
                 shot("critter-courier-occupied-above.png");
                 next(103);
                 server(() -> player().connection.teleport(.2, 100, 3.5, -143, 15));

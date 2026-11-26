@@ -1,0 +1,28 @@
+{
+  "parent": "industrial_overkill:block/machine/agricultural",
+  "loader": "neoforge:composite",
+  "children": {
+    "casing": {
+      "parent": "industrial_overkill:block/machine/agricultural",
+      "textures": {
+        "top": "industrial_overkill:block/agricultural/agri_brain/top"
+      }
+    },
+    "decals": {
+      "render_type": "minecraft:cutout",
+      "textures": {
+        "particle": "#front",
+        "front": "industrial_overkill:block/agricultural/agri_brain/front"
+      },
+      "elements": [
+        {
+          "from": [0, 0, -0.005],
+          "to": [16, 16, -0.005],
+          "faces": {
+            "north": {"texture": "#front", "cullface": "north"}
+          }
+        }
+      ]
+    }
+  }
+}

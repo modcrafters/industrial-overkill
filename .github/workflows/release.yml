@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+-alpha"
+      - "[0-9]+.[0-9]+.[0-9]+-beta"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-alpha"
+      - "v[0-9]+.[0-9]+.[0-9]+-beta"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build the tagged version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      channel: ${{ steps.tag.outputs.channel }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the release tag
+        id: tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor HEAD origin/main || {
+            echo "Tag a commit that is already on main." >&2
+            exit 1
+          }
+          version=${RELEASE_TAG#v}
+          part='(0|[1-9][0-9]*)'
+          [[ "$version" =~ ^${part}\.${part}\.${part}(-alpha|-beta)?$ ]] || {
+            echo "Use a version tag such as v0.1.0, v0.1.0-alpha, or v0.1.0-beta." >&2
+            exit 1
+          }
+          channel=${BASH_REMATCH[4]#-}
+          printf 'version=%s\nchannel=%s\n' "$version" "${channel:-release}" >> "$GITHUB_OUTPUT"
+
+      - name: Test release publishing with mocked services
+        run: bash .github/scripts/test-release-publish.sh
+
+      - name: Check publishing configuration
+        env:
+          CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: bash .github/scripts/release-publish.sh check-env
+
+      - uses: gradle/actions/wrapper-validation@v6
+      - uses: actions/setup-java@v6
+        with:
+          distribution: microsoft
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build against published MMDLib
+        env:
+          TAG: ${{ steps.tag.outputs.version }}
+        run: bash ./gradlew build -PmmdlibUseLocal=false
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-jar
+          path: build/libs/industrial-overkill-${{ steps.tag.outputs.version }}.jar
+          if-no-files-found: error
+
+  publish:
+    name: Publish the release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: release-jar
+          path: jars
+
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f "tag_name=$TAG" --jq .body > release-notes.md
+
+      - name: Upload the JAR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_TYPE: ${{ needs.build.outputs.channel }}
+          CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        run: bash .github/scripts/release-publish.sh upload "$VERSION" release-notes.md "jars/industrial-overkill-${VERSION}.jar"

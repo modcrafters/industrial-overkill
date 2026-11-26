@@ -3,9 +3,14 @@ package net.modcrafters.minecraft.industrialoverkill.test;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
@@ -30,6 +35,8 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
+import net.neoforged.neoforge.client.model.IQuadTransformer;
+import net.neoforged.neoforge.client.model.data.ModelData;
 
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.client.GymAnimalAnimation;
@@ -250,6 +257,20 @@ public final class GymClientSmoke {
                 if (mc.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK,
                     POS.west().above()) < 12)
                     throw new AssertionError("Working lamps must illuminate the animal space");
+                verifyGantryLighting(mc);
+                var atlas = mc.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
+                var faceAtlasId = AnimalGym.id("block/gym_attachment_faces");
+                var faceAtlas = atlas.apply(faceAtlasId).contents();
+                if (!faceAtlas.name().equals(faceAtlasId) || faceAtlas.width() != 512
+                    || faceAtlas.height() != 256)
+                    throw new AssertionError("Missing Gym attachment face atlas");
+                for (String material : java.util.List.of("panel", "dark", "trim", "gold", "bolt",
+                    "hazard", "belt", "light", "light_off", "work_light")) {
+                    var spriteId = AnimalGym.id("block/gym_" + material);
+                    var sprite = atlas.apply(spriteId).contents();
+                    if (!sprite.name().equals(spriteId) || sprite.width() != 32 || sprite.height() != 32)
+                        throw new AssertionError("Missing 32×32 Gym attachment sprite " + spriteId);
+                }
                 for (String name : java.util.List.of("gym_belt_lamp", "gym_belt_end_lamp",
                     "gym_belt_lamp_off", "gym_belt_end_lamp_off")) {
                     var model = mc.getModelManager()
@@ -257,8 +278,29 @@ public final class GymClientSmoke {
                             .standalone(AnimalGym.id("block/" + name)));
                     var quads = model.getQuads(null, null,
                         net.minecraft.util.RandomSource.create(42));
-                    if (model == mc.getModelManager().getMissingModel() || quads.size() != 6)
-                        throw new AssertionError("Lamp glass must bake all six faces: " + name);
+                    if (model == mc.getModelManager().getMissingModel() || quads.size() != 12)
+                        throw new AssertionError("Work lamps must bake a lens on each side: " + name);
+                }
+                var poweredSides = mc.getModelManager()
+                    .getModel(net.minecraft.client.resources.model.ModelResourceLocation
+                        .standalone(AnimalGym.id("block/machine/generator_powered_sides")));
+                var poweredQuads = poweredSides.getQuads(null, null,
+                    net.minecraft.util.RandomSource.create(42));
+                var poweredTexture = AnimalGym.id("block/generator/_base/side_powered");
+                if (poweredSides == mc.getModelManager().getMissingModel()
+                    || poweredQuads.size() != 4 || poweredQuads.stream().anyMatch(quad ->
+                        !quad.getSprite().contents().name().equals(poweredTexture)))
+                    throw new AssertionError(
+                        "Controller overlay must bake four generator light faces");
+                for (var quad : poweredQuads) {
+                    var face = quad.getDirection();
+                    int axis = face.getAxis() == Direction.Axis.X ? 0 : 2;
+                    float plane = face.getAxisDirection() == Direction.AxisDirection.POSITIVE ? 1 : 0;
+                    for (int vertex = 0; vertex < 4; vertex++) {
+                        int offset = vertex * IQuadTransformer.STRIDE + IQuadTransformer.POSITION;
+                        if (Float.intBitsToFloat(quad.getVertices()[offset + axis]) != plane)
+                            throw new AssertionError("Controller lights must sit flush on " + face);
+                    }
                 }
                 shot("animal-gym-lights-on-night.png");
                 mc.options.hideGui = false;
@@ -469,6 +511,22 @@ public final class GymClientSmoke {
             fail(failure);
         }
     }
+    private static void verifyGantryLighting(Minecraft mc) {
+        var level = mc.level;
+        var state = level.getBlockState(POS);
+        var model = mc.getBlockRenderer().getBlockModel(state);
+        var data = model.getModelData(level, POS, state, ModelData.EMPTY);
+        var quads = model.getQuads(state, null, RandomSource.create(42), data, RenderType.solid());
+        // The beam underside is within the block above the controller.
+        var underside = quads.stream().filter(quad -> quad.getDirection() == Direction.DOWN
+            && Float.intBitsToFloat(quad.getVertices()[IQuadTransformer.POSITION + 1]) == 27.5f / 16)
+            .findFirst().orElseThrow(() -> new AssertionError("Missing controller beam underside"));
+        int aboveLight = LevelRenderer.getLightColor(level, POS.above());
+        if (LightTexture.block(aboveLight) == 0
+            || underside.getVertices()[IQuadTransformer.UV2] != aboveLight)
+            throw new AssertionError("Controller beam must use the light above the casing");
+    }
+
     private static void recordEating(AnimalGymEntity gym) {
         float age = gym.feeding.age(0);
         if (!sawMealContact && age >= 6 && age < 12) {

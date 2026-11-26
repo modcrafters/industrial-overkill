@@ -1,5 +1,8 @@
 package net.modcrafters.minecraft.industrialoverkill.test;
 
+import java.util.List;
+import java.util.Map;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -30,7 +33,11 @@ import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalFit;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimals;
+import net.modcrafters.minecraft.industrialoverkill.gym.GymBlock;
 import zone.moddev.mc.lib.machine.multiblock.MultiblockInstance;
+import zone.moddev.mc.lib.machine.multiblock.ResolvedStructure;
+import zone.moddev.mc.lib.machine.multiblock.StructureMember;
+import zone.moddev.mc.lib.machine.multiblock.StructureRequirement;
 import zone.moddev.mc.lib.machine.neoforge.MultiblockMembers;
 import zone.moddev.mc.lib.machine.neoforge.MultiblockPorts;
 
@@ -192,6 +199,19 @@ public final class AnimalGymTests {
     }
     @GameTest(template = "gym_empty")
     public static void placementRotatesAndRejectsClearance(GameTestHelper helper) {
+        var legacyLayout = new ResolvedStructure(List.of(
+            new StructureMember("controller", "controller", BlockPos.ZERO,
+                AnimalGym.CONTROLLER.get().defaultBlockState()),
+            new StructureMember("belt_1", "belt", new BlockPos(-1, 0, 0),
+                AnimalGym.BELT.get().defaultBlockState()),
+            new StructureMember("belt_2", "belt", new BlockPos(-2, 0, 0),
+                AnimalGym.BELT.get().defaultBlockState().setValue(GymBlock.END, true))),
+            List.of(new StructureRequirement("clearance", new BlockPos(0, 1, 0), true),
+                new StructureRequirement("clearance", new BlockPos(-1, 1, 0), true),
+                new StructureRequirement("clearance", new BlockPos(-2, 1, 0), true)), Map.of());
+        var definition = AnimalGym.definition();
+        require(definition.version() == 2 && definition.resolver().accepts(legacyLayout),
+            "The XML definition accepts version 2 manifests from the Java layout");
         for (var facing : Direction.Plane.HORIZONTAL) {
             var gym = place(helper, facing);
             require(gym.multiblock().ready() && gym.multiblock().structure().members().size() == 3,

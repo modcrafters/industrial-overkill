@@ -1,0 +1,36 @@
+{
+  "parent": "industrial_overkill:block/machine/agricultural",
+  "loader": "neoforge:composite",
+  "children": {
+    "casing": {
+      "parent": "industrial_overkill:block/machine/agricultural"
+    },
+    "decals": {
+      "render_type": "minecraft:cutout",
+      "textures": {
+        "particle": "#back",
+        "back": "industrial_overkill:block/agricultural/fertilizer_maker/back"
+      },
+      "elements": [
+        {
+          "from": [
+            0,
+            0,
+            -0.01
+          ],
+          "to": [
+            16,
+            16,
+            16.03
+          ],
+          "faces": {
+            "south": {
+              "texture": "#back",
+              "cullface": "south"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

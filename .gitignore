@@ -44,6 +44,7 @@ __pycache__/
 *.keystore
 
 # OS and editor leftovers
+/.sprite-room/backups/
 .DS_Store
 Thumbs.db
 Desktop.ini

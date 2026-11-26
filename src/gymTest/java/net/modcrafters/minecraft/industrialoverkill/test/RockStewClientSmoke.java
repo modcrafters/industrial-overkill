@@ -3,11 +3,15 @@ package net.modcrafters.minecraft.industrialoverkill.test;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameRules;
@@ -23,11 +27,14 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
+import net.neoforged.neoforge.client.model.IQuadTransformer;
+import net.neoforged.neoforge.client.model.data.ModelData;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import zone.moddev.mc.lib.MMDLib;
 import zone.moddev.mc.lib.gui.client.MachineScreen;
 import zone.moddev.mc.lib.gui.runtime.ScreenRuntime;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
+import zone.moddev.mc.lib.machine.neoforge.MachineVisualState;
 
 @EventBusSubscriber(modid = IndustrialOverkill.MOD_ID, value = Dist.CLIENT)
 public final class RockStewClientSmoke {
@@ -138,15 +145,29 @@ public final class RockStewClientSmoke {
                         var data = rotatedModel.getModelData(mc.level, POS, rotatedState, snapshot);
                         for (var side : Direction.values()) {
                             var base = rotatedModel.getQuads(rotatedState, side, net.minecraft.util.RandomSource.create(0), data, null);
-                            String expected = side == facing ? "rock_stew_front" : side == Direction.UP ? "rock_stew_top"
-                                : side == Direction.DOWN ? "rock_stew_bottom" : "rock_stew_side";
-                            check(base.size() == 1 && base.getFirst().getSprite().contents().name().getPath().equals("block/" + expected),
-                                "Overlay retains the original base face: " + facing + "/" + side);
+                            String expected = side == facing ? "rock_stew/front" : switch (side) {
+                                case UP -> "_base/top";
+                                case DOWN -> "_base/bottom";
+                                default -> "rock_stew/side";
+                            };
+                            check(base.size() == 1 && base.getFirst().getSprite().contents().name().getPath().equals("block/resource/" + expected),
+                                "Factory inherits its top and bottom and overrides its horizontal faces: " + facing + "/" + side);
                         }
                         var overlays = rotatedModel.getQuads(rotatedState, null, net.minecraft.util.RandomSource.create(0), data, null);
-                        check(overlays.size() == (paused ? 5 : 7), "Independent progress and activity overlays coexist");
-                        var stageLights = overlays.stream().filter(quad -> quad.getSprite().contents().name().getPath().equals("block/rock_stew_proc_lights")).toList();
+                        check(overlays.size() == (paused ? 5 : 10), "Independent progress and activity overlays coexist");
+                        var stageLights = overlays.stream().filter(quad -> quad.getSprite().contents().name().getPath().equals("block/resource/rock_stew/powered_light")).toList();
                         check(stageLights.size() == 5, "All five stage overlays are present");
+                        if (!paused) {
+                            var poweredFaces = overlays.stream()
+                                .filter(quad -> quad.getSprite().contents().name().getPath().equals("block/resource/_base/side_powered"))
+                                .map(quad -> quad.getDirection()).collect(java.util.stream.Collectors.toSet());
+                            check(poweredFaces.equals(java.util.EnumSet.of(facing, facing.getOpposite(), facing.getClockWise(), facing.getCounterClockWise())),
+                                "Powered casing lights and front strip follow the horizontal faces");
+                            var poweredTop = overlays.stream().filter(quad -> quad.getDirection() == Direction.UP
+                                && quad.getSprite().contents().name().getPath().equals("block/resource/rock_stew/powered_top"))
+                                .findFirst().orElseThrow(() -> new AssertionError("Missing the powered roof overlay"));
+                            check(fullBright(poweredTop), "The powered roof stays bright in darkness");
+                        }
                         var actualFrames = new java.util.ArrayList<Integer>();
                         for (var light : stageLights) {
                             check(light.getDirection() == facing, "Lamps follow the machine facing");
@@ -155,9 +176,8 @@ public final class RockStewClientSmoke {
                                 int offset = vertex * net.neoforged.neoforge.client.model.IQuadTransformer.STRIDE;
                                 minV = Math.min(minV, light.getSprite().getVOffset(Float.intBitsToFloat(light.getVertices()[offset
                                     + net.neoforged.neoforge.client.model.IQuadTransformer.UV0 + 1])));
-                                check(light.getVertices()[offset + net.neoforged.neoforge.client.model.IQuadTransformer.UV2]
-                                    == net.minecraft.client.renderer.LightTexture.FULL_BRIGHT, "Lamp overlay is emissive");
                             }
+                            check(fullBright(light), "Lamp overlay is emissive");
                             actualFrames.add(Math.round(minV * 8));
                         }
                         final int firstFrame = lamps;
@@ -165,6 +185,15 @@ public final class RockStewClientSmoke {
                         check(actualFrames.stream().sorted().toList().equals(expectedFrames), "Each stage selects its own frame, including while paused");
                     }
                 }
+                checkSewerLighting(mc);
+                checkFrontDisplay(mc, "agri_brain", "agricultural/agri_brain", RenderType.cutout(), null,
+                    java.util.Map.of("processors.agri.status", "RUNNING"));
+                checkFrontDisplay(mc, "fertilizer_maker", "agricultural/fertilizer_maker", RenderType.cutout(), null,
+                    java.util.Map.of("processors.maker.status", "RUNNING"));
+                checkFrontDisplay(mc, "sewage_filter", "ranching/sewage_filter", RenderType.cutout(), null,
+                    java.util.Map.of("processors.filter.running", true));
+                checkFrontDisplay(mc, "honest_sewer", "ranching/honest_sewer", RenderType.translucent(), Direction.NORTH,
+                    java.util.Map.of("processors.sewer.powered", true));
                 shot("rock-stew-factory-in-game.png");
                 mc.options.hideGui = false;
                 stage = 2;
@@ -366,6 +395,66 @@ public final class RockStewClientSmoke {
                 mc.stop();
             }
         } catch (Throwable error) { fail(error); }
+    }
+
+    private static void checkSewerLighting(Minecraft mc) {
+        var state = BuiltInRegistries.BLOCK.get(ResourceLocation.fromNamespaceAndPath(
+            IndustrialOverkill.MOD_ID, "honest_sewer")).defaultBlockState();
+        var model = mc.getBlockRenderer().getBlockModel(state);
+        var power = ModelData.builder()
+            .with(MachineVisualState.VARIABLES, java.util.Map.<String, Object>of("energy.energy.stored", 2.0))
+            .build();
+        var unpowered = model.getModelData(mc.level, POS, state, ModelData.EMPTY);
+        var powered = model.getModelData(mc.level, POS, state, power);
+        check(model.getQuads(state, null, RandomSource.create(0), unpowered, RenderType.cutout()).isEmpty(),
+            "The unpowered sewer has no light overlay");
+        var lamps = model.getQuads(state, null, RandomSource.create(0), powered, RenderType.cutout());
+        check(lamps.size() == 4, "A charged sewer has one light overlay per horizontal face");
+        for (var lamp : lamps) {
+            var face = lamp.getDirection();
+            check(face.getAxis().isHorizontal() && fullBright(lamp)
+                && lamp.getSprite().contents().name().getPath().equals("block/ranching/_base/side_powered"),
+                "The sewer uses the full-bright ranching lights");
+            var overflow = model.getQuads(state, face, RandomSource.create(0), powered, RenderType.translucent());
+            check(overflow.size() == (face == Direction.NORTH ? 2 : 1)
+                && overflow.stream().allMatch(q -> q.getSprite().contents().name().getPath()
+                    .startsWith("block/ranching/honest_sewer/") && outwardDepth(q) > outwardDepth(lamp)),
+                "Sewage stays in front of the lights on " + face);
+        }
+    }
+
+    private static boolean fullBright(BakedQuad quad) {
+        for (int vertex = 0; vertex < 4; vertex++)
+            if (quad.getVertices()[vertex * IQuadTransformer.STRIDE + IQuadTransformer.UV2] != LightTexture.FULL_BRIGHT)
+                return false;
+        return true;
+    }
+
+    private static void checkFrontDisplay(Minecraft mc, String machine, String texture,
+        RenderType layer, Direction culledFace, java.util.Map<String, Object> active) {
+        var state = BuiltInRegistries.BLOCK.get(ResourceLocation.fromNamespaceAndPath(
+            IndustrialOverkill.MOD_ID, machine)).defaultBlockState();
+        var model = mc.getBlockRenderer().getBlockModel(state);
+        for (boolean running : new boolean[]{false, true}) {
+            var seed = running ? ModelData.builder().with(MachineVisualState.VARIABLES, active).build()
+                : ModelData.EMPTY;
+            var data = model.getModelData(mc.level, POS, state, seed);
+            var display = model.getQuads(state, culledFace, RandomSource.create(0), data, layer)
+                .stream().filter(q -> q.getDirection() == Direction.NORTH
+                    && q.getSprite().contents().name().getPath().equals("block/" + texture + "/front"))
+                .toList();
+            check(display.size() == (machine.equals("honest_sewer") ? 2 : 1),
+                machine + " keeps one display on the front");
+            check(display.stream().filter(RockStewClientSmoke::fullBright).count() == (running ? 1 : 0),
+                machine + " lights the display only during powered work");
+        }
+    }
+
+    private static float outwardDepth(BakedQuad quad) {
+        var face = quad.getDirection();
+        var vertices = quad.getVertices();
+        return Float.intBitsToFloat(vertices[0]) * face.getStepX()
+            + Float.intBitsToFloat(vertices[2]) * face.getStepZ();
     }
 
     private static void shot(String name) {

@@ -2,16 +2,13 @@ package net.modcrafters.minecraft.industrialoverkill.client;
 
 import java.util.ArrayList;
 import java.util.List;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.modcrafters.minecraft.industrialoverkill.stew.RockStewTree;
 import net.neoforged.neoforge.fluids.FluidStack;
 import zone.moddev.mc.lib.gui.client.recipe.RecipePresentation;
@@ -124,7 +121,7 @@ public final class RockStewTreeRenderer {
     /** A full ghosted bucket with consumption overlaid from the bottom on the same 1000 ml scale. */
     private static void tank(GuiGraphics graphics, int x, int y, Fluid fluid, RockStewTree.FluidUse use) {
         graphics.blitSprite(TANK_SLOT, x, y, TANK_SIZE, TANK_SIZE);
-        fluid(graphics, x + 1, y + 1, 16, 16, fluid, .5f);
+        RecipeFluidRenderer.draw(graphics, x + 1, y + 1, 16, 16, fluid, .5f);
         int consumed = use.consumed() == 0 ? 0 : (int) Math.clamp(Math.round(16.0 * use.consumed() / 1000), 1, 16);
         if (consumed > 0) {
             // GuiGraphics scissors use screen coordinates, unlike the translated recipe drawing.
@@ -135,30 +132,10 @@ public final class RockStewTreeRenderer {
                 (int) Math.ceil(bottomRight.x), (int) Math.ceil(bottomRight.y));
             try {
                 // Clip the same full-size sprite so its pattern does not stretch with the amount.
-                fluid(graphics, x + 1, y + 1, 16, 16, fluid, 1);
+                RecipeFluidRenderer.draw(graphics, x + 1, y + 1, 16, 16, fluid, 1);
             } finally {
                 graphics.disableScissor();
             }
-        }
-    }
-
-    private static void fluid(GuiGraphics graphics, int x, int y, int width, int height, Fluid fluid, float opacity) {
-        if (height <= 0) return;
-        graphics.flush();
-        boolean blending = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_BLEND);
-        float[] previous = RenderSystem.getShaderColor().clone();
-        var extensions = IClientFluidTypeExtensions.of(fluid);
-        var sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(extensions.getStillTexture());
-        int tint = extensions.getTintColor();
-        try {
-            graphics.setColor(((tint >>> 16) & 255) / 255f, ((tint >>> 8) & 255) / 255f,
-                (tint & 255) / 255f, opacity);
-            RenderSystem.enableBlend();
-            graphics.blit(x, y, 0, width, height, sprite);
-            graphics.flush();
-        } finally {
-            graphics.setColor(previous[0], previous[1], previous[2], previous[3]);
-            if (!blending) RenderSystem.disableBlend();
         }
     }
 

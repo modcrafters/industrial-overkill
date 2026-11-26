@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<structure xmlns="https://moddev.zone/mmdlib/multiblock" version="2"
+           max-members="3" max-extent="2" dismantling="remove-owned">
+  <member id="controller" role="controller" offset="0 0 0"
+          state="industrial_overkill:animal_gym[facing=north,end=false]"/>
+  <member id="belt_1" role="belt" offset="-1 0 0"
+          state="industrial_overkill:gym_belt[facing=north,end=false]"/>
+  <member id="belt_2" role="belt" offset="-2 0 0"
+          state="industrial_overkill:gym_belt[facing=north,end=true]"/>
+
+  <rule id="clearance" type="air"/>
+  <requirement rule="clearance" offset="0 1 0" continuous="true"/>
+  <requirement rule="clearance" offset="-1 1 0" continuous="true"/>
+  <requirement rule="clearance" offset="-2 1 0" continuous="true"/>
+
+  <port member="controller" resource="food" kind="items"
+        faces="front back left bottom" input="true" output="true"/>
+  <port member="controller" resource="energy" kind="energy"
+        faces="front back left bottom" output="true"/>
+</structure>

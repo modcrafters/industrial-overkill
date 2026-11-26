@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
+    "industrial_overkill:agri_brain_dock",
+    "industrial_overkill:ranch_antenna_mount",
     "industrial_overkill:animal_gym",
     "industrial_overkill:gym_belt",
     "industrial_overkill:gym_post",

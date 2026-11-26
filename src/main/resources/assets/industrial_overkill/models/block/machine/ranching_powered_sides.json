@@ -1,0 +1,6 @@
+{
+  "parent": "industrial_overkill:block/machine/powered_sides",
+  "textures": {
+    "lights": "industrial_overkill:block/ranching/_base/side_powered"
+  }
+}

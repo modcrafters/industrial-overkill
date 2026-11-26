@@ -24,6 +24,7 @@ import net.modcrafters.minecraft.industrialoverkill.stew.RockStewScreen;
 import zone.moddev.mc.lib.gui.model.elements.FluidTankElement;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
 import zone.moddev.mc.lib.gui.runtime.ScreenClick;
+import zone.moddev.mc.lib.machine.feature.RecipeCycle;
 import zone.moddev.mc.lib.machine.feature.RecipeProcessor;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 
@@ -64,6 +65,46 @@ public final class RockStewTests {
                 menu.setCarried(ItemStack.EMPTY);
             }
         } finally { menu.removed(player); player.containerMenu = previous; }
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void poweredBaseSuppliesWorkingGearboxAndCapacitor(GameTestHelper h) {
+        var m = place(h);
+        require(m.screenInventory("output").getSlots() == RockStewProcessor.SLOTS,
+            "Inherited component inventories preserve every output slot");
+        var player = h.makeMockServerPlayerInLevel();
+        var menu = new MachineMenu(95, player.getInventory(), m);
+        try {
+            require(menu.bound.screen().find("upgrades").isPresent()
+                && menu.bound.screen().find("gearbox").isPresent()
+                && menu.bound.screen().find("capacitor").isPresent(),
+                "The powered base supplies the drawer and both sockets without Rock Stew XML declarations");
+        } finally { menu.removed(player); }
+        var capacitor = new ItemStack(zone.moddev.mc.lib.MMDLib.CAPACITOR_UPGRADE.get(), 8);
+        m.screenInventory("mmdlib_capacitor").setStackInSlot(0, capacitor.copy());
+        require(m.energy.capacity() == 200000 && m.energy.receiveEnergy(9999, true) == 2000,
+            "Eight inherited capacitors double base storage and input rate");
+        var p = RockStewProcessor.from(m);
+        require(p.select(RockStewRecipes.DEFAULT, new ItemStack(Items.COBBLESTONE)), "Select generation");
+        tick(m, 1);
+        int before = p.chain().cycle(0).progress();
+        long energy = m.energy.stored();
+        tick(m, 4);
+        int ordinaryWork = p.chain().cycle(0).progress() - before;
+        long ordinaryCost = energy - m.energy.stored();
+        var gearbox = new ItemStack(zone.moddev.mc.lib.MMDLib.GEARBOX_UPGRADE.get(), 8);
+        m.screenInventory("mmdlib_gearbox").setStackInSlot(0, gearbox.copy());
+        require(p.displaySize() == 5, "Installed upgrades are never displayed as Rock Stew output stages");
+        before = p.chain().cycle(0).progress();
+        energy = m.energy.stored();
+        tick(m, 4);
+        require(ordinaryWork == 4 && p.chain().cycle(0).progress() - before == ordinaryWork * 2
+            && m.energy.stored() == energy - ordinaryCost * 2,
+            "Inherited gearboxes double Rock Stew processing speed and FE usage rate");
+        require(ItemStack.matches(gearbox, m.screenInventory("mmdlib_gearbox").getStackInSlot(0))
+            && ItemStack.matches(capacitor, m.screenInventory("mmdlib_capacitor").getStackInSlot(0)),
+            "Shared upgrades never wear out");
+        h.succeed();
     }
 
     @GameTest(template = TEMPLATE)
@@ -164,6 +205,19 @@ public final class RockStewTests {
         require(client != null, "Create tracking replica");
         client.loadWithComponents(m.getUpdateTag(registry), registry);
         require(lights.stream().allMatch(key -> key.read(client).equals(1)), "All five frames synchronize without a menu");
+
+        var generator = p.chain().cycle(0).plan().orElseThrow();
+        m.energy.setStored(generator.energy().get("energy") / generator.time());
+        tick(m, 1);
+        require(p.chain().cycle(0).progress() == 1 && p.chain().result(1) == RecipeCycle.Result.STALLED,
+            "The generator advances before a later stage runs short of power");
+        var running = zone.moddev.mc.lib.gui.model.ProcessorVariable.parse("$processors.rock_stew.running");
+        client.loadWithComponents(m.getUpdateTag(registry), registry);
+        require(Boolean.TRUE.equals(running.read(client)), "Actual work keeps the casing lights on during a partial stall");
+        tick(m, 1);
+        require(Boolean.FALSE.equals(running.read(m)), "The casing lights turn off when no stage advances");
+        m.energy.setStored(100000);
+
         require(p.select(RockStewRecipes.DEFAULT, new ItemStack(Items.GLASS)), "Shorten path");
         require(lights.stream().allMatch(key -> key.read(m).equals(0)), "Path changes clear all old frames immediately");
         m.items.restoreStack(0, new ItemStack(Items.COBBLESTONE, 64));

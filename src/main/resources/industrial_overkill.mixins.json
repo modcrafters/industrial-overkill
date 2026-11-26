@@ -1,0 +1,8 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.modcrafters.minecraft.industrialoverkill.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["FarmBlockMixin", "MachineRoofPlacementMixin", "AgriPelletCropMixin", "PitcherCropGrowth"],
+  "client": ["AgriDroneClientTickMixin"]
+}

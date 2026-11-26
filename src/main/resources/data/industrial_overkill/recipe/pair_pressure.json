@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {"item": "minecraft:copper_ingot"},
+    {"item": "minecraft:redstone"},
+    {"item": "minecraft:golden_carrot"}
+  ],
+  "result": {"id": "industrial_overkill:pair_pressure"}
+}

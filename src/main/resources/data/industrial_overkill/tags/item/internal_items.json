@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "industrial_overkill:recovered_food",
+    "industrial_overkill:range_upgrade",
+    "industrial_overkill:gearbox_upgrade"
+  ]
+}

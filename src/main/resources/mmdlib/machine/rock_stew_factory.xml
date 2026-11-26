@@ -1,33 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
-         extends="mmdlib:base_powered_machine" name="Rock Stew Factory">
-  <appearance preset="cube-front"
-              front="industrial_overkill:block/rock_stew_front"
-              side="industrial_overkill:block/rock_stew_side"
-              top="industrial_overkill:block/rock_stew_top"
-              bottom="industrial_overkill:block/rock_stew_bottom">
+         extends="industrial_overkill:base_powered_machine" name="Rock Stew Factory">
+  <appearance preset="model" model="industrial_overkill:block/rock_stew_factory_casing">
     <face-overlay id="progress_1" face="front" x="4.5" y="13.5" width="1" height="1"
-                  texture="industrial_overkill:block/rock_stew_proc_lights" frames="8"
+                  texture="industrial_overkill:block/resource/rock_stew/powered_light" frames="8"
                   variable="$processors.rock_stew.progress_lights_1" emissive="true"/>
     <face-overlay id="progress_2" face="front" x="6" y="13.5" width="1" height="1"
-                  texture="industrial_overkill:block/rock_stew_proc_lights" frames="8"
+                  texture="industrial_overkill:block/resource/rock_stew/powered_light" frames="8"
                   variable="$processors.rock_stew.progress_lights_2" emissive="true"/>
     <face-overlay id="progress_3" face="front" x="7.5" y="13.5" width="1" height="1"
-                  texture="industrial_overkill:block/rock_stew_proc_lights" frames="8"
+                  texture="industrial_overkill:block/resource/rock_stew/powered_light" frames="8"
                   variable="$processors.rock_stew.progress_lights_3" emissive="true"/>
     <face-overlay id="progress_4" face="front" x="9" y="13.5" width="1" height="1"
-                  texture="industrial_overkill:block/rock_stew_proc_lights" frames="8"
+                  texture="industrial_overkill:block/resource/rock_stew/powered_light" frames="8"
                   variable="$processors.rock_stew.progress_lights_4" emissive="true"/>
     <face-overlay id="progress_5" face="front" x="10.5" y="13.5" width="1" height="1"
-                  texture="industrial_overkill:block/rock_stew_proc_lights" frames="8"
+                  texture="industrial_overkill:block/resource/rock_stew/powered_light" frames="8"
                   variable="$processors.rock_stew.progress_lights_5" emissive="true"/>
 
-    <face-overlay id="front_glow" face="front" x="2.5" y="1" width="11" height="11.5"
-                  texture="industrial_overkill:block/rock_stew_front_glow" emissive="true"
-                  when="$processors.rock_stew.running &amp;&amp; !$processors.rock_stew.paused &amp;&amp; !$processors.rock_stew.held"/>
-    <face-overlay id="top_glow" face="top" x="3" y="3" width="10" height="10"
-                  texture="industrial_overkill:block/rock_stew_top_glow" emissive="true"
-                  when="$processors.rock_stew.running &amp;&amp; !$processors.rock_stew.paused &amp;&amp; !$processors.rock_stew.held"/>
+    <part id="powered_sides" model="industrial_overkill:block/machine/resource_powered_sides"
+          when="$processors.rock_stew.running &amp;&amp; !$processors.rock_stew.paused &amp;&amp; !$processors.rock_stew.held"/>
+    <part id="powered_panels" model="industrial_overkill:block/rock_stew_factory_powered_panels"
+          when="$processors.rock_stew.running &amp;&amp; !$processors.rock_stew.paused &amp;&amp; !$processors.rock_stew.held"/>
     <item-display variable="$processors.rock_stew.display_product" width="0.4" height="0.4" />
   </appearance>
   <storage>

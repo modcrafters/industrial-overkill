@@ -1,0 +1,59 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "#blade",
+    "blade": "industrial_overkill:block/gym_dark",
+    "tip": "industrial_overkill:block/gym_gold",
+    "hub": "industrial_overkill:block/gym_trim"
+  },
+  "elements": [
+    {
+      "name": "Blades",
+      "from": [4.75, 8, 7.55], "to": [11.25, 8.35, 8.45],
+      "faces": {
+        "down": {"texture": "#blade"},
+        "up": {"texture": "#blade"},
+        "north": {"texture": "#blade"},
+        "south": {"texture": "#blade"},
+        "west": {"texture": "#blade"},
+        "east": {"texture": "#blade"}
+      }
+    },
+    {
+      "name": "Left tip",
+      "from": [4.25, 8, 7.55], "to": [4.75, 8.35, 8.45],
+      "faces": {
+        "down": {"texture": "#tip"},
+        "up": {"texture": "#tip"},
+        "north": {"texture": "#tip"},
+        "south": {"texture": "#tip"},
+        "west": {"texture": "#tip"},
+        "east": {"texture": "#tip"}
+      }
+    },
+    {
+      "name": "Right tip",
+      "from": [11.25, 8, 7.55], "to": [11.75, 8.35, 8.45],
+      "faces": {
+        "down": {"texture": "#tip"},
+        "up": {"texture": "#tip"},
+        "north": {"texture": "#tip"},
+        "south": {"texture": "#tip"},
+        "west": {"texture": "#tip"},
+        "east": {"texture": "#tip"}
+      }
+    },
+    {
+      "name": "Hub",
+      "from": [7.35, 8, 7.35], "to": [8.65, 8.65, 8.65],
+      "faces": {
+        "down": {"texture": "#hub"},
+        "up": {"texture": "#hub"},
+        "north": {"texture": "#hub"},
+        "south": {"texture": "#hub"},
+        "west": {"texture": "#hub"},
+        "east": {"texture": "#hub"}
+      }
+    }
+  ]
+}

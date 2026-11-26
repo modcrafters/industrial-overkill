@@ -114,20 +114,31 @@ public final class CritterCourierProcessor extends PortableStoredProcessor {
         return ProcessState.IDLE;
     }
     public boolean capture(Mob candidate) {
-        if (!(machine.level() instanceof ServerLevel) || !canStart(variables, machine)
-            || candidate.getType().is(CAPTURE_BLACKLIST)) return false;
+        if (!(machine.level() instanceof ServerLevel) || !canStart(variables, machine)) return false;
         var pos = machine.position();
         double x = candidate.getX() - pos.getX(), z = candidate.getZ() - pos.getZ(), y = candidate.getY() - pos.getY();
         if (x < 0 || x >= 1 || z < 0 || z >= 1 || y < .1 || y > .7) return false;
-        var saved = ENTITIES.capture(candidate);
+        var saved = snapshotForCapture(candidate);
         if (saved.isEmpty()) return false;
         variables.update(() -> {
             variables.set(occupant, saved);
-            if (candidate.isLeashed()) candidate.dropLeash(true, true);
-            candidate.discard();
+            removeCaptured(candidate);
         });
         machine.level().playSound(null, pos, SoundEvents.IRON_TRAPDOOR_CLOSE, SoundSource.BLOCKS, 1, .8f);
         return true;
+    }
+
+    public static EntitySnapshot snapshotForCapture(Mob candidate) {
+        return candidate.getType().is(CAPTURE_BLACKLIST) ? EntitySnapshot.EMPTY : ENTITIES.capture(candidate);
+    }
+
+    public static void removeCaptured(Mob candidate) {
+        if (candidate.isLeashed()) candidate.dropLeash(true, true);
+        candidate.discard();
+    }
+
+    public static boolean isEmptyCourier(ItemStack stack) {
+        return OCCUPANT.matches(stack) && OCCUPANT.read(stack).isEmpty();
     }
     public ProcessorAction.Result release() {
         if (!(machine.level() instanceof ServerLevel server) || !occupied() || taken()) return ProcessorAction.Result.unavailable();

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ISI",
+    "BHB",
+    "IRI"
+  ],
+  "key": {
+    "I": {"item": "minecraft:iron_ingot"},
+    "S": {"item": "minecraft:shears"},
+    "B": {"item": "minecraft:bucket"},
+    "H": {"item": "minecraft:hay_block"},
+    "R": {"item": "minecraft:redstone"}
+  },
+  "result": {"id": "industrial_overkill:ranch_controller"}
+}

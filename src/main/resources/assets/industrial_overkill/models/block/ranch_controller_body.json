@@ -1,0 +1,25 @@
+{
+  "parent": "industrial_overkill:block/machine/ranching",
+  "loader": "neoforge:composite",
+  "children": {
+    "casing": {
+      "parent": "industrial_overkill:block/machine/ranching"
+    },
+    "front_overlay": {
+      "render_type": "minecraft:cutout",
+      "textures": {
+        "front": "industrial_overkill:block/ranching/ranch_controller/front",
+        "particle": "#front"
+      },
+      "elements": [
+        {
+          "from": [0, 0, -0.01],
+          "to": [16, 16, -0.01],
+          "faces": {
+            "north": {"uv": [0, 0, 16, 16], "texture": "#front", "cullface": "north"}
+          }
+        }
+      ]
+    }
+  }
+}

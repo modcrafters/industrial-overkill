@@ -1,0 +1,28 @@
+{
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "particle": "#top",
+    "top": "industrial_overkill:block/resource/rock_stew/powered_top",
+    "front": "industrial_overkill:block/resource/_base/side_powered"
+  },
+  "elements": [
+    {
+      "from": [0, 16.01, 0],
+      "to": [16, 16.01, 16],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [0, 13.5, -0.01],
+      "to": [16, 16, -0.01],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "north": {"uv": [0, 0, 16, 2.5], "texture": "#front"}
+      }
+    }
+  ]
+}

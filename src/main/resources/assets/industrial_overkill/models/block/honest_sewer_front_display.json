@@ -1,0 +1,33 @@
+{
+  "render_type": "minecraft:translucent",
+  "textures": {
+    "particle": "#front",
+    "front": "industrial_overkill:block/ranching/honest_sewer/front"
+  },
+  "elements": [
+    {
+      "from": [
+        -0.03,
+        0,
+        -0.03
+      ],
+      "to": [
+        16.03,
+        13,
+        -0.03
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            3,
+            16,
+            16
+          ],
+          "texture": "#front",
+          "cullface": "north"
+        }
+      }
+    }
+  ]
+}

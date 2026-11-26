@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
+         extends="industrial_overkill:base_powered_machine" name="Honest Sewer">
+  <feature id="redstone" default-mode="ignore"/>
+  <appearance preset="model" model="industrial_overkill:block/honest_sewer_body">
+    <part id="display_idle" model="industrial_overkill:block/honest_sewer_front_display"
+          when="!($processors.sewer.powered &amp;&amp; !$processors.sewer.paused &amp;&amp; !$processors.sewer.held)"/>
+    <part id="display_powered" model="industrial_overkill:block/honest_sewer_front_display_powered"
+          when="$processors.sewer.powered &amp;&amp; !$processors.sewer.paused &amp;&amp; !$processors.sewer.held"/>
+    <part id="powered_sides" model="industrial_overkill:block/machine/ranching_powered_sides"
+          when="$energy.energy.stored &gt;= 2 || ($processors.sewer.powered &amp;&amp; !$processors.sewer.paused &amp;&amp; !$processors.sewer.held)"/>
+  </appearance>
+  <visualizers range-color="#F4C85B" work-color="#FFD66F"/>
+  <storage>
+    <fluids id="fluids">
+      <tank id="sewage" name="Sewage" capacity="4000" role="output" fluid="industrial_overkill:sewage"/>
+    </fluids>
+  </storage>
+  <processor id="sewer" class="net.modcrafters.minecraft.industrialoverkill.waste.HonestSewerProcessor"/>
+  <screen xmlns="https://moddev.zone/mmdlib/screen">
+    <fill name="machine">
+      <hbox spacing="6" align="center">
+        <fluid-tank id="sewage_tank" tank="0" orientation="vertical" length="3s" tooltip="waste.sewer.sewage"/>
+      </hbox>
+    </fill>
+    <fill name="tanks"/>
+    <fill name="inventory_controls">
+      <inventory-controls id="inventory_controls">
+        <processor-button id="toggle_0" processor-key="sewer"/>
+        <working-area-button id="working_area" processor-key="sewer"/>
+      </inventory-controls>
+    </fill>
+  </screen>
+</machine>

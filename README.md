@@ -3,14 +3,15 @@
 NeoForge 1.21.1 / Java 21 mod using MMDLib. The entry point is
 `net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill`; the mod ID is
 `industrial_overkill`. Machines include **Animal Gym 2.0**, **Critter Courier**, and
-**Rock Stew Factory**.
+**Rock Stew Factory**, **Agri-Brain**, and **Ranch Controller**.
 
 This is a development version. MMDLib is a required, separate mod; JEI is optional.
 
-The current Critter Courier and Rock Stew migrations require the accompanying
-MMDLib changes for stored processors, XML actions, conditional shapes, recipe
-chains and restoration of resource reservations before the first tick. Use the
-local development workflow below until those changes are released and `mmdlib_version` is updated.
+The XML machines require the accompanying MMDLib changes for inherited machine
+features, stored processors, XML actions, conditional shapes, recipe chains, and
+restoration of resource reservations before the first tick. Use the local
+development workflow below until those changes are released and `mmdlib_version`
+is updated.
 The currently pinned public release does not contain these APIs.
 
 ## Getting started
@@ -28,6 +29,270 @@ cd industrial-overkill
 On Windows, use `gradlew.bat` in place of `./gradlew`. `build` includes the server
 GameTests; output jars are written to `build/libs/`. Use `./gradlew runClient` for
 a development client. The optional local MMDLib workflow is described below.
+
+## Agri-Brain foundation
+
+Agri-Brain is available in the Industrial Overkill creative tab as a powered farming controller prototype.
+The mod's tab is defined in `src/main/resources/mmdlib/creative_tab/machines.xml`;
+`include-mod-items="true"` automatically includes all of the mod's registered
+items, sorted by ID. `<exclude tag="industrial_overkill:internal_items"/>` hides
+recovery items and legacy upgrade aliases. Maintain that list in
+`src/main/resources/data/industrial_overkill/tags/item/internal_items.json`;
+new machines need no manual tab entry.
+Shared Range, Gearbox and Capacitor Upgrades are in the **MMDLib** creative tab.
+It stores 100,000 FE and accepts up to 1,000 FE/t before capacitor upgrades. Its
+first processor follows a snake path through the field:
+left to right on the first row, right to left on the next, alternating farther
+behind the machine. Planting, harvesting and work particles follow the same path.
+It visits every position and loops
+after covering the whole area. On each visit it tills dirt or grass blocks one
+block below the displayed crop layer into farmland, provided there is air above.
+Covered soil, vegetation, existing farmland and other blocks are left alone.
+Insert a hoe in the main screen's Hoe input slot to enable tilling. The slot holds
+one item and accepts `minecraft:hoes` through both the menu and automation.
+The machine scans without a hoe but cannot till. Successful tills alternate
+between free and normal tool wear (one durability per two tills for an ordinary
+hoe); Unbreaking applies on the charged uses. Skips and cancelled actions cost
+nothing. The wear counter survives saves and tool swaps, and a broken hoe leaves
+the slot empty. Tool names, enchantments and other components are retained.
+
+Four seed inputs form a 2×2 grid, numbered left to right, top to bottom. A third
+row places the hoe under the left column and the 18×18 planting-mode button
+under the right column, forming a compact 2×3 grid. The empty hoe slot shows a
+muted hoe icon and accepts only items tagged `minecraft:hoes`, including through
+automation. The button's 16×16 pixel-art
+icon uses native pixel art with a padded 12×12 drawing area, without resizing.
+It changes with the mode (sprouting seed, cycling arrows, or planted rows);
+hovering shows the current mode name and instructions:
+
+- **First found:** use the first non-empty seed slot until it runs out.
+- **One at a time:** plant one from each slot in order, skipping empty slots.
+  A green border marks the next populated slot. Only a successful planting advances it.
+- **Rows:** assign each work-area row to a slot, repeating every four rows.
+  Rows 1/5/9 use slot 1, rows 2/6/10 use slot 2, and so on. Rows start nearest
+  the machine. An empty assigned slot leaves that row unplanted, with no fallback.
+
+The mode and round-robin cursor survive saves. Changing mode resets that cursor
+to slot 1. The screen uses MMDLib's ordinary inventories: slot counts come from
+storage, and the next-seed indicator uses the shared inventory selection binding.
+The planting selector uses MMDLib's shared `<cycle-button>`: mode values, icons,
+labels, help and selection actions live in the machine XML. Its processor actions
+change the saved mode and reset the seed cursor; no custom UI element is needed.
+Inputs accept `industrial_overkill:agri_brain_seeds`, which includes
+the common seeds tag, vanilla farmland seeds, carrots and potatoes. On each scan
+visit, the machine evaluates fertilizer, then checks for harvest, tills, and plants in the empty crop space
+above farmland. Planting existing farmland needs no hoe. Each successful placement
+consumes one seed, honors normal placement/cancellation rules, and preserves
+immature crops. Planting failure consumes nothing and does not advance the cursor.
+
+Mature crops are harvested into nine output slots arranged in a 3×3 grid.
+Seed drops refill matching seed input stacks first, then empty seed inputs;
+overflow and other drops go to output. All drops must fit before a crop is
+removed, so full storage leaves it intact until a later pass. Replanting then
+uses the selected planting mode, including newly collected seeds. Harvesting
+needs no hoe and uses empty-hand loot. It respects block-break cancellation.
+Wheat-style crops (including carrots, potatoes and beetroot), mature torchflowers
+and pitcher plants are supported, as are melon and pumpkin fruits; their stems
+stay in place. Other plants are left alone.
+
+### Fertilizer and sewage
+
+Pipe surplus seeds from Agri-Brain's Harvest inventory to a Fertilizer Maker.
+Honest Sewer collects 25 mB per live animal in range every 30 seconds without
+power or every 5 seconds at 2 FE per tick. Each powered tick advances the current
+batch six times as fast. The machine draws energy when animals are in range and
+the tank has room. Raw sewage can go directly to the Fertilizer Maker or into a
+Sewage Filter.
+The Sewage Filter selects its recipe from the fluid in its input tank. Sewage
+converts 250 mB to 200 mB of filtered sewage, with an independent 1.25% chance
+for each listed seed and scrap item. Filtered sewage converts 200 mB to 150 mB
+of water and one filter cake. Both recipes take 10 work seconds and 1,000 FE.
+Drain the shared output tank before switching to a recipe with a different
+fluid output. Data packs can override or add `industrial_overkill:sewage_filter`
+recipes using the `input`, `energy`, `liquid`, and `solids` recipe groups.
+
+| Fertilizer Maker input | Yield | Work time |
+| --- | --- | --- |
+| 4 seeds + 100 mB water | 2 regular doses | 40 seconds |
+| 4 seeds + 100 mB sewage | 4 regular doses and 50 mB water | 10 seconds |
+| 4 seeds + 100 mB filtered sewage | 2 filtered doses and 50 mB water | 10 seconds |
+| 1 filter cake + 8 seeds | 2 slow-release pellets | 20 seconds |
+
+A filter cake can replace four seeds in any liquid recipe. In Liquid mode, the
+maker selects its recipe from its shared input tank. Drain the input before
+switching liquids. Sewage batches wait for 50 mB of room in the water output
+tank. Filter and maker work cost 5 FE per work tick. Regular fertilizer advances
+one growth stage and filtered fertilizer advances two. Pellets advance two at
+planting, followed by one each after 30 and 60 seconds while that crop continues
+growing.
+
+On existing makers, stored raw sewage stays in the input and stored water moves
+to the output. Filtered sewage from the removed tank is preserved in the
+machine's recovery data and is dropped in a recovery capsule when it is broken.
+
+Agri-Brain has three fertilizer slots and four strategies. **Off** skips doses.
+**Smart** applies pellets at planting, lets active pellets work, and prefers
+filtered fertilizer when two stages remain. Otherwise, it prefers regular
+fertilizer and saves filtered doses for crops that can use both stages.
+**Finish Only** applies a full dose only when it can mature the crop.
+**Pellets Only** applies pellets at planting.
+
+The drone takes six work ticks to travel between plots, then hovers for five
+work ticks to check maturity plus five for each applicable fertilize, harvest,
+and replant phase. At the end of the hover it applies the finishing dose,
+checks actual maturity, harvests, and replants on one server tick. A pellet for
+the replacement crop is part of the replant phase. A full visit takes 20 work
+ticks of hover time. Fertilizer applications cost 100 FE apiece.
+
+Scanning costs **5 FE per work tick**, including empty or unsuitable blocks.
+Gearboxes increase work ticks per game tick, up to **10 FE per game tick** with eight.
+Each successful planting costs another **100 FE**, tilling **200 FE**, and
+harvesting **100 FE**. Combined actions add their costs: harvest and replant
+cost 200 FE plus scanning; till and plant cost 300 FE plus scanning. Cancelled
+or blocked actions cost only scanning. Actions without enough energy leave
+their blocks and items untouched and are retried on later passes. Below 5 FE,
+the scan countdown and particles stop until power returns; pause consumes nothing.
+Consumption is reported through the shared energy statistics.
+
+Tilling uses the normal hoe interaction and respects NeoForge tool/placement
+cancellation. Fill the **4,000 mB water tank** with a water bucket at the gauge
+or pipe water into a configured input face. The drone restores each visited
+farmland block to moisture level 7, including soil it tills on the same visit.
+For starting levels 0 through 7, the cost is **100, 86, 71, 57, 43, 29, 14,
+and 0 mB**, respectively. The more water the drone applies, the wider the
+splash and the more droplets it produces. Small top-ups make a soft sprinkle
+at the soil. Larger doses make a fuller, louder splash.
+If the tank cannot cover the full cost, the drone skips watering and continues
+farming. Inside the powered work area, each moisture level lasts about eight
+times longer on average. Bare, fully dry farmland also takes longer to revert
+to dirt. Rain and nearby water hydrate the soil normally. Moisture retention
+consumes no tank water.
+Pause freezes its position and countdown, which survive
+save/reload. Changing range restarts the scan at the nearest row's left corner.
+
+The button beside Pause toggles a green outline of a 3×3 crop area
+directly behind the machine, at controller height. Visibility is local to
+the player and remains on after closing the screen. Breaking or unloading the
+machine, changing dimensions, or disconnecting clears its outline.
+
+The quadcopter projects a green scan line from its lens onto the ground beneath
+each crop. The line points front-to-back relative to the controller and sweeps
+in the drone's direction of travel, with small sparks along the line. The front
+display, indicator lights, and top ring glow while the drone is active and go
+dark when it pauses or loses power. The drone leans into each flight and levels
+out as it hovers over a block. It keeps the same altitude over irrigation
+water and turns into each new row. After the last block, it switches off the
+scanner and faces the first block as it flies diagonally back. The crossing
+takes 40 work ticks on a 3×3 field and 80 on a 5×5 field. Travel uses the
+usual 5 FE per work tick and follows gearbox speed. Pausing or losing power
+freezes the work route. The drone lands on the controller and its rotors coast
+to a stop over 16 ticks. From rest, the rotors spin up for 8 ticks before liftoff.
+Their quiet hum follows the drone, rising in pitch and volume with rotor speed and
+fading to silence on the dock.
+The roof has a flush landing target and four brass contacts. The dock reserves
+a full half-block of collision above the casing, even while the drone is in the field.
+Its scanner stays off during docking and takeoff. The machine XML sets the scanner color
+with `work-color` and the area outline with `range-color`.
+
+MMDLib's Range Upgrade adds one to the radius: 5×5 with one, 7×7 with two, up to
+21×21 with nine. The near edge stays fixed behind the controller. Adding or
+removing an upgrade updates the open screen's area snapshot and visible outline,
+even while paused. Craft one with `IGI / RCR / IGI`: four iron ingots, two glass,
+two redstone and a compass. It is also available in the MMDLib creative tab. Items can
+stack in your inventory, but each installed upgrade occupies its own slot.
+
+The Upgrades drawer is the first right-side tab. Its two top sockets show gearbox
+and capacitor pixel art; nine general slots form a 3×3 grid below. There is no
+machine image, heading or coloured resource-group highlight. All eleven slots
+are manual. The gearbox and capacitor sockets each hold eight; the nine general slots hold one item each.
+Their storage uses `automation="false"`, so
+Upgrades does not appear in the coloured resource selectors or side configuration.
+The powered-machine base supplies the shared sockets and default drawer to Rock
+Stew Factory automatically. Agri-Brain overrides the `upgrades` screen fill with
+`<machine-upgrades storage="upgrades"/>`. Agri-Brain declares
+nine extra slots; MMDLib supplies separate `mmdlib_gearbox` and `mmdlib_capacitor`
+inventories from the processor and energy capabilities, including their icons,
+tooltips, filters and eight-item limits. Old eleven-slot saves migrate their
+installed components and range items into the new layout on load.
+Their item tags are
+`mmdlib:gearbox_upgrades`,
+`mmdlib:capacitor_upgrades` and
+`mmdlib:range_upgrades`, respectively. The gearbox tag accepts
+`mmdlib:gearbox_upgrade` (plus the old IO ID for saved stacks); the capacitor tag accepts
+`mmdlib:capacitor_upgrade`, and the
+general tag accepts `mmdlib:range_upgrade` and the old IO ID for saved stacks.
+XML binds `range-storage="upgrades"`; MMDLib counts its nine occupied sockets and applies
+range to the processor's base working area. Agri-Brain uses the shared area's
+indexed block traversal and row helper for scanning and planting modes, keeping
+the display and actual work positions in agreement.
+
+Install up to **eight Gearbox Upgrades** in the gearbox socket. Each adds
+**12.5% processor speed and FE usage rate**: one gives 1.125×, four give 1.5×,
+and eight give 2×. At eight the scan visits a block every 10 game ticks instead
+of 20. Harvesting, tilling and planting all follow the shared MMDLib processor
+clock. XML binds it with `<upgrades gearbox-slot="upgrades/4"/>`; there is no
+Agri-Brain-specific speed calculation. Fractional work is retained across pauses,
+gearbox swaps and save/reload. Individual actions retain their 100/200/100 FE
+prices; more work per second uses proportionally more FE per second.
+The gearbox has no durability and is never consumed. Craft it with `INI / RPR / INI`: four iron
+ingots, two iron nuggets, two redstone and a piston. It is also in the MMDLib creative tab.
+
+Install up to **eight Capacitor Upgrades** in the capacitor socket. Each adds
+**12.5% base energy capacity and input/output rate**. Agri-Brain reaches
+200,000 FE storage and 2,000 FE/t input with eight; its zero output rate stays zero.
+Changes apply immediately, including while paused, without creating energy.
+Removing capacitors clamps excess stored FE to the reduced capacity. Upgraded
+capacity and stored energy survive reloads. Craft one with `ICI / RQR / ICI`:
+four iron ingots, two copper ingots, two redstone and a quartz. It is also in
+the MMDLib creative tab. XML binds it with `capacitor-slot="upgrades/5"` on `<upgrades>`.
+
+Upgrades are permanent and never wear out. MMDLib's `machine-upgrades`
+element supplies this layout; mods can replace the component icons in XML.
+These controls require the new local
+MMDLib working-area and upgrades-drawer APIs; the published dependency pin still
+needs a release containing this work.
+
+## Ranch Controller
+
+The Ranch Controller tends a single-species herd in a 5×5×3 area immediately
+behind it. Use the area button to see its reach or install Range Upgrades to
+extend it. Leave space above the controller for its half-block scanner mount.
+At the start of each cycle it lists the animals in range and scans them one at a
+time. Its antenna aims at each animal and sends a particle ray toward it.
+With eight Gearbox Upgrades the antenna holds on each animal for one second,
+then takes a quarter-second to turn to its next target. At base speed these
+times are two seconds and half a second. A breeding turn focuses on each parent
+before feeding the pair. Most successful actions cost 100 FE.
+
+- **Milk:** Load an empty bucket or a milk-compatible container in the middle
+  tool slot to collect 1,000 mB from an adult cow or mooshroom. Each animal has
+  a 30-second cooldown. The controller tops up partly filled milk containers
+  in the 3×3 output before moving fresh containers there. It keeps the last
+  empty vanilla bucket as a reusable tool and sends milk that could not go into
+  containers to the 10,000 mB output tank. Milk can be drawn or piped out of the
+  tank.
+
+Install these add-ons in the regular Upgrades grid alongside Range Upgrades.
+**Adults target** appears below the grid with Pair Pressure or Livestock To Go
+installed. It defaults to 8 and can be set from 0 to 32 for the whole work area.
+
+- **Pair Pressure** feeds two nearby adults of the same breedable species so
+  they can mate when the herd is below target. It uses one suitable food and
+  100 FE per animal. Young animals count toward the target as future adults.
+- **Snackcelerator** uses suitable food from the 2×3 input to speed up young
+  animals' growth, just like hand feeding.
+- **Baa-rber Shop** uses shears from the top tool slot to collect 1–3 wool of
+  the sheep's color and applies ordinary tool wear. A sheep waits until the
+  output has room for its full possible yield.
+- **Livestock To Go** packs surplus adults into empty Critter Couriers from the
+  bottom tool slot when the adult count exceeds the target. Occupied Couriers
+  go to the 3×3 item output. Packing waits if the item output is full.
+
+The feed input opens with Pair Pressure or Snackcelerator. The shears and
+Courier slots open with Baa-rber Shop and Livestock To Go, respectively.
+Removing an add-on immediately blocks new items from its input through the menu
+and automation. Locked tool slots dim and show **Disabled** on hover. You can
+still take stored items out by hand.
 
 ## Rock Stew Factory
 
@@ -368,14 +633,25 @@ food inventory and hung on the stick. This reserved serving supplies the next ra
 refilling never grants extra work or charges twice. The timer freezes when work stops.
 A reserved serving survives pause/reload and drops with the other supplies on dismantling.
 The food display hides when work stops; eating and refilling never move animal hitboxes.
-The overhead lamps glow and emit level-14 block light only while the gym works.
-They switch off on pause, release, exhausted food allowance, full energy storage
-or a blocked structure. The last consumed ration still provides its paid work
-before the gym stops; an empty inventory alone does not cancel that allowance. Models and pixel textures are
-generated reproducibly with `py -3 scripts/generate_gym_assets.py` (standard library
-only). They follow the concept's compact silhouette: chamfered grey controller, recessed
-paw display, green indicators, front vents, yellow-black edge stripes, rear uprights,
-sloped end support and two amber overhead lamps. The item preview shows the whole gym.
+The controller's blue lights, paw display, and overhead lamps glow while the gym works.
+The overhead lamp lenses are dark blue when idle.
+The overhead lamps also emit level-14 block light. The work lights switch off on pause,
+release, exhausted food allowance, full energy storage or a blocked structure.
+Three small lights on each side of the beam above the controller show the selected intensity,
+even while paused.
+The last consumed ration still provides its paid work before the gym stops;
+an empty inventory alone does not cancel that allowance. The gym
+models are generated with `py -3 scripts/generate_gym_assets.py` (standard library
+only). The controller is a full block with generator casing textures and the gym's
+paw-and-meter front decal. The assembly has yellow-black belt edges, rear uprights,
+a sloped end support and two pairs of blue overhead lamps. The item preview shows the whole gym.
+The attachment atlas is `textures/atlas/gym_attachments.png`. The square upright shares a
+single panel tile on its four sides. The far upright, slanted support, and beam each share
+two tiles across opposite faces. Small fittings crop from common material tiles at 32 pixels
+per block, rounded to the nearest pixel with a one-pixel minimum. Tile positions are listed
+in `scripts/assets/gym_attachment_faces.json`. Leave the surrounding edge padding in place
+when editing tiles so adjacent colors stay out of their mipmaps. The block atlas also loads
+individual sprites from the sheet for the animated belt, particles, and shared materials.
 Both gantry supports have bolted mounting feet and reinforced beam connections;
 the outer angled support also has a knee collar.
 Asset generation checks for overlapping coplanar faces, including rotated parts
@@ -473,7 +749,9 @@ The eating/refill animation timing is independent of recipe rates.
 
 ## Critter Courier
 
-The registry ID is `industrial_overkill:critter_courier`.
+The Critter Courier uses the registry ID `industrial_overkill:critter_courier`.
+The previous development ID, `industrial_overkill:mob_trap`, has no migration.
+Release any captured animals and remove old Mob Traps before upgrading a development world.
 Its block, item properties, conditional models/shapes and screen are defined in
 `mmdlib/machine/critter_courier.xml`. `CritterCourierProcessor` owns capture, transport,
 release and the declared Release/Pick Up actions on MMDLib's generic machine host.
@@ -579,13 +857,10 @@ working tree, including uncommitted edits:
 .\gradlew.bat publishAllPublicationsToLocalRepository
 ```
 
-Animal Gym uses MMDLib's **multiblock implementation**, and the
-Rock Stew Factory's running indicator requires **conditional machine model parts**.
-The indicator and front/top face-texture switches are declared in its machine XML with
-`$processors.rock_stew.running`;
-its casing override is `rock_stew_factory_base.json`, leaving the generated conditional
-root model intact. The asset generator writes idle/running textures and black-and-white
-emissive masks; component notifications update the appearance without tick polling.
+Animal Gym uses MMDLib's **multiblock implementation**. Rock Stew Factory uses
+`rock_stew_factory_casing.json` for the casing and declares its powered overlays
+and per-stage progress lights in its machine XML. Component notifications update
+the appearance as processor state changes.
 Use a local publication that also provides the stored processor/action APIs used
 by Critter Courier, plus RecipeChain, RecipeOperations and the resource-restoration
 hook used by Rock Stew. CI uses the pinned published version and will need a new
@@ -648,6 +923,18 @@ publication fails rather than silently using a remote copy.
 For a dependency update, publish a new MMDLib release, wait for Maven publishing to
 finish, update the committed `mmdlib_version`, and push this project. Keep the remote
 version pinned; use a new release version rather than overwriting it.
+
+### Tag releases
+
+Push a tag such as `v0.1.0`, `v0.1.0-alpha`, or `v0.1.0-beta` on a commit
+already on `main`. The Release workflow uses the tag as the JAR version and
+builds against the published MMDLib pin above. The build must pass before the
+workflow uploads the NeoForge JAR and GitHub-generated release notes to
+CurseForge and GitHub Releases.
+
+Set the repository variable `CURSEFORGE_PROJECT_ID` and the repository secret
+`CURSEFORGE_TOKEN`. Leave `MODRINTH_PROJECT_ID` unset to skip Modrinth validation
+and publishing. When that variable is set, `MODRINTH_TOKEN` is required.
 
 ## Adding content
 
