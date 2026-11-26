@@ -132,8 +132,9 @@ public final class AgriEnergyTests {
         var snapshot = replica.getModelData().get(MachineVisualState.VARIABLES);
         var id = BuiltInRegistries.BLOCK.getKey(machine.getBlockState().getBlock());
         var lights = MachineContent.definitions().get(id).modelParts().stream()
-            .filter(part -> part.overlay() != null && part.overlay().emissive()).toList();
-        require(lights.size() == 2, "Both the front panel and top ring have emissive lights");
+            .filter(part -> part.id().equals("powered_top") || part.id().startsWith("display_powered/")).toList();
+        require(lights.size() == 2 && lights.stream().anyMatch(part -> part.overlay() != null && part.overlay().emissive()),
+            "The powered top model and emissive front overlay are both present");
         for (var light : lights)
             require(VisualCondition.compile(light.when(), snapshot).test(snapshot) == lit,
                 "Tracking clients see the correct working state for " + light.id());

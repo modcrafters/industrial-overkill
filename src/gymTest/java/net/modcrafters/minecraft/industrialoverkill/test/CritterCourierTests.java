@@ -320,14 +320,14 @@ public final class CritterCourierTests {
         var rabbit = mob(helper, cage, EntityType.RABBIT);
         var uuid = rabbit.getUUID();
         require(cage.capture(rabbit), "Rabbit captured");
+        require(cage.occupant().uuid().filter(uuid::equals).isPresent(), "Rabbit UUID is stored before breaking the Courier");
         helper.getLevel().destroyBlock(cage.getBlockPos(), true);
         var drops = helper.getLevel().getEntitiesOfClass(ItemEntity.class,
             new AABB(cage.getBlockPos()).inflate(2));
         var traps = drops.stream().filter(e -> e.getItem().is(MachineContent.item(CritterCourierProcessor.ID))).toList();
-        require(
-            traps.size() == 1
-                && CritterCourierProcessor.OCCUPANT.read(traps.getFirst().getItem()).uuid().orElseThrow().equals(uuid),
-            "Breaking trap drops one intact occupant");
+        require(traps.size() == 1, "Breaking the Courier drops exactly one Courier item");
+        require(CritterCourierProcessor.OCCUPANT.read(traps.getFirst().getItem()).uuid().filter(uuid::equals).isPresent(),
+            "The dropped Courier preserves the captured rabbit");
         gym.food.insertItem(3, traps.getFirst().getItem().copy(), false);
         traps.getFirst().discard();
         gym.multiblock().dismantle(MultiblockInstance.Cause.SURVIVAL);
@@ -370,7 +370,7 @@ public final class CritterCourierTests {
         var host = (zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity) helper.getLevel().getBlockEntity(pos);
         require(host.resources.automation().groups().isEmpty(), "Courier supports zero automation groups");
         require(host.screenAutomation() == null, "Resource-free courier has no automation drawer");
-        var player = helper.makeMockPlayer(GameType.SURVIVAL);
+        var player = helper.makeMockServerPlayerInLevel();
         player.setPos(pos.getX() + 5, pos.getY(), pos.getZ());
         var release = net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym.id("release");
         var pickup = zone.moddev.mc.lib.machine.feature.PortableStoredProcessor.PICKUP;

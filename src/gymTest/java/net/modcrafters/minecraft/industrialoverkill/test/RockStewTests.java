@@ -12,6 +12,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
@@ -274,18 +275,17 @@ public final class RockStewTests {
         require(RockStewConfig.SPEC.isLoaded(), "World server config is loaded");
         var previous = List.copyOf(RockStewConfig.EXCLUDED_ITEM_TAGS.get());
         var previousAllowed = List.copyOf(RockStewConfig.ALLOWED_ITEM_TAGS.get());
-        var ingotId = ResourceLocation.parse("mmdlib:obsidian_ingot");
-        require(BuiltInRegistries.ITEM.containsKey(ingotId), "MMDLib obsidian ingot is registered");
-        var ingot = new ItemStack(BuiltInRegistries.ITEM.get(ingotId));
+        var ingot = new ItemStack(Items.IRON_INGOT);
         var sourceId = RockStewRecipes.id("rock_stew/obsidian");
+        var originalRecipes = installObsidianTestPaths(h);
         try {
             // In-memory overrides exercise policy changes without saving edits to the user's file.
-            RockStewConfig.ALLOWED_ITEM_TAGS.set(List.of("industrial_overkill:rock_stew_building_blocks", "c:ingots/obsidian"));
+            RockStewConfig.ALLOWED_ITEM_TAGS.set(List.of("industrial_overkill:rock_stew_building_blocks", "c:ingots/iron"));
             RockStewConfig.ALLOWED_ITEM_TAGS.clearCache(); // Simulate reopening the world for this world-restart setting.
-            RockStewConfig.EXCLUDED_ITEM_TAGS.set(List.of("c:ingots/obsidian"));
+            RockStewConfig.EXCLUDED_ITEM_TAGS.set(List.of("c:ingots/iron"));
             RockStewConfig.EXCLUDED_ITEM_TAGS.clearCache(); // Simulate reopening the world for this world-restart setting.
             RockStewRecipes.invalidate();
-            require(RockStewConfig.excluded(ingot) && !RockStewConfig.excluded(new ItemStack(Items.IRON_INGOT)),
+            require(RockStewConfig.excluded(ingot) && !RockStewConfig.excluded(new ItemStack(Items.COPPER_INGOT)),
                 "Configured list replaces defaults rather than appending to them");
             var p = RockStewProcessor.from(m);
             require(!p.select(sourceId, ingot), "Configured exact exclusion rejects selection");
@@ -306,6 +306,7 @@ public final class RockStewTests {
             RockStewConfig.EXCLUDED_ITEM_TAGS.clearCache(); // Simulate reopening the world for this world-restart setting.
             RockStewConfig.ALLOWED_ITEM_TAGS.set(previousAllowed);
             RockStewConfig.ALLOWED_ITEM_TAGS.clearCache(); // Simulate reopening the world for this world-restart setting.
+            h.getLevel().getRecipeManager().replaceRecipes(originalRecipes);
             RockStewRecipes.invalidate();
         }
         h.succeed();
@@ -349,31 +350,49 @@ public final class RockStewTests {
     }
 
     @GameTest(template = TEMPLATE)
-    public static void materialSpecificObsidianIngotIsExcluded(GameTestHelper h) {
+    public static void materialSpecificIngotIsExcluded(GameTestHelper h) {
         var m = place(h);
-        var ingotId = ResourceLocation.parse("mmdlib:obsidian_ingot");
-        var stairsId = ResourceLocation.parse("mmdlib:obsidian_stairs");
-        require(BuiltInRegistries.ITEM.containsKey(ingotId) && BuiltInRegistries.ITEM.containsKey(stairsId),
-            "Regression uses real MMDLib obsidian items");
-        var ingot = new ItemStack(BuiltInRegistries.ITEM.get(ingotId));
-        var stairs = new ItemStack(BuiltInRegistries.ITEM.get(stairsId));
+        var ingot = new ItemStack(Items.IRON_INGOT);
+        var stairs = new ItemStack(Items.BLACKSTONE_STAIRS);
         require(ingot.is(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,
-            ResourceLocation.parse("c:ingots/obsidian"))), "Obsidian ingot has its material-specific tag");
+            ResourceLocation.parse("c:ingots/iron"))), "Iron ingot has its material-specific tag");
         var sourceId = RockStewRecipes.id("rock_stew/obsidian");
-        var source = RockStewRecipes.sources(h.getLevel()).stream()
-            .filter(candidate -> candidate.id().equals(sourceId)).findFirst().orElseThrow();
-        var graph = RockStewRecipes.graph(h.getLevel(), source);
-        require(graph.indexOf(new ItemStack(Items.OBSIDIAN)) == 0 && graph.indexOf(stairs) >= 0,
-            "Obsidian generation and ordinary stone crafting remain available");
-        require(graph.indexOf(ingot) < 0, "Material-specific ingot cannot appear in the panel or JEI graph");
-        var nuggetId = ResourceLocation.parse("mmdlib:obsidian_nugget");
-        require(BuiltInRegistries.ITEM.containsKey(nuggetId), "Obsidian nuggets are registered");
-        require(graph.indexOf(new ItemStack(BuiltInRegistries.ITEM.get(nuggetId))) < 0,
-            "Filtering does not expand through the rejected ingot");
-        var p = RockStewProcessor.from(m);
-        require(!p.select(sourceId, ingot), "Server refuses direct obsidian-ingot selection");
-        require(p.select(sourceId, stairs), "Legal obsidian crafting can still be selected");
+        var previousAllowed = List.copyOf(RockStewConfig.ALLOWED_ITEM_TAGS.get());
+        var originalRecipes = installObsidianTestPaths(h);
+        try {
+            RockStewConfig.ALLOWED_ITEM_TAGS.set(List.of("industrial_overkill:rock_stew_building_blocks", "c:ingots/iron"));
+            RockStewConfig.ALLOWED_ITEM_TAGS.clearCache();
+            RockStewRecipes.invalidate();
+            var source = RockStewRecipes.sources(h.getLevel()).stream()
+                .filter(candidate -> candidate.id().equals(sourceId)).findFirst().orElseThrow();
+            var graph = RockStewRecipes.graph(h.getLevel(), source);
+            require(graph.indexOf(new ItemStack(Items.OBSIDIAN)) == 0 && graph.indexOf(stairs) >= 0,
+                "Obsidian generation and its building-block path remain available");
+            require(graph.indexOf(ingot) < 0, "Material-specific ingot cannot appear in the panel or JEI graph");
+            require(graph.indexOf(new ItemStack(Items.POLISHED_BLACKSTONE_BRICK_STAIRS)) < 0,
+                "Filtering does not expand through the rejected ingot to an allowed building block");
+            var p = RockStewProcessor.from(m);
+            require(!p.select(sourceId, ingot), "Server refuses direct ingot selection");
+            require(p.select(sourceId, stairs), "Legal building-block path can still be selected");
+        } finally {
+            RockStewConfig.ALLOWED_ITEM_TAGS.set(previousAllowed);
+            RockStewConfig.ALLOWED_ITEM_TAGS.clearCache();
+            h.getLevel().getRecipeManager().replaceRecipes(originalRecipes);
+            RockStewRecipes.invalidate();
+        }
         h.succeed();
+    }
+
+    private static List<RecipeHolder<?>> installObsidianTestPaths(GameTestHelper h) {
+        var manager = h.getLevel().getRecipeManager();
+        var original = List.copyOf(manager.getRecipes());
+        var recipes = new java.util.ArrayList<>(original);
+        recipes.add(testGrinding("obsidian_ingot", Items.OBSIDIAN, Items.IRON_INGOT));
+        recipes.add(testGrinding("obsidian_stairs", Items.OBSIDIAN, Items.BLACKSTONE_STAIRS));
+        recipes.add(testGrinding("ingot_building_block", Items.IRON_INGOT, Items.POLISHED_BLACKSTONE_BRICK_STAIRS));
+        manager.replaceRecipes(recipes);
+        RockStewRecipes.invalidate();
+        return original;
     }
 
     @GameTest(template = TEMPLATE)

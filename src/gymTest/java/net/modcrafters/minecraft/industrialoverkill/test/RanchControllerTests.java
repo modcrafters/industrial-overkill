@@ -340,7 +340,8 @@ public final class RanchControllerTests {
             var bucket = (RanchToolSlot) menu.bound.screen().find("ranch_containers_slot").orElseThrow();
             var courier = (RanchToolSlot) menu.bound.screen().find("ranch_couriers_slot").orElseThrow();
             menu.elementStates().set(drawer, UpgradesDrawerElement.OPEN, true);
-            menu.broadcastChanges();
+            // Mock players do not negotiate the menu snapshot channel.
+            menu.elementStates().sample(ranch, player);
             require(!shears.enabled(menu.elementStates()) && !courier.enabled(menu.elementStates())
                 && bucket.enabled(menu.elementStates()) && shears.tooltip(ranch, ItemStack.EMPTY).size() == 1,
                 "Tool presentation marks the add-on-gated slots disabled and explains the lock on hover");
@@ -351,7 +352,7 @@ public final class RanchControllerTests {
             var upgrades = ranch.items.inventory("upgrades");
             upgrades.setStackInSlot(0, RanchAddons.BREEDING.toStack());
             upgrades.setStackInSlot(2, RanchAddons.SHEARING.toStack());
-            menu.broadcastChanges();
+            menu.elementStates().sample(ranch, player);
             require(shears.enabled(menu.elementStates()) && shears.tooltip(ranch, ItemStack.EMPTY).isEmpty(),
                 "Installing Baa-rber Shop updates the open menu and clears the disabled tooltip");
             require(menu.visible(herdTarget) && ranch.rangeUpgrades() == 0,
@@ -361,10 +362,10 @@ public final class RanchControllerTests {
             upgrades.setStackInSlot(1, RanchAddons.FEEDING.toStack());
             upgrades.setStackInSlot(3, RanchAddons.PACKAGING.toStack());
             upgrades.setStackInSlot(0, ItemStack.EMPTY);
-            menu.broadcastChanges();
+            menu.elementStates().sample(ranch, player);
             require(menu.visible(herdTarget), "Livestock To Go also shows the shared target");
             upgrades.setStackInSlot(3, ItemStack.EMPTY);
-            menu.broadcastChanges();
+            menu.elementStates().sample(ranch, player);
             require(!menu.visible(herdTarget), "Removing the last herd-management add-on hides the controls");
             require(nativeSlot.mayPlace(wheat) && port.isItemValid(input, wheat), "Snackcelerator alone also opens the feed slots");
             upgrades.setStackInSlot(1, ItemStack.EMPTY);

@@ -92,10 +92,14 @@ public final class GymConfigurationTests {
             require(food.extractItem(0, 1, false).isEmpty(), "Legacy both mode cannot bypass input policy");
             var legacy = gym.saveWithFullMetadata(level.registryAccess());
             gym.loadWithComponents(legacy, level.registryAccess());
+            gym.multiblock().tick();
             require(gym.foodSides.get(RelativeFace.FRONT) == IoMode.INPUT,
                 "Saved both mode migrates to input");
             require(gym.food.extractItem(0, 1, true).is(Items.WHEAT),
                 "Manual food removal remains available");
+            food = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, facing);
+            power = level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, facing);
+            require(food != null && power != null, "The restored multiblock exposes its ports");
             gym.energy.setStored(1000);
             require(power.extractEnergy(20, true) == 20 && power.receiveEnergy(20, false) == 0,
                 "FE output only");

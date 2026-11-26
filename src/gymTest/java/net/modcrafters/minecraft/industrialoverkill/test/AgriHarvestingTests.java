@@ -233,7 +233,9 @@ public final class AgriHarvestingTests {
             require(machine.energy.stored() == 99895 && machine.energy.used().longValueExact() == 105,
                 "A cancelled harvest costs only the travel and hover ticks");
         } finally { NeoForge.EVENT_BUS.unregister(denied); }
-        ticks(machine, 71);
+        // Finish the next six visits, including two harvest phases and one planting phase.
+        ticks(machine, 6 * (AgriBrainProcessor.TRAVEL_TICKS + AgriBrainProcessor.PHASE_TICKS)
+            + 3 * AgriBrainProcessor.PHASE_TICKS);
         require(h.getLevel().getBlockState(crop(machine, 3)).is(Blocks.POTATOES), "Row two replants from slot two");
         require(h.getLevel().isEmptyBlock(crop(machine, 6)) && count(machine, "output", Items.TORCHFLOWER) == 2,
             "An empty assigned seed slot leaves the harvested row empty");

@@ -288,8 +288,8 @@ public final class AgriBrainTests {
         h.getLevel().setBlock(pos, BuiltInRegistries.BLOCK.get(ResourceLocation.parse("industrial_overkill:agri_brain")).defaultBlockState(), 3);
         var machine = (DefinedMachineEntity) h.getLevel().getBlockEntity(pos);
         require(machine.screenAutomation().groups().stream().map(g -> g.id()).collect(java.util.stream.Collectors.toSet())
-            .equals(java.util.Set.of("energy", "water", "hoe", "seeds", "output")),
-            "Water is configurable alongside energy, hoe, seeds and harvest output");
+            .equals(java.util.Set.of("energy", "water", "hoe", "seeds", "output", "fertilizer", "filtered_fertilizer", "pellets")),
+            "All inputs and outputs are configurable without exposing the manual upgrade slots");
         require(machine.fluids.getTanks() == 1 && machine.fluids.getTankCapacity(0) == 4000
             && machine.fluids.fill(new FluidStack(Fluids.LAVA, 1000), FluidAction.EXECUTE) == 0,
             "The four-bucket tank rejects lava");
@@ -315,6 +315,7 @@ public final class AgriBrainTests {
         machine.screenInventory("upgrades").setStackInSlot(4, ItemStack.EMPTY);
         require(processor.paused() && machine.energy.stored() == 12145, "Pause and energy survive reload");
         var player = h.makeMockServerPlayerInLevel();
+        player.getAbilities().instabuild = false;
         player.setPos(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
         var previous = player.containerMenu;
         var menu = new MachineMenu(91, player.getInventory(), machine);
@@ -658,7 +659,7 @@ public final class AgriBrainTests {
         dry.randomTick(level, outer, level.random);
         require(level.getBlockState(outer).getValue(FarmBlock.MOISTURE) == FarmBlock.MAX_MOISTURE,
             "Nearby water fully hydrates farmland even on a retention tick");
-        level.removeBlock(water, false);
+        level.setBlock(water, Blocks.AIR.defaultBlockState(), 3);
 
         var damp = dry.setValue(FarmBlock.MOISTURE, 4);
         var drier = dry.setValue(FarmBlock.MOISTURE, 3);

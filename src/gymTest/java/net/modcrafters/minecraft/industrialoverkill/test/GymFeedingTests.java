@@ -26,6 +26,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymFeeding;
+import zone.moddev.mc.lib.api.capabilities.ItemInventories.Address;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
 import zone.moddev.mc.lib.machine.multiblock.MultiblockInstance;
 import zone.moddev.mc.lib.machine.neoforge.MachineItemInteractions;
@@ -156,19 +157,21 @@ public final class GymFeedingTests {
         try {
             var wheat = new ItemStack(Items.WHEAT, 4);
             var seeds = new ItemStack(Items.WHEAT_SEEDS, 4);
+            var foodSlots = java.util.stream.IntStream.range(0, 3)
+                .map(slot -> menu.menuSlot(new Address("items", slot))).toArray();
             for (int slot = 0; slot < 3; slot++) {
-                var guiSlot = menu.getSlot(menu.menuSlot(slot));
+                var guiSlot = menu.getSlot(foodSlots[slot]);
                 require(guiSlot.mayPlace(wheat) && !guiSlot.mayPlace(seeds), "Every GUI food slot follows the paused cow's diet");
                 require(port.isItemValid(slot, wheat) && !port.isItemValid(slot, seeds), "Hoppers see the same slot filter");
                 require(ItemStack.matches(port.insertItem(slot, seeds, true), seeds)
                     && ItemStack.matches(port.insertItem(slot, seeds, false), seeds), "Simulation and insertion both reject wrong food");
             }
             menu.setCarried(seeds.copy());
-            menu.clicked(menu.menuSlot(1), 0, ClickType.PICKUP, player);
+            menu.clicked(foodSlots[1], 0, ClickType.PICKUP, player);
             require(ItemStack.matches(menu.getCarried(), seeds) && gym.food.getStackInSlot(1).isEmpty(),
                 "Rejected GUI insertion keeps the cursor stack");
             menu.setCarried(wheat.copy());
-            menu.clicked(menu.menuSlot(1), 0, ClickType.PICKUP, player);
+            menu.clicked(foodSlots[1], 0, ClickType.PICKUP, player);
             require(menu.getCarried().isEmpty() && gym.food.getStackInSlot(1).getCount() == 4, "GUI inserts suitable food");
             require(port.insertItem(2, wheat, true).isEmpty() && gym.food.getStackInSlot(2).isEmpty(),
                 "Hopper simulation accepts suitable food without changing storage");
@@ -177,19 +180,19 @@ public final class GymFeedingTests {
             gym.food.insertItem(3, CritterCourierProcessor.OCCUPANT.stack(CritterCourierProcessor.ENTITIES.capture(EntityType.PIG.create(h.getLevel()))), false);
             var carrots = new ItemStack(Items.CARROT);
             for (int slot = 0; slot < 3; slot++) {
-                var guiSlot = menu.getSlot(menu.menuSlot(slot));
+                var guiSlot = menu.getSlot(foodSlots[slot]);
                 require(!guiSlot.mayPlace(wheat) && guiSlot.mayPlace(carrots)
                     && !port.isItemValid(slot, wheat) && port.isItemValid(slot, carrots),
                     "An already-open GUI and cached hopper handler follow a new Courier occupant");
             }
             require(gym.food.getStackInSlot(0).getCount() == 8 && gym.food.getStackInSlot(1).getCount() == 4,
                 "Animal changes preserve previously stored food");
-            menu.clicked(menu.menuSlot(0), 0, ClickType.PICKUP, player);
+            menu.clicked(foodSlots[0], 0, ClickType.PICKUP, player);
             require(menu.getCarried().is(Items.WHEAT_SEEDS) && menu.getCarried().getCount() == 8,
                 "Food the new animal cannot eat can still be removed through the GUI");
             gym.food.extractItem(3, 1, false);
             cow.discard();
-            require(menu.getSlot(menu.menuSlot(0)).mayPlace(seeds) && port.isItemValid(0, seeds)
+            require(menu.getSlot(foodSlots[0]).mayPlace(seeds) && port.isItemValid(0, seeds)
                 && !port.isItemValid(0, new ItemStack(Items.STONE)), "Removing all animals restores supported-food filtering");
         } finally {
             menu.removed(player);

@@ -19,6 +19,8 @@ import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymScreenElements;
 import net.modcrafters.minecraft.industrialoverkill.courier.CritterCourierProcessor;
+import net.modcrafters.minecraft.industrialoverkill.stew.RockStewProcessor;
+import net.modcrafters.minecraft.industrialoverkill.stew.RockStewRecipes;
 import zone.moddev.mc.lib.gui.model.Common;
 import zone.moddev.mc.lib.gui.model.ProcessorButtonState;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
@@ -36,6 +38,8 @@ public final class GymDemandTests {
         factory.fluids.fill(new FluidStack(Fluids.WATER, 1000), FluidAction.EXECUTE);
         factory.fluids.fill(new FluidStack(Fluids.LAVA, 1000), FluidAction.EXECUTE);
         factory.energy.setStored(factory.energy.capacity());
+        require(RockStewProcessor.from(factory).select(RockStewRecipes.DEFAULT, new ItemStack(Items.COBBLESTONE)),
+            "Select cobblestone production for the energy consumer");
         return factory;
     }
 

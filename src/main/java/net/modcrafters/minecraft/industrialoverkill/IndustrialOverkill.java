@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriPellets;
+import net.modcrafters.minecraft.industrialoverkill.courier.CourierOccupantLoot;
 import net.modcrafters.minecraft.industrialoverkill.ranch.RanchAddons;
 import net.modcrafters.minecraft.industrialoverkill.waste.FarmFluids;
 import net.modcrafters.minecraft.industrialoverkill.waste.FarmRecipeBooks;
@@ -39,6 +40,7 @@ public final class IndustrialOverkill {
         SOUNDS.register(bus);
         FarmSupplies.register(bus);
         FarmFluids.register(bus);
+        CourierOccupantLoot.register(bus);
         RanchAddons.register(bus);
         FarmRecipeBooks.register();
         NeoForge.EVENT_BUS.addListener(AgriPellets::tick);

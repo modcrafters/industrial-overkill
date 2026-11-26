@@ -1,0 +1,9 @@
+{
+  "type": "industrial_overkill:courier_occupant",
+  "conditions": [
+    {
+      "condition": "neoforge:loot_table_id",
+      "loot_table_id": "industrial_overkill:blocks/critter_courier"
+    }
+  ]
+}

@@ -11,6 +11,7 @@
     <part id="powered_sides" model="industrial_overkill:block/machine/ranching_powered_sides"
           when="$processors.filter.running"/>
   </appearance>
+  <feature id="upgrades" gearbox="false"/>
   <recipe-type id="industrial_overkill:sewage_filter" declare="true" name="Sewage Filtering"/>
   <parts>
     <tank id="raw_input" name="Input" capacity="4000" role="input" tooltip="waste.filter.input"/>

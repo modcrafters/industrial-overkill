@@ -44,15 +44,19 @@ public final class CreativeTabTests {
             require(!library.contains(item("mmdlib:machine_recovery_capsule")), "Internal recovery capsule stays hidden");
             require(zone.moddev.mc.lib.MMDLib.creativeTabs().get(ResourceLocation.parse(
                 "industrial_overkill:machines")).contents().isEmpty(), "No manual item list is needed");
-            require(contents(h, "industrial_overkill:mmdlib_content").isEmpty(),
+            require(emptyOrAbsent(h, "industrial_overkill:mmdlib_content"),
                 "Unused fallback does not appear as a second creative tab");
-            require(contents(h, "mmdlib:materials").isEmpty(), "Library materials use its main tab");
+            require(emptyOrAbsent(h, "mmdlib:materials"), "Library materials have no separate tab");
         }
         h.succeed();
     }
 
     private static Item item(String id) {
         return BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
+    }
+
+    private static boolean emptyOrAbsent(GameTestHelper h, String id) {
+        return !BuiltInRegistries.CREATIVE_MODE_TAB.containsKey(ResourceLocation.parse(id)) || contents(h, id).isEmpty();
     }
 
     private static List<Item> contents(GameTestHelper h, String id) {
