@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
+         extends="industrial_overkill:base_powered_machine" name="Agri-Brain">
+  <appearance preset="model" model="industrial_overkill:block/agri_brain_body">
+    <face-overlay id="display_idle" face="front" x="0" y="0" width="16" height="16"
+                  texture="industrial_overkill:block/agricultural/agri_brain/front"
+                  when="!($processors.agri.status == 'RUNNING' &amp;&amp; !$processors.agri.paused &amp;&amp; !$processors.agri.held)"/>
+    <face-overlay id="display_powered" face="front" x="0" y="0" width="16" height="16"
+                  texture="industrial_overkill:block/agricultural/agri_brain/front" emissive="true"
+                  when="$processors.agri.status == 'RUNNING' &amp;&amp; !$processors.agri.paused &amp;&amp; !$processors.agri.held"/>
+    <part id="powered_top" model="industrial_overkill:block/agri_brain_powered_top"
+          when="$processors.agri.status == 'RUNNING' &amp;&amp; !$processors.agri.paused &amp;&amp; !$processors.agri.held"/>
+    <part id="powered_sides" model="industrial_overkill:block/machine/agricultural_powered_sides"
+          when="$processors.agri.status == 'RUNNING' &amp;&amp; !$processors.agri.paused &amp;&amp; !$processors.agri.held"/>
+  </appearance>
+  <visualizers range-color="#59FF59" work-color="#55FF88"/>
+  <feature id="upgrades" range-storage="upgrades" legacy-layout="upgrades"/>
+  <storage>
+    <fluids id="fluids">
+      <tank id="water" name="Water" capacity="4000" role="input" fluid="minecraft:water"/>
+    </fluids>
+    <items id="items">
+      <slots id="upgrades" name="Upgrades" count="9" role="manual" limit="1" automation="false"
+             item-tag="mmdlib:range_upgrades"/>
+      <slots id="hoe" name="Hoe" count="1" role="input" limit="1" item-tag="minecraft:hoes"/>
+      <slots id="seeds" name="Seeds" count="4" role="input" item-tag="industrial_overkill:agri_brain_seeds"/>
+      <slots id="output" name="Harvest" count="9" role="output"/>
+      <slots id="fertilizer" name="Regular Fertilizer" count="1" role="input" item-tag="industrial_overkill:fertilizer"/>
+      <slots id="filtered_fertilizer" name="Filtered Fertilizer" count="1" role="input" item-tag="industrial_overkill:filtered_fertilizer"/>
+      <slots id="pellets" name="Slow-Release Pellets" count="1" role="input" item-tag="industrial_overkill:slow_release_pellet"/>
+    </items>
+  </storage>
+  <processor id="agri" class="net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainProcessor"/>
+  <screen xmlns="https://moddev.zone/mmdlib/screen">
+    <fill name="machine">
+      <hbox spacing="12" align="center">
+        <vbox spacing="2" align="center">
+          <inventory id="seed" storage="seeds" columns="2" spacing="2" slot-tooltip="agri.seeds"
+                     value="net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen#selectedSeedSlot"/>
+          <hbox spacing="2" align="center">
+            <inventory storage="hoe" columns="1" slot-icon="industrial_overkill:slot_hoe" slot-tooltip="agri.hoe"/>
+            <cycle-button id="planting_mode" variable="$processors.agri.planting_mode" tooltip="agri.planting.cycle">
+              <cycle-mode value="0" icon="industrial_overkill:planting_first_found"
+                          label="agri.planting.mode.0" tooltip="agri.planting.help.0"
+                          action="industrial_overkill:planting_first_found"/>
+              <cycle-mode value="1" icon="industrial_overkill:planting_round_robin"
+                          label="agri.planting.mode.1" tooltip="agri.planting.help.1"
+                          action="industrial_overkill:planting_round_robin"/>
+              <cycle-mode value="2" icon="industrial_overkill:planting_rows"
+                          label="agri.planting.mode.2" tooltip="agri.planting.help.2"
+                          action="industrial_overkill:planting_rows"/>
+            </cycle-button>
+          </hbox>
+        </vbox>
+        <vbox spacing="2" align="center">
+          <hbox spacing="2" align="center">
+            <inventory storage="fertilizer" columns="1" slot-icon="industrial_overkill:slot_fertilizer" slot-tooltip="agri.fertilizer.regular"/>
+            <inventory storage="filtered_fertilizer" columns="1" slot-icon="industrial_overkill:slot_filtered_fertilizer" slot-tooltip="agri.fertilizer.filtered"/>
+            <inventory storage="pellets" columns="1" slot-icon="industrial_overkill:slot_pellets" slot-tooltip="agri.fertilizer.pellets"/>
+          </hbox>
+          <cycle-button id="fertilizing_mode" variable="$processors.agri.fertilizing_mode" tooltip="agri.fertilizer.cycle">
+            <cycle-mode value="0" icon="industrial_overkill:fertilizing_off" action="industrial_overkill:fertilizing_off"
+                        label="agri.fertilizer.mode.0" tooltip="agri.fertilizer.help.0"/>
+            <cycle-mode value="1" icon="industrial_overkill:fertilizing_smart" action="industrial_overkill:fertilizing_smart"
+                        label="agri.fertilizer.mode.1" tooltip="agri.fertilizer.help.1"/>
+            <cycle-mode value="2" icon="industrial_overkill:fertilizing_finish" action="industrial_overkill:fertilizing_finish"
+                        label="agri.fertilizer.mode.2" tooltip="agri.fertilizer.help.2"/>
+            <cycle-mode value="3" icon="industrial_overkill:fertilizing_pellets" action="industrial_overkill:fertilizing_pellets"
+                        label="agri.fertilizer.mode.3" tooltip="agri.fertilizer.help.3"/>
+          </cycle-button>
+        </vbox>
+        <inventory id="harvest" storage="output" columns="3" spacing="2" slot-tooltip="agri.output"/>
+      </hbox>
+    </fill>
+    <fill name="tanks">
+      <fluid-tank id="tank_0" tank="0" orientation="vertical" length="3s" tooltip="agri.irrigation.water"/>
+    </fill>
+    <fill name="energy"><energy-gauge id="energy" length="3s"/></fill>
+    <fill name="inventory_controls">
+      <inventory-controls id="inventory_controls">
+        <processor-button id="toggle_0" processor-key="agri"/>
+        <working-area-button id="working_area" processor-key="agri"/>
+      </inventory-controls>
+    </fill>
+    <fill name="upgrades">
+      <upgrades-drawer id="upgrades">
+        <machine-upgrades storage="upgrades"/>
+      </upgrades-drawer>
+    </fill>
+  </screen>
+</machine>

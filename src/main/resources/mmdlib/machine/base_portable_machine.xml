@@ -1,0 +1,8 @@
+<machine xmlns="https://moddev.zone/mmdlib/machine" version="1"
+         abstract="true" extends="mmdlib:base_machine">
+  <feature id="info" enabled="false"/>
+  <feature id="statistics" enabled="false"/>
+  <feature id="curios" enabled="false"/>
+  <feature id="backpack" enabled="false"/>
+  <feature id="redstone" type="mmdlib:redstone" enabled="false"/>
+</machine>

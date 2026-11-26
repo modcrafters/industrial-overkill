@@ -1,0 +1,20 @@
+{
+  "parent": "industrial_overkill:block/machine/powered_sides",
+  "textures": {
+    "lights": "industrial_overkill:block/generator/_base/side_powered"
+  },
+  "elements": [
+    {
+      "from": [0, 0, 0],
+      "to": [16, 16, 16],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "north": {"texture": "#lights"},
+        "south": {"texture": "#lights"},
+        "east": {"texture": "#lights"},
+        "west": {"texture": "#lights"}
+      }
+    }
+  ]
+}

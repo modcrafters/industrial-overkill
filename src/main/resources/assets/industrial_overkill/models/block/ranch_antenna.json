@@ -1,0 +1,19 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "metal": "industrial_overkill:block/ranching/_base/side",
+    "ring": "minecraft:block/gold_block",
+    "lens": "minecraft:block/ochre_froglight_side",
+    "particle": "#metal"
+  },
+  "elements": [
+    {
+      "from": [5.5, 6.25, 5], "to": [10.5, 9.75, 9.75],
+      "faces": {"north": {"texture": "#metal"}, "south": {"texture": "#metal"}, "east": {"texture": "#metal"}, "west": {"texture": "#metal"}, "up": {"texture": "#metal"}, "down": {"texture": "#metal"}}
+    },
+    {
+      "from": [6.5, 6.5, 9.75], "to": [9.5, 9.5, 11.5],
+      "faces": {"south": {"texture": "#lens"}, "east": {"texture": "#ring"}, "west": {"texture": "#ring"}, "up": {"texture": "#ring"}, "down": {"texture": "#ring"}}
+    }
+  ]
+}

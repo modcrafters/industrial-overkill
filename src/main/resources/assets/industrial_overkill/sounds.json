@@ -1,0 +1,14 @@
+{
+  "agri_drone_rotor": {
+    "subtitle": "subtitles.industrial_overkill.agri_drone_rotor",
+    "sounds": ["industrial_overkill:agri_drone_rotor"]
+  },
+  "agri_water_sprinkle": {
+    "subtitle": "subtitles.industrial_overkill.agri_water_sprinkle",
+    "sounds": ["industrial_overkill:agri_water_sprinkle"]
+  },
+  "agri_water_splash": {
+    "subtitle": "subtitles.industrial_overkill.agri_water_splash",
+    "sounds": ["industrial_overkill:agri_water_splash"]
+  }
+}

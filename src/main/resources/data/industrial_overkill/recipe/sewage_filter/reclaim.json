@@ -1,0 +1,12 @@
+{
+  "type": "industrial_overkill:sewage_filter",
+  "inputs": {
+    "input": [{"fluids": "industrial_overkill:filtered_sewage", "amount": 200}],
+    "energy": [{"energy": 1000}]
+  },
+  "outputs": {
+    "liquid": [{"fluid": {"id": "minecraft:water", "amount": 150}}],
+    "solids": [{"item": {"id": "industrial_overkill:filter_cake"}}]
+  },
+  "time": 200
+}

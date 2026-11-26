@@ -1,0 +1,152 @@
+{
+  "textures": {
+    "particle": "#top",
+    "top": "industrial_overkill:block/agricultural/agri_brain/top_powered"
+  },
+  "elements": [
+    {
+      "from": [4, 16.01, 13.5],
+      "to": [12, 16.01, 14],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [4, 2, 12, 2.5], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [4, 16.01, 2],
+      "to": [12, 16.01, 2.5],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [4, 13.5, 12, 14], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [13.5, 16.01, 4],
+      "to": [14, 16.01, 12],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [2, 4, 2.5, 12], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [2, 16.01, 4],
+      "to": [2.5, 16.01, 12],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [13.5, 4, 14, 12], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [12, 16.01, 13],
+      "to": [12.5, 16.01, 13.5],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [3.5, 2.5, 4, 3], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [3.5, 16.01, 13],
+      "to": [4, 16.01, 13.5],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [12, 2.5, 12.5, 3], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [12, 16.01, 2.5],
+      "to": [12.5, 16.01, 3],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [3.5, 13, 4, 13.5], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [3.5, 16.01, 2.5],
+      "to": [4, 16.01, 3],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [12, 13, 12.5, 13.5], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [12.5, 16.01, 12.5],
+      "to": [13, 16.01, 13],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [3, 3, 3.5, 3.5], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [3, 16.01, 12.5],
+      "to": [3.5, 16.01, 13],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [12.5, 3, 13, 3.5], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [12.5, 16.01, 3],
+      "to": [13, 16.01, 3.5],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [3, 12.5, 3.5, 13], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [3, 16.01, 3],
+      "to": [3.5, 16.01, 3.5],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [12.5, 12.5, 13, 13], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [13, 16.01, 12],
+      "to": [13.5, 16.01, 12.5],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [2.5, 3.5, 3, 4], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [2.5, 16.01, 12],
+      "to": [3, 16.01, 12.5],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [13, 3.5, 13.5, 4], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [13, 16.01, 3.5],
+      "to": [13.5, 16.01, 4],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [2.5, 12, 3, 12.5], "texture": "#top", "rotation": 180}
+      }
+    },
+    {
+      "from": [2.5, 16.01, 3.5],
+      "to": [3, 16.01, 4],
+      "shade": false,
+      "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+      "faces": {
+        "up": {"uv": [13, 12, 13.5, 12.5], "texture": "#top", "rotation": 180}
+      }
+    }
+  ]
+}

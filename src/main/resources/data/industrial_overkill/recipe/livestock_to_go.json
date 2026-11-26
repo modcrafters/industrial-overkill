@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {"item": "minecraft:copper_ingot"},
+    {"item": "minecraft:redstone"},
+    {"item": "minecraft:lead"},
+    {"item": "minecraft:iron_bars"}
+  ],
+  "result": {"id": "industrial_overkill:livestock_to_go"}
+}

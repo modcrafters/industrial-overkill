@@ -1,0 +1,212 @@
+package net.modcrafters.minecraft.industrialoverkill.test;
+
+import static net.modcrafters.minecraft.industrialoverkill.test.AnimalGymTests.require;
+
+import java.util.List;
+import java.util.function.Consumer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.gametest.GameTestHolder;
+import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainProcessor;
+import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen;
+import net.modcrafters.minecraft.industrialoverkill.upgrade.MachineUpgrades;
+import zone.moddev.mc.lib.gui.ElementActions;
+import zone.moddev.mc.lib.gui.runtime.MachineMenu;
+import zone.moddev.mc.lib.gui.runtime.ScreenNetwork;
+import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
+
+@GameTestHolder("industrial_overkill_agri")
+@PrefixGameTestTemplate(false)
+public final class AgriPlantingTests {
+    private static DefinedMachineEntity place(GameTestHelper h, int upgrades) {
+        var pos = h.absolutePos(new BlockPos(2, 2, 2));
+        h.getLevel().setBlock(pos, BuiltInRegistries.BLOCK.get(ResourceLocation.parse(
+            "industrial_overkill:agri_brain")).defaultBlockState(), 3);
+        var machine = (DefinedMachineEntity) h.getLevel().getBlockEntity(pos);
+        machine.energy.setStored(100000);
+        for (int i = 0; i < upgrades; i++)
+            machine.screenInventory("upgrades").setStackInSlot(i, new ItemStack(MachineUpgrades.RANGE.get()));
+        int width = 3 + 2 * upgrades;
+        for (int index = 0; index < width * width; index++) {
+            var crop = crop(machine, width, index);
+            h.getLevel().setBlock(crop, Blocks.AIR.defaultBlockState(), 3);
+            h.getLevel().setBlock(crop.above(), Blocks.AIR.defaultBlockState(), 3);
+            h.getLevel().setBlock(crop.below(), Blocks.FARMLAND.defaultBlockState().setValue(FarmBlock.MOISTURE, 7), 3);
+        }
+        return machine;
+    }
+
+    private static BlockPos crop(DefinedMachineEntity machine, int width, int index) {
+        var front = machine.getBlockState().getValue(BlockStateProperties.HORIZONTAL_FACING);
+        return machine.getBlockPos().relative(front.getClockWise(), (index / width % 2 == 0 ? index % width : width - 1 - index % width) - width / 2)
+            .relative(front, -1 - index / width);
+    }
+
+    private static void ticks(DefinedMachineEntity machine, int count) {
+        for (int tick = 0; tick < count; tick++) machine.serverTick();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void firstFoundConsumesInSlotOrderAndSkipsOccupiedFarmland(GameTestHelper h) {
+        var machine = place(h, 0);
+        var seeds = machine.screenInventory("seeds");
+        require(seeds.getSlots() == 4 && seeds.insertItem(0, new ItemStack(Items.STONE), false).is(Items.STONE),
+            "Four seed input slots reject non-seeds through storage");
+        seeds.setStackInSlot(0, new ItemStack(Items.WHEAT_SEEDS, 2));
+        seeds.setStackInSlot(1, new ItemStack(Items.CARROT, 2));
+        h.getLevel().setBlock(crop(machine, 3, 0), Blocks.STONE.defaultBlockState(), 3);
+        ticks(machine, 11);
+        require(seeds.getStackInSlot(0).getCount() == 2, "Occupied crop space consumes no seed");
+        ticks(machine, 48);
+        require(h.getLevel().getBlockState(crop(machine, 3, 1)).is(Blocks.WHEAT)
+            && h.getLevel().getBlockState(crop(machine, 3, 2)).is(Blocks.WHEAT)
+            && h.getLevel().getBlockState(crop(machine, 3, 3)).is(Blocks.CARROTS),
+            "First-found mode exhausts the first seed stack before using the next");
+        require(seeds.getStackInSlot(0).isEmpty() && seeds.getStackInSlot(1).getCount() == 1,
+            "Each successful planting consumes exactly one item");
+        ticks(machine, 180);
+        require(h.getLevel().getBlockState(crop(machine, 3, 1)).is(Blocks.WHEAT),
+            "Later passes preserve existing crops");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void roundRobinSkipsEmptySlotsAndSurvivesReloadAndCancellation(GameTestHelper h) {
+        var machine = place(h, 0);
+        var processor = AgriBrainProcessor.from(machine);
+        processor.cyclePlantingMode();
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.WHEAT_SEEDS, 3));
+        seeds.setStackInSlot(2, new ItemStack(Items.CARROT, 3));
+        require(processor.nextSeedSlot() == 0, "Round-robin starts at the first populated slot");
+        ticks(machine, 16);
+        require(processor.nextSeedSlot() == 2, "A successful planting advances past empty slot two");
+        var registry = h.getLevel().registryAccess();
+        machine.loadWithComponents(machine.saveWithoutMetadata(registry), registry);
+        require(processor.plantingMode() == 1 && processor.nextSeedSlot() == 2,
+            "Mode, seeds and next slot survive reload");
+        var denied = crop(machine, 3, 1);
+        Consumer<BlockEvent.EntityPlaceEvent> listener = event -> {
+            if (event.getLevel() == h.getLevel() && event.getPos().equals(denied)) event.setCanceled(true);
+        };
+        NeoForge.EVENT_BUS.addListener(listener);
+        try {
+            ticks(machine, 16);
+            require(h.getLevel().isEmptyBlock(denied) && seeds.getStackInSlot(2).getCount() == 3
+                && processor.nextSeedSlot() == 2, "Cancelled placement consumes neither seed nor round-robin turn");
+            require(machine.energy.stored() == 100000 - 32 * 5 - 100,
+                "Cancelled planting does not consume its action cost");
+        } finally { NeoForge.EVENT_BUS.unregister(listener); }
+        ticks(machine, 16);
+        require(h.getLevel().getBlockState(crop(machine, 3, 2)).is(Blocks.CARROTS)
+            && processor.nextSeedSlot() == 0, "The next successful planting uses the retained slot and wraps");
+        processor.setPaused(true);
+        ticks(machine, 40);
+        require(h.getLevel().isEmptyBlock(crop(machine, 3, 3)), "Pause prevents planting");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void rowsRepeatEveryFourAndLeaveMissingSeedRowsEmpty(GameTestHelper h) {
+        var machine = place(h, 3); // Nine rows, including repeats at five and nine.
+        var processor = AgriBrainProcessor.from(machine);
+        processor.cyclePlantingMode();
+        processor.cyclePlantingMode();
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.WHEAT_SEEDS, 64));
+        seeds.setStackInSlot(2, new ItemStack(Items.CARROT, 64));
+        seeds.setStackInSlot(3, new ItemStack(Items.POTATO, 64));
+        ticks(machine, 63 * 16 + 18 * 11);
+        for (int row = 0; row < 9; row++) {
+            for (int column = 0; column < 9; column++) {
+                var state = h.getLevel().getBlockState(crop(machine, 9, row * 9 + column));
+                var expected = switch (row % 4) {
+                    case 0 -> Blocks.WHEAT;
+                    case 2 -> Blocks.CARROTS;
+                    case 3 -> Blocks.POTATOES;
+                    default -> Blocks.AIR;
+                };
+                require(state.is(expected), "Row " + (row + 1) + " uses its assigned slot without fallback");
+            }
+        }
+        require(seeds.getStackInSlot(0).getCount() == 37 && seeds.getStackInSlot(2).getCount() == 46
+            && seeds.getStackInSlot(3).getCount() == 46, "Row planting consumes the expected number of each seed");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void seedGridModeButtonAndCurrentSlotSnapshotsWorkTogether(GameTestHelper h) {
+        var machine = place(h, 0);
+        machine.screenInventory("seeds").setStackInSlot(1, new ItemStack(Items.WHEAT_SEEDS, 2));
+        var player = h.makeMockServerPlayerInLevel();
+        player.setPos(machine.getBlockPos().getX() + .5, machine.getBlockPos().getY() + .5, machine.getBlockPos().getZ() + .5);
+        var previous = player.containerMenu;
+        var menu = new MachineMenu(93, player.getInventory(), machine);
+        player.containerMenu = menu;
+        try {
+            var outputs = java.util.stream.IntStream.range(0, 9).mapToObj(i ->
+                (zone.moddev.mc.lib.gui.model.elements.ItemSlotElement) menu.bound.screen().find("harvest_" + i).orElseThrow()).toList();
+            require(menu.slot(outputs.get(0)).y == menu.slot(outputs.get(2)).y
+                && menu.slot(outputs.get(0)).x == menu.slot(outputs.get(3)).x
+                && menu.slot(outputs.get(3)).y > menu.slot(outputs.get(0)).y
+                && menu.slot(outputs.get(8)).y > menu.slot(outputs.get(3)).y
+                && outputs.stream().noneMatch(slot -> menu.slot(slot).mayPlace(new ItemStack(Items.WHEAT))),
+                "The nine harvest outputs form a three-by-three grid and reject insertion");
+            var slots = java.util.stream.IntStream.range(0, 4).mapToObj(i ->
+                (zone.moddev.mc.lib.gui.model.elements.ItemSlotElement) menu.bound.screen().find("seed_" + i).orElseThrow()).toList();
+            require(menu.slot(slots.get(0)).x < menu.slot(slots.get(1)).x
+                && menu.slot(slots.get(0)).y == menu.slot(slots.get(1)).y
+                && menu.slot(slots.get(2)).x == menu.slot(slots.get(0)).x
+                && menu.slot(slots.get(2)).y > menu.slot(slots.get(0)).y,
+                "Native seed slots form a two-by-two grid in row-major order");
+            var button = (zone.moddev.mc.lib.gui.model.elements.CycleButtonElement)
+                menu.bound.screen().find("planting_mode").orElseThrow();
+            var seeds = (zone.moddev.mc.lib.gui.model.containers.InventoryElement)
+                menu.bound.screen().find("seed").orElseThrow();
+            for (int request = 1; request <= 3; request++) {
+                var action = ElementActions.CLICK;
+                var reply = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
+                    menu.elements.indexOf(button), request, action.id(), action.encode(player.registryAccess(),
+                        new ElementActions.Click(0, 0, 0))));
+                require(reply.accepted() && AgriBrainProcessor.from(machine).plantingMode() == request % 3,
+                    "The authorized mode button cycles through all three modes");
+                var mode = button.modeFor(button.snapshot(machine).orElseThrow().value()).orElseThrow();
+                require(mode.value() == request % 3
+                    && mode.label().key().equals("agri.planting.mode." + request % 3)
+                    && mode.tooltip().orElseThrow().key().equals("agri.planting.help." + request % 3),
+                    "Shared cycle button snapshots select the XML mode label and help");
+                var selected = seeds.selectedSlot(AgriBrainScreen.selectedSeedSlot(machine));
+                require(request == 1 ? selected.orElseThrow() == slots.get(1) : selected.isEmpty(),
+                    "Shared inventory selection highlights only the next non-empty seed in one-at-a-time mode");
+            }
+            var clickAction = ElementActions.CLICK;
+            var ignored = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
+                menu.elements.indexOf(button), 4, clickAction.id(), clickAction.encode(player.registryAccess(),
+                    new ElementActions.Click(1, 0, 0))));
+            require(!ignored.accepted() && AgriBrainProcessor.from(machine).plantingMode() == 0,
+                "Right clicks do not change the selected mode");
+            // A change outside this menu must be read fresh when cycling, even in the same tick.
+            AgriBrainProcessor.from(machine).cyclePlantingMode();
+            var next = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
+                menu.elements.indexOf(button), 5, clickAction.id(), clickAction.encode(player.registryAccess(),
+                    new ElementActions.Click(0, 0, 0))));
+            require(next.accepted() && AgriBrainProcessor.from(machine).plantingMode() == 2,
+                "The shared cycle uses current server state, not an old menu snapshot");
+        } finally {
+            menu.removed(player);
+            player.containerMenu = previous;
+        }
+        h.succeed();
+    }
+}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<creative-tab xmlns="https://moddev.zone/mmdlib/creative-tab" version="1"
+              title="itemGroup.industrial_overkill" title-fallback="Industrial Overkill"
+              icon="industrial_overkill:animal_gym" default-for-mod="true" include-mod-items="true">
+  <exclude tag="industrial_overkill:internal_items"/>
+</creative-tab>

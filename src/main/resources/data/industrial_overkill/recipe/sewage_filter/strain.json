@@ -1,0 +1,21 @@
+{
+  "type": "industrial_overkill:sewage_filter",
+  "inputs": {
+    "input": [{"fluids": "industrial_overkill:sewage", "amount": 250}],
+    "energy": [{"energy": 1000}]
+  },
+  "outputs": {
+    "liquid": [{"fluid": {"id": "industrial_overkill:filtered_sewage", "amount": 200}}],
+    "solids": [
+      {"item": {"id": "minecraft:wheat_seeds"}, "chance": 0.0125},
+      {"item": {"id": "minecraft:beetroot_seeds"}, "chance": 0.0125},
+      {"item": {"id": "minecraft:melon_seeds"}, "chance": 0.0125},
+      {"item": {"id": "minecraft:pumpkin_seeds"}, "chance": 0.0125},
+      {"item": {"id": "minecraft:dirt"}, "chance": 0.0125},
+      {"item": {"id": "minecraft:sand"}, "chance": 0.0125},
+      {"item": {"id": "minecraft:gravel"}, "chance": 0.0125},
+      {"item": {"id": "minecraft:clay"}, "chance": 0.0125}
+    ]
+  },
+  "time": 200
+}

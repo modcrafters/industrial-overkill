@@ -1,0 +1,7 @@
+{
+  "parent": "industrial_overkill:block/machine/resource",
+  "textures": {
+    "front": "industrial_overkill:block/resource/rock_stew/front",
+    "side": "industrial_overkill:block/resource/rock_stew/side"
+  }
+}

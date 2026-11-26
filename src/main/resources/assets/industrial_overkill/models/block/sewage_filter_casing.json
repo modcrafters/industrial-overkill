@@ -1,0 +1,29 @@
+{
+  "parent": "industrial_overkill:block/machine/ranching",
+  "loader": "neoforge:composite",
+  "children": {
+    "casing": {
+      "parent": "industrial_overkill:block/machine/ranching"
+    },
+    "decals": {
+      "render_type": "minecraft:cutout",
+      "textures": {
+        "particle": "#front",
+        "front": "industrial_overkill:block/ranching/sewage_filter/front",
+        "left": "industrial_overkill:block/ranching/sewage_filter/left",
+        "right": "industrial_overkill:block/ranching/sewage_filter/right"
+      },
+      "elements": [
+        {
+          "from": [-0.01, 0, -0.005],
+          "to": [16.01, 16, 16],
+          "faces": {
+            "north": {"uv": [0, 0, 16, 16], "texture": "#front", "cullface": "north"},
+            "east": {"uv": [0, 0, 16, 16], "texture": "#left", "cullface": "east"},
+            "west": {"uv": [0, 0, 16, 16], "texture": "#right", "cullface": "west"}
+          }
+        }
+      ]
+    }
+  }
+}

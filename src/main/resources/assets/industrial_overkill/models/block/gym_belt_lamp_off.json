@@ -1,21 +1,9 @@
 {
   "parent": "minecraft:block/block",
   "textures": {
-    "panel": "industrial_overkill:block/gym_panel",
-    "side": "industrial_overkill:block/gym_side",
-    "vent": "industrial_overkill:block/gym_vent",
-    "hazard": "industrial_overkill:block/gym_hazard",
-    "belt": "industrial_overkill:block/gym_belt",
-    "display": "industrial_overkill:block/gym_display",
-    "light": "industrial_overkill:block/gym_light",
-    "light_off": "industrial_overkill:block/gym_light_off",
-    "dark": "industrial_overkill:block/gym_dark",
-    "trim": "industrial_overkill:block/gym_trim",
-    "gold": "industrial_overkill:block/gym_gold",
-    "green": "industrial_overkill:block/gym_green",
-    "bolt": "industrial_overkill:block/gym_bolt",
     "bait_rod": "minecraft:block/stripped_oak_log",
-    "particle": "industrial_overkill:block/gym_panel"
+    "particle": "industrial_overkill:block/gym_panel",
+    "work_light_off": "industrial_overkill:block/gym_attachment_faces"
   },
   "elements": [
     {
@@ -31,57 +19,129 @@
       ],
       "faces": {
         "north": {
-          "texture": "#light_off",
+          "texture": "#work_light_off",
           "uv": [
-            0,
-            0,
-            16,
-            16
+            0.5,
+            11.0,
+            1.0,
+            11.1875
           ]
         },
         "south": {
-          "texture": "#light_off",
+          "texture": "#work_light_off",
           "uv": [
-            0,
-            0,
-            16,
-            16
+            0.5,
+            11.0,
+            1.0,
+            11.1875
           ]
         },
         "east": {
-          "texture": "#light_off",
+          "texture": "#work_light_off",
           "uv": [
-            0,
-            0,
-            16,
-            16
+            6.5,
+            11.0,
+            6.53125,
+            11.1875
           ]
         },
         "west": {
-          "texture": "#light_off",
+          "texture": "#work_light_off",
           "uv": [
-            0,
-            0,
-            16,
-            16
+            6.5,
+            11.0,
+            6.53125,
+            11.1875
           ]
         },
         "up": {
-          "texture": "#light_off",
+          "texture": "#work_light_off",
           "uv": [
-            0,
-            0,
-            16,
-            16
+            0.5,
+            14.0,
+            1.0,
+            14.0625
           ]
         },
         "down": {
-          "texture": "#light_off",
+          "texture": "#work_light_off",
           "uv": [
-            0,
-            0,
-            16,
-            16
+            0.5,
+            14.0,
+            1.0,
+            14.0625
+          ]
+        }
+      },
+      "shade": true,
+      "neoforge_data": {
+        "ambient_occlusion": false
+      }
+    },
+    {
+      "from": [
+        6.35,
+        28.25,
+        10.649999999999999
+      ],
+      "to": [
+        14.15,
+        29.75,
+        10.780000000000001
+      ],
+      "faces": {
+        "north": {
+          "texture": "#work_light_off",
+          "uv": [
+            0.5,
+            11.0,
+            1.0,
+            11.1875
+          ]
+        },
+        "south": {
+          "texture": "#work_light_off",
+          "uv": [
+            0.5,
+            11.0,
+            1.0,
+            11.1875
+          ]
+        },
+        "east": {
+          "texture": "#work_light_off",
+          "uv": [
+            6.5,
+            11.0,
+            6.53125,
+            11.1875
+          ]
+        },
+        "west": {
+          "texture": "#work_light_off",
+          "uv": [
+            6.5,
+            11.0,
+            6.53125,
+            11.1875
+          ]
+        },
+        "up": {
+          "texture": "#work_light_off",
+          "uv": [
+            0.5,
+            14.0,
+            1.0,
+            14.0625
+          ]
+        },
+        "down": {
+          "texture": "#work_light_off",
+          "uv": [
+            0.5,
+            14.0,
+            1.0,
+            14.0625
           ]
         }
       },

@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import copy
+import math
 import struct, zlib
 from model_geometry import check_coplanar_faces
 
@@ -41,30 +42,6 @@ def js(path,data):
  path.parent.mkdir(parents=True,exist_ok=True); path.write_text(json.dumps(data,indent=2)+'\n',encoding='utf-8')
 def texture(name,base,draw):
  im=Canvas(base); draw(im); p=A/'textures/block'/f'{name}.png'; p.parent.mkdir(parents=True,exist_ok=True); im.save(p)
-# Muted violet-grey steel, deep rubber and amber lamps, sampled by eye from the
-# supplied concept. Geometry supplies the panel seams; textures supply pixel detail.
-def steel(d):
- for y in range(32):
-  for x in range(32):
-   if (x*17+y*31)%47==0: d.point(x,y,'#9293a4')
-   elif (x*13+y*7)%53==0: d.point(x,y,'#707481')
- d.line((0,0,31,0),fill='#b0b1c0')
- d.line((0,31,31,31),fill='#565a68')
-
-def hazard(d):
- for x in range(-32,64,12):
-  d.polygon([(x,0),(x+6,0),(x-26,32),(x-32,32)],fill='#efba25')
- d.line((0,0,31,0),fill='#ffe479')
- d.line((0,31,31,31),fill='#796026')
-
-def belt(d):
- for x in range(0,32,8):
-  d.rectangle((x,0,x+1,31),fill='#41464f')
-  d.line((x+6,0,x+6,31),fill='#14181f')
- for x in range(32):
-  for y in range(3,30,7):
-   if (x+y)%5==0:d.point(x,y,'#343943')
-
 def display(d):
  d.rectangle((0,0,31,31),outline='#595344')
  d.ellipse((4,15,16,25),fill='#ffc62d')
@@ -83,29 +60,6 @@ def vents(d):
   d.rectangle((6,y,25,y+2),fill='#2b303b')
   d.line((6,y+3,25,y+3),fill='#a5a5af')
 
-def side(d):
- steel(d)
- d.rectangle((4,2,27,29),fill='#4b505d')
- for y in (10,18):
-  d.rectangle((4,y,27,y+3),fill='#d5a627')
-  d.line((4,y,27,y),fill='#f9cb42')
- for x in (3,28):
-  for y in (3,28):d.rectangle((x,y,x+1,y+1),fill='#303540')
-
-texture('gym_panel','#858797',steel)
-texture('gym_side','#858797',side)
-texture('gym_vent','#777c89',vents)
-texture('gym_hazard','#282b32',hazard)
-texture('gym_belt','#272c35',belt)
-texture('gym_display','#14191f',display)
-texture('gym_light','#e6a921',lambda d:d.rectangle((2,5,29,26),fill='#fff39d'))
-texture('gym_light_off','#6b5940',lambda d:d.rectangle((2,5,29,26),fill='#9a8961'))
-texture('gym_dark','#343946',lambda d:d.rectangle((0,0,31,31),outline='#464d5b'))
-texture('gym_trim','#555d6c',lambda d:d.line((0,0,31,0),fill='#969ba9'))
-texture('gym_gold','#aa8132',lambda d:d.rectangle((1,1,30,30),outline='#d5b252'))
-texture('gym_green','#3f7726',lambda d:d.rectangle((5,5,26,26),fill='#78ce3c'))
-texture('gym_bolt','#494f5c',lambda d:d.rectangle((6,6,25,25),fill='#a4a5ae'))
-
 def cube(a,b,t,overrides=None):
  faces={f:{'texture':'#'+t,'uv':[0,0,16,16]} for f in ('north','south','east','west','up','down')}
  for f,tex in (overrides or {}).items():faces[f]={'texture':'#'+tex,'uv':[0,0,16,16]}
@@ -113,17 +67,24 @@ def cube(a,b,t,overrides=None):
   if face['texture']=='#hazard':
    dims = (b[0]-a[0],b[2]-a[2]) if f in ['up','down'] else ((b[0]-a[0],b[1]-a[1]) if f in ['north','south'] else (b[2]-a[2],b[1]-a[1]))
    face['uv']=[0,0,*dims]
-  if face['texture'] in ['#light','#green','#display']:
+  if face['texture'] in ['#light','#work_light','#green','#display']:
    face['neoforge_data']={'block_light':15,'sky_light':15,'ambient_occlusion':False}
- return {'from':a,'to':b,'faces':faces,'shade':t not in ['light','green'],'neoforge_data':{'ambient_occlusion':False}}
+ return {'from':a,'to':b,'faces':faces,'shade':t not in ['light','work_light','green'],'neoforge_data':{'ambient_occlusion':False}}
 
-def tilt(a,b,t,angle,origin):
- c=cube(a,b,t)
+def tilt(a,b,t,angle,origin,overrides=None):
+ c=cube(a,b,t,overrides)
  c['rotation']={'origin':origin,'axis':'z','angle':angle,'rescale':False}
  return c
 
-tex={x:'industrial_overkill:block/gym_'+x for x in ['panel','side','vent','hazard','belt','display','light','light_off','dark','trim','gold','green','bolt']}
+# The Courier and particle bindings still use the individual palette sprites.
+tex={x:'industrial_overkill:block/gym_'+x for x in ['panel','hazard','belt','light','light_off','dark','trim','gold','bolt']}
 tex['bait_rod']='minecraft:block/stripped_oak_log'
+attachment_atlas='industrial_overkill:block/gym_attachment_faces'
+attachment_layout=json.loads((Path(__file__).parent/'assets/gym_attachment_faces.json').read_text(encoding='utf-8'))
+attachment_tiles=attachment_layout['tiles']
+attachment_swatches=attachment_layout['swatches']
+attachment_materials=attachment_tiles.keys()|attachment_swatches.keys()
+face_axes={'north':(0,1),'south':(0,1),'west':(2,1),'east':(2,1),'up':(0,2),'down':(0,2)}
 rotations=[('north',0),('east',90),('south',180),('west',270)]
 
 def mirrored(elements):
@@ -131,7 +92,8 @@ def mirrored(elements):
  for e in elements:
   x0,x1=e['from'][0],e['to'][0]
   e['from'][0],e['to'][0]=16-x1,16-x0
-  e['faces']['east'],e['faces']['west']=e['faces']['west'],e['faces']['east']
+  if 'east' in e['faces']:
+   e['faces']['east'],e['faces']['west']=e['faces']['west'],e['faces']['east']
   if 'rotation' in e:
    e['rotation']['origin'][0]=16-e['rotation']['origin'][0]
    e['rotation']['angle']=-e['rotation']['angle']
@@ -161,17 +123,47 @@ def four_sides(elements):
   result.extend(side)
  return result
 
-def model(name,elements):
+def model(name,elements,*,textures=None):
  elements=mirrored(elements)
  check_coplanar_faces(name,elements)
- js(A/'models/block'/f'{name}.json',model_payload(elements))
+ js(A/'models/block'/f'{name}.json',model_payload(elements,textures=textures))
 
-def model_payload(elements,display=None):
+def map_attachment_faces(element):
+ for direction,face in element['faces'].items():
+  material=face['texture'].removeprefix('#')
+  if material not in attachment_materials:
+   continue
+  # A model unit is 1/16 of a block. Round fractional texels up at a half, with at least one texel.
+  width,height=(max(1,math.floor(2*(element['to'][axis]-element['from'][axis])+.5+1e-9))
+                for axis in face_axes[direction])
+  if face.get('rotation',0) in (90,270):
+   width,height=height,width
+  if material in attachment_swatches:
+   x,y=attachment_swatches[material]
+   if material!='hazard':
+    x+=(32-width)//2
+    y+=(32-height)//2
+  else:
+   # All three beam segments draw from the same two strips at the same scale.
+   size=f'{32 if material in ("beam_wall","beam_lid") else width}x{height}'
+   if size not in attachment_tiles[material]:
+    raise ValueError(f'Missing Gym attachment atlas tile for {material} {size}')
+   x,y=attachment_tiles[material][size]
+  u=16/attachment_layout['width']
+  v=16/attachment_layout['height']
+  face['uv']=[x*u,y*v,(x+width)*u,(y+height)*v]
+
+def model_payload(elements,display=None,*,textures=None):
  # Vanilla element rotations only support multiples of 22.5 degrees. NeoForge's
  # baked child transforms allow the bait rod's exact 30-degree slope, including items.
- base={'parent':'minecraft:block/block','textures':tex|{'particle':tex['panel']}}
+ if textures is None:textures=tex|{'particle':tex['panel']}
+ materials={face['texture'].removeprefix('#') for e in elements for face in e['faces'].values()}
+ textures={name:path for name,path in textures.items() if name not in attachment_materials}
+ textures.update({name:attachment_atlas for name in sorted(materials&attachment_materials)})
+ base={'parent':'minecraft:block/block','textures':textures}
  regular=[];children={}
  for e in copy.deepcopy(elements):
+  map_attachment_faces(e)
   rotation=e.get('rotation')
   if rotation and rotation['angle'] not in [-45,-22.5,0,22.5,45]:
    e.pop('rotation')
@@ -184,53 +176,98 @@ def model_payload(elements,display=None):
  if display is not None:result['display']=display
  return result
 
+def gym_front_decal(casing_x=0):
+ return {'from':[casing_x,0,-.005],'to':[casing_x+16,16,-.005],
+         'faces':{'north':{'texture':'#front','uv':[0,0,16,16]}}}
+
+gym_front_textures={'front':'industrial_overkill:block/generator/gym/front','particle':'#front'}
+
+def gym_model_payload(name,attachments,display=None,*,casing_x=0):
+ generator_base='industrial_overkill:block/generator/_base'
+ textures=tex|{f'casing_{face}':f'{generator_base}/{face}'
+               for face in ('front','side','top','bottom')}
+ textures['particle']='#casing_side'
+ casing={
+  'from':[casing_x,0,0], 'to':[casing_x+16,16,16],
+  'faces':{direction:{'texture':f'#casing_{texture}','uv':[0,0,16,16]}
+           for direction,texture in [('north','front'),('south','side'),('east','side'),
+                                     ('west','side'),('up','top'),('down','bottom')]}}
+ decal=gym_front_decal(casing_x)
+ for direction in ('up','down'):
+  casing['faces'][direction]['rotation']=180
+ if display is None:
+  for direction,face in casing['faces'].items():face['cullface']=direction
+  decal['faces']['north']['cullface']='north'
+
+ elements=[casing,*mirrored(attachments)]
+ check_coplanar_faces(name,[*elements,decal])
+ result=model_payload(elements,display,textures=textures)
+ result['children']['front_decal']={
+  'render_type':'minecraft:cutout',
+  'textures':gym_front_textures,
+  'elements':[decal]}
+ return result
+
 def bolts(x0,x1,y0,y1,z):
  return [cube([x,y,z],[x+.55,y+.55,z+.2],'bolt') for x in [x0,x1] for y in [y0,y1]]
 
-def lamp(x0,x1,y,z):
+def open_ends(element,*ends):
+ for face in ends:
+  del element['faces'][face]
+ return element
+
+def beam(x0,x1):
+ return open_ends(cube([x0,27.5,12],[x1,30.5,16],'beam_wall',
+                      {'up':'beam_lid','down':'beam_lid'}),'east','west')
+
+def opposite_beam_face(elements):
+ # The beam spans Z=12..16 before gantry() moves it into place.
+ rear=copy.deepcopy(elements)
+ for e in rear:
+  near,far=e['from'][2],e['to'][2]
+  e['from'][2],e['to'][2]=28-far,28-near
+  e['faces']['north'],e['faces']['south']=e['faces']['south'],e['faces']['north']
+ return rear
+
+def lamp(x0,x1,y,z,lens='light'):
  return [cube([x0,y,z],[x1,y+2.8,z+.65],'trim'),
          cube([x0+.4,y+.3,z-.08],[x1-.4,y+2.5,z+.1],'gold'),
-         cube([x0+.85,y+.65,z-.13],[x1-.85,y+2.15,z],'light')]
+         cube([x0+.85,y+.65,z-.13],[x1-.85,y+2.15,z],lens)]
 
-# Controller: chamfered corners, large recessed paw display, green indicators,
-# vented lower drawer, striped side panels and recessed slot on the top.
-controller=[
- cube([.5,0,.5],[15.5,1,15.5],'dark'),
- cube([1,1,1],[15,14.1,15.4],'dark',{'west':'side','east':'side','south':'panel'}),
- cube([1,1,.35],[15,5.1,1],'panel',{'north':'vent'}),
- cube([1,5.5,.35],[15,14.1,1],'panel'),
- cube([0,1,1],[1,14.1,15],'trim',{'west':'side'}),cube([15,1,1],[16,14.1,15],'trim',{'east':'side'}),
- cube([1,14.1,1],[15,15.5,15],'panel'),
- tilt([.3,13.4,.8],[2.3,15,15.2],'panel',-45,[1.3,14.2,8]),
- tilt([13.7,13.4,.8],[15.7,15,15.2],'panel',45,[14.7,14.2,8]),
- cube([2,6.2,.1],[14,14,.55],'trim'),
- cube([2.4,6.6,-.02],[13.6,13.6,.15],'gold'),
- cube([2.9,7,-.06],[13.1,13.2,-.01],'dark',{'north':'display'}),
- cube([2.8,5.8,0],[8.7,6.8,.4],'trim'),
- cube([11.6,5.9,0],[12.3,6.6,.3],'gold'),cube([12.4,6.4,0],[13.1,7.1,.3],'gold'),
- cube([3,15.5,3],[13,15.8,6],'trim'),
- cube([4,15.8,3.5],[12,15.85,5.5],'dark'),
- cube([3,15.8,3.5],[4,15.95,5.5],'gold'),cube([12,15.8,3.5],[13,15.95,5.5],'gold'),
-]+[cube([x,5.95,-.05],[x+1.2,6.65,.1],'green') for x in [3.1,5.1,7.1]]+bolts(1.4,14,1.6,4.2,.08)
+effort_centers = (5.6, 8.75, 11.9)
+
+def effort_lenses(intensity):
+ def lenses(centers):
+  return [cube([x-.79,28.62,11.45],[x+.79,29.78,11.55],
+               'light' if index <= intensity else 'light_off')
+          for index,x in enumerate(centers,1)]
+
+ # Each side's meter fills left to right as seen by the player.
+ return gantry(lenses(effort_centers)+opposite_beam_face(lenses(reversed(effort_centers))))
+
 # Cabinet upright sits on the far side, opposite the animal; the beam spans the lid.
-controller += gantry([
+controller_attachments = gantry([
  # Match the far support: bolted foot, inset steel upright and sleeved beam socket.
  cube([1.7,15.5,12.1],[5.3,17.2,15.9],'trim'),
- cube([2.5,17.2,12.8],[4.5,26.5,15.2],'trim'),
- cube([2.8,17.5,12.5],[4.2,26.2,12.8],'panel'),
+ open_ends(cube([2.5,17.2,13],[4.5,26.5,15],'upright'),'up','down'),
  cube([2,26.5,12.3],[5,28,15.7],'trim'),
  cube([2.4,26.8,12.05],[4.6,27.7,12.3],'gold'),
- cube([1.8,28,12],[16,30.4,16],'trim'),
- cube([2.3,30.4,12.4],[16,31,15.6],'panel'),
- cube([1.5,27.8,11.65],[3.1,30.65,16.35],'panel')]
+ beam(1.8,16),
+ cube([1.5,27.4,11.65],[3.1,30.65,16.35],'panel')]
  +bolts(2.1,4.1,15.85,16.45,11.88)
  +bolts(1.85,1.85,28.2,29.7,11.43)[:2])
 # A wooden bait rod rises toward the animal from the cow-facing side of the far pole.
 # The renderer hangs the food and its animated tether from the end collar.
-controller += gantry([
+controller_attachments += gantry([
  cube([3.5,20.6,12.4],[5.2,22.4,15.6],'trim'),
  tilt([4,21,13.35],[14.4,22,14.65],'bait_rod',30,[4,21.5,14]),
  tilt([13.8,20.8,13.1],[15,22.2,14.9],'gold',30,[4,21.5,14])])
+# Small intensity indicators occupy the open beam above the cabinet.
+effort_housings = [
+ housing for x in effort_centers for housing in (
+  cube([x-1.25,28.15,11.6],[x+1.25,30.25,12.12],'trim'),
+  cube([x-1.02,28.35,11.5],[x+1.02,30.05,11.7],'gold'))]
+controller_attachments += gantry(effort_housings+opposite_beam_face(effort_housings))
 
 def treadmill(end):
  e=[cube([0,0,.25],[16,.8,15.75],'dark'),
@@ -246,39 +283,45 @@ def treadmill(end):
   e += gantry([
         # Broad mounting foot, upright and a sleeved knee leading into the beam.
         cube([13.5,4,12.1],[16,6,15.9],'trim'),
-        cube([14,6,12.8],[16,20.8,15.2],'trim'),
-        cube([14.3,6.3,12.5],[15.7,20.8,12.8],'panel'),
-        tilt([14,21.5,12.7],[16,29.5,15.3],'panel',22.5,[15,21.5,14]),
+        open_ends(cube([14,6,12.75],[16,20.8,15.25],'far_upright_front',
+                       {'east':'far_upright_side','west':'far_upright_side'}),'up','down'),
+        open_ends(tilt([14,21.5,12.75],[16,29.5,15.25],'diagonal_front',22.5,[15,21.5,14],
+                       {'east':'diagonal_side','west':'diagonal_side'}),'up','down'),
         cube([13.7,20.8,12.3],[16,22.6,15.7],'trim'),
         cube([14,21.1,12.05],[15.7,22.3,12.3],'gold'),
-        cube([0,27.5,12],[12.3,30.4,16],'trim'),
-        cube([0,30.4,12.4],[11.8,31,15.6],'panel'),
-        cube([10.5,27.3,11.65],[12.6,30.65,16.35],'panel')]
+        beam(0,12.3),
+        cube([10.5,27.3,11.65],[12.95,30.65,16.35],'panel')]
         +bolts(13.9,15,4.5,5.2,11.88)
         +bolts(10.8,11.7,27.7,29.7,11.43))
-  e+=gantry(lamp(1,8.9,27.6,11.35))
  else:
-  e += gantry([cube([0,27.5,12],[16,30.4,16],'trim'),
-        cube([0,30.4,12.4],[16,31,15.6],'panel'),
+  e += gantry([beam(0,16),
         cube([14.8,27.3,11.7],[15.9,30.6,16.3],'panel')])
-  e+=gantry(lamp(1,10.5,27.6,11.35))
+ front_lamp=lamp(1,8.9 if end else 10.5,27.6,11.35,lens='work_light')
+ e+=gantry(front_lamp+opposite_beam_face(front_lamp))
  # Raised rivets and subtle gold fasteners on the overhead housing.
  e+=gantry(bolts(.4,9.7 if end else 10.7,28,29.4,11.65))
  return e
 
-model('animal_gym',controller)
-# Only the two glass inserts are dynamic. Never overlay coplanar lit/off faces.
+js(A/'models/block/animal_gym.json',gym_model_payload('animal_gym',controller_attachments))
+js(A/'models/block/gym_front_display.json',{'render_type':'minecraft:cutout',
+ 'textures':gym_front_textures,'elements':[gym_front_decal()]})
+for intensity in range(1,4):
+ name=f'gym_effort_lights_{intensity}'
+ lenses=effort_lenses(intensity)
+ check_coplanar_faces(name,mirrored(controller_attachments+lenses))
+ model(name,lenses)
+# The glass inserts are dynamic. Never overlay coplanar lit/off faces.
 for end in [False,True]:
  name='gym_belt'+('_end' if end else '')
  elements=treadmill(end)
- glass=[e for e in elements if any(f['texture']=='#light' for f in e['faces'].values())]
+ glass=[e for e in elements if any(f['texture']=='#work_light' for f in e['faces'].values())]
  model(name,[e for e in elements if e not in glass])
  model(name+'_lamp',glass)
  off=copy.deepcopy(glass)
  for e in off:
   e['shade']=True
   for face in e['faces'].values():
-   face['texture']='#light_off'
+   face['texture']='#work_light_off'
    face.pop('neoforge_data',None)
  model(name+'_lamp_off',off)
 for name in ['animal_gym','gym_belt']:
@@ -297,35 +340,42 @@ for name in ['gym_post','gym_beam']:
 # -16..32 model coordinate range without changing the in-world geometry.
 import copy
 item=[]
-for offset,parts in [(-16,controller),(0,treadmill(False)),(16,treadmill(True))]:
+for offset,parts in [(-16,controller_attachments+effort_lenses(1)),(0,treadmill(False)),(16,treadmill(True))]:
  for element in copy.deepcopy(parts):
   for key in ['from','to']:element[key][0]+=offset
   if 'rotation' in element:element['rotation']['origin'][0]+=offset
   item.append(element)
-check_coplanar_faces('assembled animal gym',mirrored(item))
-js(A/'models/item/animal_gym.json',model_payload(mirrored(item),{
+js(A/'models/item/animal_gym.json',gym_model_payload('assembled animal gym',item,{
  'gui':{'rotation':[20,225,0],'translation':[0,-2,0],'scale':[.43,.43,.43]},
  'ground':{'rotation':[0,0,0],'translation':[0,2,0],'scale':[.2,.2,.2]},
  'fixed':{'rotation':[0,0,0],'translation':[0,-2,0],'scale':[.35,.35,.35]},
  'thirdperson_righthand':{'rotation':[75,45,0],'translation':[0,2.5,0],'scale':[.25,.25,.25]},
- 'firstperson_righthand':{'rotation':[0,45,0],'translation':[0,0,0],'scale':[.3,.3,.3]}}))
+ 'firstperson_righthand':{'rotation':[0,45,0],'translation':[0,0,0],'scale':[.3,.3,.3]}},casing_x=16))
 js(A/'models/item/recovered_food.json',{'parent':'minecraft:item/generated','textures':{'layer0':'minecraft:item/bundle'}})
 lang={'itemGroup.industrial_overkill':'Industrial Overkill','item.industrial_overkill.animal_gym':'Animal Gym 2.0','block.industrial_overkill.animal_gym':'Animal Gym 2.0','block.industrial_overkill.gym_belt':'Animal Gym Treadmill','block.industrial_overkill.gym_post':'Animal Gym Frame','block.industrial_overkill.gym_beam':'Animal Gym Lights','item.industrial_overkill.recovered_food':'Recovered Gym Supplies', 'gym.title':'Animal Gym 2.0','gym.food':'Food','gym.intensity.tip':'Intensity: {value} / 3. Click to cycle.','gym.intensity':'Intensity','gym.toggle':'Run / Pause','gym.release':'Release','gym.output':'Power: %s FE/t','gym.no_animal':'No animal','gym.status.running':'Generating power','gym.status.paused':'Paused','gym.status.waiting':'Lead an adult onto the belt','gym.status.food':'Needs suitable food','gym.status.full':'Energy buffer full','gym.status.suspended':'Structure obstructed','gym.status.occupied':'Animal using another gym','gym.info':'No animals were harmed. Mostly.','gym.help':'Lead an adult cow, pig, sheep, goat or horse onto the belt. Supply its food and connect an FE consumer to the controller. Release pauses the gym.','gym.toggle.tip':'Pause or resume automatic work.','gym.release.tip':'Release the animal and pause until resumed.'}
 js(A/'lang/en_us.json',lang)
 for tag in ['mineable/pickaxe','needs_stone_tool']:
  js(ROOT/'data/minecraft/tags/block'/f'{tag}.json',{'replace':False,'values':['industrial_overkill:'+b for b in ['animal_gym','gym_belt','gym_post','gym_beam']]})
 js(ROOT/'data/industrial_overkill/recipe/animal_gym.json',{'type':'minecraft:crafting_shaped','pattern':['ILI','RHR','IPI'],'key':{'I':{'item':'minecraft:iron_ingot'},'L':{'item':'minecraft:lantern'},'R':{'item':'minecraft:redstone'},'H':{'item':'minecraft:hay_block'},'P':{'item':'minecraft:piston'}},'result':{'id':'industrial_overkill:animal_gym','count':1}})
-print('Generated gym models, pixel textures, language, tags and recipe.')
+print('Generated gym models, language, tags and recipe.')
 
-# Mob Trap: the same steel/hazard palette, a flat armed plate and a raised cage.
+# Critter Courier: the same steel/hazard palette, a flat armed plate and a raised cage.
 # The floor is the base's top face, not a second coplanar inset.
-trap_front=[cube([.5,.5,-.03],[5.2,2.7,.12],'panel',{'north':'vent'}),
+texture('critter_courier/vent','#777c89',vents)
+texture('critter_courier/display','#14191f',display)
+texture('machine/green_indicator','#3f7726',lambda d:d.rectangle((5,5,26,26),fill='#78ce3c'))
+courier_textures=tex|{
+ 'vent':'industrial_overkill:block/critter_courier/vent',
+ 'display':'industrial_overkill:block/critter_courier/display',
+ 'green':'industrial_overkill:block/machine/green_indicator',
+ 'particle':tex['panel']}
+courier_front=[cube([.5,.5,-.03],[5.2,2.7,.12],'panel',{'north':'vent'}),
  cube([5.6,.5,-.08],[9.5,2.7,.1],'gold',{'north':'display'}),
  cube([10,.5,-.03],[15.5,2.7,.12],'panel')]
-trap_front += [cube([x,.9,-.12],[x+.8,2.3,0],'green') for x in [10.6,12.1,13.6]]
-trap_base=[cube([0,0,0],[16,3,16],'trim',{'up':'dark'})]+four_sides(trap_front)
-cage=copy.deepcopy(trap_base)
-trap_base += [cube([0,3,0],[16,3.2,1],'hazard'),cube([0,3,15],[16,3.2,16],'hazard'),
+courier_front += [cube([x,.9,-.12],[x+.8,2.3,0],'green') for x in [10.6,12.1,13.6]]
+courier_base=[cube([0,0,0],[16,3,16],'trim',{'up':'dark'})]+four_sides(courier_front)
+cage=copy.deepcopy(courier_base)
+courier_base += [cube([0,3,0],[16,3.2,1],'hazard'),cube([0,3,15],[16,3.2,16],'hazard'),
  cube([0,3,1],[1,3.2,15],'hazard'),cube([15,3,1],[16,3.2,15],'hazard')]
 # Stop the cage's rim at the corner cuffs instead of overlapping their sides.
 cage += [cube([1.5,3,0],[14.5,3.2,1],'hazard'),cube([1.5,3,15],[14.5,3.2,16],'hazard'),
@@ -345,31 +395,32 @@ for x in [0,14]:
  for z in [0,14]:cage += [cube([x,14,z],[x+2,16.1,z+2],'gold')]
 cage += four_sides(lamp(4.5,11.5,13.4,-.05))
 
-for name,elements in [('mob_trap',trap_base),('mob_trap_occupied',cage)]:
+js(A/'models/block/critter_courier_empty.json',{
+ 'textures':{'particle':courier_textures['particle']},'elements':[]})
+for name,elements in [('critter_courier_plate',courier_base),('critter_courier_cage',cage)]:
  elements=mirrored(elements)
  check_coplanar_faces(name,elements)
- js(A/'models/block'/f'{name}.json',{'parent':'minecraft:block/block','textures':tex|{'particle':tex['panel']},'elements':elements})
-js(A/'blockstates/mob_trap.json',{'variants':{f'facing={f},occupied={str(occupied).lower()}':{'model':'industrial_overkill:block/mob_trap'+('_occupied' if occupied else ''),'y':y} for f,y in rotations for occupied in [False,True]}})
-js(A/'models/item/mob_trap.json',{'parent':'industrial_overkill:block/mob_trap','overrides':[{'predicate':{'industrial_overkill:occupied':1},'model':'industrial_overkill:item/mob_trap_occupied'}]})
-js(A/'models/item/mob_trap_occupied.json',{'parent':'industrial_overkill:block/mob_trap_occupied'})
-lang.update({'block.industrial_overkill.mob_trap':'Mob Trap','item.industrial_overkill.mob_trap':'Mob Trap',
- 'trap.title':'Mob Trap','trap.armed':'Status: Armed','trap.occupied':'Status: Occupied','trap.waiting':'Waiting for a mob',
- 'trap.contains':'Contains: %s','trap.unknown':'Unknown mob (data preserved)','trap.release':'Release','trap.pickup':'Pick Up',
- 'trap.release_failed':'Cannot restore this mob here. Its data remains safe in the trap.',
- 'trap.release.tip':'Release the mob into clear space beside the cage.',
- 'trap.pickup.tip':'Pick up this trap with its occupant safely inside.',
- 'trap.no_space':'Clear space next to the trap before releasing the mob.',
- 'gym.trap':'Mob Trap','gym.trap.help':'Remove the trap to take the animal with you.',
+ js(A/'models/block'/f'{name}.json',{'parent':'minecraft:block/block','textures':courier_textures,'elements':elements})
+js(A/'models/item/critter_courier.json',{'parent':'industrial_overkill:block/critter_courier_plate','overrides':[{'predicate':{'industrial_overkill:occupied':1},'model':'industrial_overkill:item/critter_courier_occupied'}]})
+js(A/'models/item/critter_courier_occupied.json',{'parent':'industrial_overkill:block/critter_courier_cage'})
+lang.update({'block.industrial_overkill.critter_courier':'Critter Courier','item.industrial_overkill.critter_courier':'Critter Courier',
+ 'courier.title':'Critter Courier','courier.armed':'Status: Armed','courier.occupied':'Status: Occupied','courier.waiting':'Waiting for a mob',
+ 'courier.contains':'Contains: %s','courier.unknown':'Unknown mob (data preserved)','courier.release':'Release','courier.pickup':'Pick Up',
+ 'courier.release_failed':'Cannot restore this mob here. Its data remains safe in the courier.',
+ 'courier.release.tip':'Release the mob into clear space beside the cage.',
+ 'courier.pickup.tip':'Pick up this courier with its occupant safely inside.',
+ 'courier.no_space':'Clear space next to the courier before releasing the mob.',
+ 'gym.trap':'Critter Courier','gym.trap.help':'Remove the courier to take the animal with you.',
  'gym.status.unsupported':'This mob cannot train',
- 'gym.release.tip':'Release a loose animal, or return its occupied trap.',
- 'gym.help':'Lead an adult farm animal, cat or wolf onto the belt, or insert an occupied Mob Trap to keep it contained. Supply its food (cats: raw cod/salmon; wolves: meat) and connect an FE consumer. Release pauses work and returns an installed trap.'})
+ 'gym.release.tip':'Release a loose animal, or return its occupied courier.',
+ 'gym.help':'Lead an adult farm animal, cat or wolf onto the belt, or insert an occupied Critter Courier to keep it contained. Supply its food (cats: raw cod/salmon; wolves: meat) and connect an FE consumer. Release pauses work and returns an installed courier.'})
 js(A/'lang/en_us.json',lang)
 for tag in ['mineable/pickaxe','needs_stone_tool']:
  path=ROOT/'data/minecraft/tags/block'/f'{tag}.json'
- data=json.loads(path.read_text());data['values'].append('industrial_overkill:mob_trap');js(path,data)
-js(ROOT/'data/industrial_overkill/recipe/mob_trap.json',{'type':'minecraft:crafting_shaped','pattern':['B B','B B','IPI'],'key':{'B':{'item':'minecraft:iron_bars'},'I':{'item':'minecraft:iron_ingot'},'P':{'item':'minecraft:stone_pressure_plate'}},'result':{'id':'industrial_overkill:mob_trap','count':1}})
+ data=json.loads(path.read_text());data['values'].append('industrial_overkill:critter_courier');js(path,data)
+js(ROOT/'data/industrial_overkill/recipe/critter_courier.json',{'type':'minecraft:crafting_shaped','pattern':['B B','B B','IPI'],'key':{'B':{'item':'minecraft:iron_bars'},'I':{'item':'minecraft:iron_ingot'},'P':{'item':'minecraft:stone_pressure_plate'}},'result':{'id':'industrial_overkill:critter_courier','count':1}})
 # Ownership drops are handled exactly once by the block entity, including replacements.
-js(ROOT/'data/industrial_overkill/loot_table/blocks/mob_trap.json',{'type':'minecraft:block','pools':[]})
+js(ROOT/'data/industrial_overkill/loot_table/blocks/critter_courier.json',{'type':'minecraft:block','pools':[]})
 
 # Transparent GUI icons; native button frames and hover states remain MMDLib's.
 class Sprite(Canvas):
@@ -380,7 +431,7 @@ class Sprite(Canvas):
   def chunk(kind,data):return struct.pack('>I',len(data))+kind+data+struct.pack('>I',zlib.crc32(kind+data))
   raw=b''.join(b'\0'+bytes(c for rgba in row for c in rgba) for row in self.pixels)
   path.write_bytes(b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',32,32,8,6,0,0,0))+chunk(b'IDAT',zlib.compress(raw))+chunk(b'IEND',b''))
-def trap_icon(name,draw):
+def courier_icon(name,draw):
  im=Sprite('#00000000');draw(im)
  path=A/'textures/gui/sprites'/f'{name}.png';path.parent.mkdir(parents=True,exist_ok=True);im.save(path)
 def release_icon(d):
@@ -396,6 +447,6 @@ def pickup_icon(d):
  d.rectangle((14,10,18,24),fill='#ffcd39')
  d.polygon([(7,12),(16,2),(26,12)],fill='#ffcd39')
  d.line((14,12,14,21),fill='#fff39d')
-trap_icon('trap_release',release_icon);trap_icon('trap_pickup',pickup_icon)
-lang.update({'trap.health':'Health: %s / %s HP','trap.age.baby':'Age: Baby','trap.age.adult':'Age: Adult'})
+courier_icon('courier_release',release_icon);courier_icon('courier_pickup',pickup_icon)
+lang.update({'courier.health':'Health: %s / %s HP','courier.age.baby':'Age: Baby','courier.age.adult':'Age: Adult'})
 js(A/'lang/en_us.json',lang)

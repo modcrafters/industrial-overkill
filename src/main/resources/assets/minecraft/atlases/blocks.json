@@ -1,0 +1,27 @@
+{
+  "sources": [
+    {
+      "type": "minecraft:single",
+      "resource": "industrial_overkill:atlas/gym_attachments",
+      "sprite": "industrial_overkill:block/gym_attachment_faces"
+    },
+    {
+      "type": "minecraft:unstitch",
+      "resource": "industrial_overkill:atlas/gym_attachments",
+      "divisor_x": 512,
+      "divisor_y": 256,
+      "regions": [
+        {"sprite": "industrial_overkill:block/gym_panel", "x": 0, "y": 0, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_dark", "x": 32, "y": 0, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_trim", "x": 64, "y": 0, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_gold", "x": 96, "y": 0, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_bolt", "x": 0, "y": 32, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_hazard", "x": 32, "y": 32, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_belt", "x": 144, "y": 16, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_light", "x": 96, "y": 32, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_light_off", "x": 0, "y": 64, "width": 32, "height": 32},
+        {"sprite": "industrial_overkill:block/gym_work_light", "x": 32, "y": 64, "width": 32, "height": 32}
+      ]
+    }
+  ]
+}

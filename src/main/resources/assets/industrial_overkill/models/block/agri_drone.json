@@ -1,0 +1,133 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "#shell",
+    "shell": "minecraft:block/iron_block",
+    "trim": "industrial_overkill:block/gym_dark",
+    "green": "industrial_overkill:block/machine/green_indicator",
+    "lens": "industrial_overkill:block/gym_light",
+    "metal": "industrial_overkill:block/gym_trim"
+  },
+  "elements": [
+    {
+      "name": "Forward motor arm",
+      "from": [2, 7.75, 3.25], "to": [14, 8.75, 4.75],
+      "faces": {
+        "down": {"texture": "#metal"},
+        "up": {"texture": "#metal"},
+        "north": {"texture": "#metal"},
+        "south": {"texture": "#metal"},
+        "west": {"texture": "#metal"},
+        "east": {"texture": "#metal"}
+      }
+    },
+    {
+      "name": "Rear motor arm",
+      "from": [2, 7.75, 11.25], "to": [14, 8.75, 12.75],
+      "faces": {
+        "down": {"texture": "#metal"},
+        "up": {"texture": "#metal"},
+        "north": {"texture": "#metal"},
+        "south": {"texture": "#metal"},
+        "west": {"texture": "#metal"},
+        "east": {"texture": "#metal"}
+      }
+    },
+    {
+      "name": "Chassis",
+      "from": [5.5, 7, 3], "to": [10.5, 9.5, 13],
+      "faces": {
+        "down": {"texture": "#shell"},
+        "up": {"texture": "#shell"},
+        "north": {"texture": "#trim"},
+        "south": {"texture": "#trim"},
+        "west": {"texture": "#shell"},
+        "east": {"texture": "#shell"}
+      }
+    },
+    {
+      "name": "Green cowling",
+      "from": [6, 9.5, 4], "to": [10, 10.25, 12],
+      "faces": {
+        "down": {"texture": "#green"},
+        "up": {"texture": "#green"},
+        "north": {"texture": "#green"},
+        "south": {"texture": "#green"},
+        "west": {"texture": "#green"},
+        "east": {"texture": "#green"}
+      }
+    },
+    {
+      "name": "Scanner housing",
+      "from": [6.5, 5.75, 5], "to": [9.5, 7, 9],
+      "faces": {
+        "down": {"texture": "#trim"},
+        "up": {"texture": "#trim"},
+        "north": {"texture": "#trim"},
+        "south": {"texture": "#trim"},
+        "west": {"texture": "#trim"},
+        "east": {"texture": "#trim"}
+      }
+    },
+    {
+      "name": "Downward scanner lens",
+      "from": [7, 5.25, 5.5], "to": [9, 5.75, 8.5],
+      "faces": {
+        "down": {"texture": "#lens"},
+        "up": {"texture": "#lens"},
+        "north": {"texture": "#lens"},
+        "south": {"texture": "#lens"},
+        "west": {"texture": "#lens"},
+        "east": {"texture": "#lens"}
+      }
+    },
+    {
+      "name": "Rotor motor 3, 4",
+      "from": [2.2, 8.75, 3.2], "to": [3.8, 10.5, 4.8],
+      "faces": {
+        "down": {"texture": "#trim"},
+        "up": {"texture": "#trim"},
+        "north": {"texture": "#trim"},
+        "south": {"texture": "#trim"},
+        "west": {"texture": "#trim"},
+        "east": {"texture": "#trim"}
+      }
+    },
+    {
+      "name": "Rotor motor 3, 12",
+      "from": [2.2, 8.75, 11.2], "to": [3.8, 10.5, 12.8],
+      "faces": {
+        "down": {"texture": "#trim"},
+        "up": {"texture": "#trim"},
+        "north": {"texture": "#trim"},
+        "south": {"texture": "#trim"},
+        "west": {"texture": "#trim"},
+        "east": {"texture": "#trim"}
+      }
+    },
+    {
+      "name": "Rotor motor 13, 4",
+      "from": [12.2, 8.75, 3.2], "to": [13.8, 10.5, 4.8],
+      "faces": {
+        "down": {"texture": "#trim"},
+        "up": {"texture": "#trim"},
+        "north": {"texture": "#trim"},
+        "south": {"texture": "#trim"},
+        "west": {"texture": "#trim"},
+        "east": {"texture": "#trim"}
+      }
+    },
+    {
+      "name": "Rotor motor 13, 12",
+      "from": [12.2, 8.75, 11.2], "to": [13.8, 10.5, 12.8],
+      "faces": {
+        "down": {"texture": "#trim"},
+        "up": {"texture": "#trim"},
+        "north": {"texture": "#trim"},
+        "south": {"texture": "#trim"},
+        "west": {"texture": "#trim"},
+        "east": {"texture": "#trim"}
+      }
+    }
+  ]
+}

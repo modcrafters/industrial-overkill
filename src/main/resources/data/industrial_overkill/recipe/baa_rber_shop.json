@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {"item": "minecraft:copper_ingot"},
+    {"item": "minecraft:redstone"},
+    {"item": "minecraft:shears"}
+  ],
+  "result": {"id": "industrial_overkill:baa_rber_shop"}
+}
