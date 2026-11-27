@@ -6,10 +6,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -31,11 +33,11 @@ public final class OmnivorousGeneratorTests {
     }
 
     @GameTest(template = "gym_empty")
-    public static void potatoKeepsItsUnspentEnergyThroughPausesAndReload(GameTestHelper h) {
+    public static void potatoStaysReservedAndBurnsThroughOverflowRedstoneAndReload(GameTestHelper h) {
         var generator = place(h);
         var menu = new MachineMenu(17, h.makeMockServerPlayerInLevel().getInventory(), generator);
-        require(menu.bound.screen().find("fuel").isPresent() && menu.bound.screen().find("containers").isPresent(),
-            "The survival machine opens with fuel and container slots");
+        require(menu.bound.screen().find("fuel").isPresent() && menu.bound.screen().find("output4").isPresent(),
+            "The survival machine opens with fuel and four output slots");
         var fuel = generator.screenItems();
         fuel.insertItem(0, new ItemStack(Items.POTATO, 2), false);
         generator.energy.setStored(32000);
@@ -43,21 +45,25 @@ public final class OmnivorousGeneratorTests {
         require(fuel.getStackInSlot(0).getCount() == 2, "A full generator leaves unstarted fuel alone");
         generator.energy.extract(3, false);
         generator.serverTick();
-        require(generator.getProgress() == 797 && fuel.getStackInSlot(0).getCount() == 1,
-            "Only the three FE accepted by the buffer are charged to the first potato");
+        require(generator.energy.stored() == 32000 && generator.getProgress() == 792 && fuel.getStackInSlot(0).getCount() == 2,
+            "The first tick burns eight FE of a still-visible potato even when only three FE fit");
+        require(fuel.extractItem(0, 64, true).getCount() == 1, "Only the surplus potato can be picked up");
         var registries = h.getLevel().registryAccess();
         generator.loadWithComponents(generator.saveWithoutMetadata(registries), registries);
-        generator.energy.extract(32000, false);
+        require(fuel.extractItem(0, 64, true).getCount() == 1, "Reload reinstates the reservation on the same potato");
         var switchPos = generator.getBlockPos().above();
         h.getLevel().setBlockAndUpdate(switchPos, Blocks.REDSTONE_BLOCK.defaultBlockState());
         generator.serverTick();
-        require(generator.getProgress() == 797 && generator.energy.stored() == 0, "Redstone holds the saved burn");
+        require(generator.getProgress() == 784 && generator.energy.stored() == 32000, "Full storage and redstone still spend the next tick");
+        for (int i = 0; i < 98; i++) generator.serverTick();
+        require(generator.getProgress() == 0 && fuel.getStackInSlot(0).getCount() == 1 && !fuel.hasPlan(0),
+            "The 100th tick consumes exactly the reserved potato and frees the slot");
+        generator.energy.setStored(0);
+        generator.serverTick();
+        require(generator.energy.stored() == 0 && !fuel.hasPlan(0), "Redstone prevents ignition of the queued potato");
         h.getLevel().removeBlock(switchPos, false);
         for (int i = 0; i < 100; i++) generator.serverTick();
-        require(generator.energy.stored() == 797 && generator.getProgress() == 0 && fuel.getStackInSlot(0).getCount() == 1,
-            "The first serving pays exactly 800 FE across the reload");
-        for (int i = 0; i < 100; i++) generator.serverTick();
-        require(generator.energy.stored() == 1597 && fuel.getStackInSlot(0).isEmpty(), "The next potato burns for 100 ticks");
+        require(generator.energy.stored() == 800 && fuel.getStackInSlot(0).isEmpty(), "The next potato delivers 800 FE over 100 ticks");
         h.succeed();
     }
 
@@ -101,16 +107,48 @@ public final class OmnivorousGeneratorTests {
         var generator = place(h);
         var slots = generator.screenItems();
         slots.insertItem(0, new ItemStack(Items.MUSHROOM_STEW), false);
-        slots.setStackInSlot(1, new ItemStack(Items.BOWL, 64));
+        for (int i = 1; i <= 4; i++) slots.setStackInSlot(i, new ItemStack(Items.BOWL, 64));
         generator.serverTick();
         require(slots.getStackInSlot(0).is(Items.MUSHROOM_STEW) && generator.energy.stored() == 0,
             "A blocked bowl output preserves the stew");
-        slots.extractItem(1, 64, false);
+        slots.extractItem(4, 1, false);
         generator.serverTick();
+        require(slots.getStackInSlot(4).getCount() == 63 && slots.extractItem(0, 1, false).isEmpty(),
+            "One stew and room for its bowl are reserved until completion");
+        int ticks = Math.ceilDiv(generator.getProgress(), generator.getBurnRate());
+        for (int i = 0; i < ticks; i++) generator.serverTick();
+        require(slots.getStackInSlot(0).isEmpty() && slots.getStackInSlot(4).getCount() == 64,
+            "The stew returns exactly one bowl to the fourth slot");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void breakingGeneratorDropsCharcoalAndOnlyUnstartedWood(GameTestHelper h) {
+        var generator = place(h);
+        generator.screenItems().insertItem(0, new ItemStack(Items.OAK_LOG, 2), false);
         generator.serverTick();
-        require(slots.getStackInSlot(0).isEmpty() && slots.getStackInSlot(1).is(Items.BOWL)
-            && slots.getStackInSlot(1).getCount() == 1 && generator.energy.stored() == 16,
-            "One stew supplies multiple ticks and returns one bowl");
+        var pos = generator.getBlockPos();
+        h.getLevel().removeBlock(pos, false);
+        var drops = h.getLevel().getEntitiesOfClass(ItemEntity.class, new AABB(pos).inflate(1));
+        require(drops.stream().map(ItemEntity::getItem).filter(s -> s.is(Items.OAK_LOG)).mapToInt(ItemStack::getCount).sum() == 1
+            && drops.stream().map(ItemEntity::getItem).filter(s -> s.is(Items.CHARCOAL)).mapToInt(ItemStack::getCount).sum() == 1,
+            "Breaking returns the unstarted log and the lit log's charcoal exactly once");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void olderPrepaidBurnFinishesWithoutTakingQueuedFuel(GameTestHelper h) {
+        var generator = place(h);
+        generator.screenItems().insertItem(0, new ItemStack(Items.POTATO), false);
+        var registries = h.getLevel().registryAccess();
+        var old = generator.saveWithoutMetadata(registries);
+        old.putInt("burn_total", 800);
+        old.putInt("burn_remaining", 3);
+        old.putInt("burn_rate", 8);
+        generator.loadWithComponents(old, registries);
+        generator.serverTick();
+        require(generator.energy.stored() == 3 && generator.screenItems().getStackInSlot(0).is(Items.POTATO)
+            && generator.getProgress() == 0, "A prepaid legacy burn pays its final partial tick without consuming the next item");
         h.succeed();
     }
 }

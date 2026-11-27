@@ -10,6 +10,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.datamaps.RegisterDataMapTypesEvent;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
@@ -21,6 +22,7 @@ public final class OmnivorousGenerator {
     private static final String NAME = "omnivorous_generator";
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Registries.BLOCK, IndustrialOverkill.MOD_ID);
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(IndustrialOverkill.MOD_ID);
+    public static final DeferredItem<Item> ASH = ITEMS.registerSimpleItem("ash");
     private static final DeferredRegister<BlockEntityType<?>> TYPES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, IndustrialOverkill.MOD_ID);
     public static final DeferredHolder<Block, GeneratorBlock> BLOCK = BLOCKS.register(NAME,
         () -> new GeneratorBlock(BlockBehaviour.Properties.of().strength(3.5F).requiresCorrectToolForDrops()));

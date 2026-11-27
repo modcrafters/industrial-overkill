@@ -1,12 +1,16 @@
 package net.modcrafters.minecraft.industrialoverkill.power;
 
+import com.mojang.logging.LogUtils;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Containers;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,16 +22,22 @@ import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.api.capabilities.Role;
 import zone.moddev.mc.lib.api.capabilities.SideConfig;
 import zone.moddev.mc.lib.api.capabilities.Transfer;
+import zone.moddev.mc.lib.machine.ingredient.MachineIngredient.ItemPart;
+import zone.moddev.mc.lib.machine.inventory.MachineInventory;
 import zone.moddev.mc.lib.machine.neoforge.BasePoweredMachine;
 import zone.moddev.mc.lib.machine.neoforge.MachineInventoryLifecycle;
 import zone.moddev.mc.lib.machine.neoforge.MachineRecoveryItem;
 import zone.moddev.mc.lib.machine.neoforge.MachineResources;
+import zone.moddev.mc.lib.machine.recipe.CyclePlan;
+import zone.moddev.mc.lib.machine.recipe.MachineRecipe;
 
 public final class GeneratorEntity extends BasePoweredMachine {
     private static final int EXPORT = 128;
-    private final ItemStorage items = new ItemStorage(2).role(Role.INPUT, 0).role(Role.OUTPUT, 1)
+    private final ItemStorage items = new ItemStorage(5).role(Role.INPUT, 0).role(Role.OUTPUT, 1, 2, 3, 4)
         .restrict(stack -> GeneratorFuel.forStack(getLevel(), stack) != null, 0).onChange(this::setChanged);
     private final MachineInventoryLifecycle inventory;
+    private final MachineInventory burnInventory;
+    private CyclePlan burn;
     private int total;
     private int remaining;
     private int rate;
@@ -38,10 +48,12 @@ public final class GeneratorEntity extends BasePoweredMachine {
         resources.items(new ResourceGroup<>("fuel", Component.translatable("omnivore.fuel"), 0xe49d4a,
             ResourceType.ITEMS, IoMode.INPUT, List.of(0), List.of("fuel"), new SideConfig(IoMode.INPUT)).inventory("items"), items);
         resources.items(new ResourceGroup<>("containers", Component.translatable("omnivore.containers"), 0x69b4b0,
-            ResourceType.ITEMS, IoMode.OUTPUT, List.of(1), List.of("containers"), new SideConfig(IoMode.OUTPUT)).inventory("items"), items);
+            ResourceType.ITEMS, IoMode.OUTPUT, List.of(1, 2, 3, 4), List.of("containers", "output2", "output3", "output4"),
+            new SideConfig(IoMode.OUTPUT)).inventory("items"), items);
         resources.energy(new ResourceGroup<>("energy", Component.translatable("gym.group.energy"), 0xd95b40,
             ResourceType.ENERGY, IoMode.OUTPUT, List.of(0), List.of("energy"), new SideConfig(IoMode.OUTPUT)), energy);
         inventory = poweredInventory(resources.build().automation()).items("items", items);
+        burnInventory = resources.recipes();
     }
 
     @Override public ItemStorage screenItems() { return items; }
@@ -56,11 +68,11 @@ public final class GeneratorEntity extends BasePoweredMachine {
         var fuel = GeneratorFuel.forStack(level, stack);
         if (fuel == null) return false;
         var serving = stack.copyWithCount(1);
-        var container = GeneratorFuel.remainder(serving);
-        if (!container.isEmpty() && !items.fits(1, container)) return false;
-
-        items.extractItem(0, 1, false);
-        if (!container.isEmpty()) items.insertResult(1, container, false);
+        var recipe = new MachineRecipe(Map.of("fuel", List.of(new ItemPart(Ingredient.of(serving), 1))),
+            Map.of("containers", GeneratorFuel.products(serving)), Math.ceilDiv(fuel.energy(), fuel.rate()));
+        burn = CyclePlan.of(OmnivorousGenerator.TYPE.getId(), recipe, burnInventory)
+            .filter(plan -> plan.reserve(burnInventory)).orElse(null);
+        if (burn == null) return false;
         total = fuel.energy();
         remaining = total;
         rate = fuel.rate();
@@ -68,12 +80,33 @@ public final class GeneratorEntity extends BasePoweredMachine {
     }
 
     @Override protected void beforeMachineTick() {
-        boolean burning = energy.space() > 0 && !level.hasNeighborSignal(worldPosition) && (remaining > 0 || loadFuel());
-        if (burning) remaining -= (int) energy.insert(Math.min(remaining, rate), false);
+        boolean burning = remaining > 0 || (energy.space() > 0 && !level.hasNeighborSignal(worldPosition) && loadFuel());
+        if (burning) {
+            int generated = Math.min(remaining, rate);
+            energy.insert(generated, false);
+            remaining -= generated;
+            if (remaining == 0) finishBurn(level);
+            setChanged();
+        }
         var state = getBlockState();
         if (state.getValue(BlockStateProperties.LIT) != burning) {
             level.setBlock(worldPosition, state.setValue(BlockStateProperties.LIT, burning), Block.UPDATE_CLIENTS);
         }
+    }
+
+    private void finishBurn(Level level) {
+        // Older saves already consumed the fuel and returned its container at ignition.
+        if (burn != null && !burn.finish(burnInventory, level.random)) {
+            burn.release(burnInventory);
+            LogUtils.getLogger().warn("Generator at {} lost its reserved fuel or output space", worldPosition);
+        }
+        burn = null;
+        remaining = 0;
+    }
+
+    @Override public void dropContents(Level level, BlockPos pos) {
+        if (!level.isClientSide && remaining > 0) finishBurn(level);
+        super.dropContents(level, pos);
     }
 
     @Override protected void afterMachineTick() {
@@ -89,9 +122,14 @@ public final class GeneratorEntity extends BasePoweredMachine {
         tag.putInt("burn_total", total);
         tag.putInt("burn_remaining", remaining);
         tag.putInt("burn_rate", rate);
+        if (burn != null) {
+            tag.put("burn_plan", CyclePlan.CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), burn).getOrThrow());
+        }
     }
 
     @Override public void clearContent() {
+        if (burn != null) burn.release(burnInventory);
+        burn = null;
         total = 0;
         remaining = 0;
         rate = 0;
@@ -99,9 +137,16 @@ public final class GeneratorEntity extends BasePoweredMachine {
     }
 
     @Override protected void loadMachineData(CompoundTag tag, HolderLookup.Provider registries) {
+        if (burn != null) burn.release(burnInventory);
+        burn = null;
         total = Math.max(0, tag.getInt("burn_total"));
         rate = Math.clamp(tag.getInt("burn_rate"), 0, total);
         remaining = rate == 0 ? 0 : Math.clamp(tag.getInt("burn_remaining"), 0, total);
+        if (remaining > 0 && tag.contains("burn_plan")) {
+            burn = CyclePlan.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag.get("burn_plan"))
+                .result().filter(plan -> plan.restore(burnInventory)).orElse(null);
+            if (burn == null) remaining = 0;
+        }
     }
 
     @Override protected void recoverResources(Level level, BlockPos pos, CompoundTag payload) {

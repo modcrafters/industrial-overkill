@@ -1,8 +1,9 @@
 {
   "block.industrial_overkill.omnivorous_generator": "Omnivorous Generator",
-  "industrial_overkill:omnivorous_generator.info": "Burn food and solid furnace fuels for FE. A full buffer or a redstone signal pauses the burn. Empty containers collect on the right.",
+  "industrial_overkill:omnivorous_generator.info": "Burn food and solid furnace fuels for FE. Redstone or a full buffer prevents ignition. Burning fuel is reserved until it finishes, and excess FE is lost. Collect containers, charcoal, and ash on the right.",
+  "item.industrial_overkill.ash": "Ash",
   "omnivore.fuel": "Fuel",
-  "omnivore.containers": "Returned containers",
+  "omnivore.containers": "Burn outputs",
   "omnivore.remaining": "Remaining fuel energy: {value} FE",
   "omnivore.rate": "Burn rate",
   "omnivore.rate.tip": "Fuel burn rate: {value} FE/t",

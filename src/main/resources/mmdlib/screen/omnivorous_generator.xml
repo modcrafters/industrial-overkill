@@ -7,7 +7,12 @@
         <progress id="burn" direction="right" value="#getProgress" max="#getTime" tooltip="omnivore.remaining"/>
         <label text="omnivore.rate" value="#getBurnRate" tooltip="omnivore.rate.tip"/>
       </vbox>
-      <inventory storage="items"><item-slot id="containers" index="1" tooltip="omnivore.containers"/></inventory>
+      <inventory storage="items" columns="2" spacing="2">
+        <item-slot id="containers" index="1" tooltip="omnivore.containers"/>
+        <item-slot id="output2" index="2" tooltip="omnivore.containers"/>
+        <item-slot id="output3" index="3" tooltip="omnivore.containers"/>
+        <item-slot id="output4" index="4" tooltip="omnivore.containers"/>
+      </inventory>
     </hbox>
   </fill>
   <fill name="inventory_controls"/>

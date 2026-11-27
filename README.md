@@ -501,8 +501,10 @@ The screen runner is `gradlew.bat runRockStewClientSmoke` (JEI production paths)
 Craft the generator with `IHI / IFI /  R ` (iron ingots, a hopper, a furnace,
 and redstone dust). Put one kind of food or solid furnace fuel in the left
 slot. Hover an item in the generator screen to see its FE per item and FE/t.
-Bowls, bottles, and other returned containers collect in the right slot.
-If the container cannot fit, the generator waits before starting that item.
+The four output slots collect returned containers and burn remains. Each
+burnable log (including tagged modded logs) produces one charcoal. Any
+fuel has a one-in-eight chance to leave one ash if there is room. The
+generator reserves space for containers and charcoal before lighting the fuel.
 
 | Fuel | FE per item | Burn rate | Working time |
 | --- | ---: | ---: | ---: |
@@ -517,9 +519,12 @@ A pig gets 3,840 FE from the same potato. Intensity changes how quickly the
 Gym delivers that energy.
 
 The 32,000 FE buffer supplies adjacent consumers on output-enabled faces.
-A full buffer or a redstone signal suspends burning. Unused energy in the
-current serving survives pauses and world reloads. The next item stays in the
-fuel slot until some energy can be produced.
+A full buffer or a redstone signal prevents the next item from lighting.
+Once lit, one item stays reserved in the fuel slot until its burn finishes.
+Any surplus items can be removed. The burn continues through redstone signals
+and discards FE the buffer cannot hold. Reloading the world resumes the same
+burn. Breaking the generator consumes the lit item and drops its remains
+alongside the rest of the inventory.
 
 Datapacks can set per-item or tagged fuel values in the synced NeoForge item
 data map `industrial_overkill:calories`. The bundled potato entry is in

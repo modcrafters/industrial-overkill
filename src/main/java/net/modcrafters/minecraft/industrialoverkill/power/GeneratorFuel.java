@@ -2,13 +2,17 @@ package net.modcrafters.minecraft.industrialoverkill.power;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
@@ -16,6 +20,8 @@ import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.registries.datamaps.DataMapType;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
+import zone.moddev.mc.lib.machine.recipe.MachineProduct;
+import zone.moddev.mc.lib.machine.recipe.MachineProduct.ItemProduct;
 
 /** The total energy paid for by one item and the most it can deliver in one tick. */
 public record GeneratorFuel(int energy, int rate) {
@@ -58,7 +64,16 @@ public record GeneratorFuel(int energy, int rate) {
         return energy == 0 ? null : new GeneratorFuel(energy, Math.min(energy, fuel.rate));
     }
 
-    static ItemStack remainder(ItemStack serving) {
+    static List<MachineProduct> products(ItemStack serving) {
+        var products = new ArrayList<MachineProduct>();
+        var container = remainder(serving);
+        if (!container.isEmpty()) products.add(new ItemProduct(container, 1));
+        if (serving.is(ItemTags.LOGS_THAT_BURN)) products.add(new ItemProduct(new ItemStack(Items.CHARCOAL), 1));
+        products.add(new ItemProduct(new ItemStack(OmnivorousGenerator.ASH.get()), 0.125F));
+        return products;
+    }
+
+    private static ItemStack remainder(ItemStack serving) {
         var food = serving.getFoodProperties(null);
         if (food != null && food.usingConvertsTo().isPresent()) return food.usingConvertsTo().get().copy();
         return serving.getCraftingRemainingItem();

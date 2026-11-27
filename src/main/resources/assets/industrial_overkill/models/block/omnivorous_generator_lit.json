@@ -1,6 +1,12 @@
 {
-  "parent": "industrial_overkill:block/omnivorous_generator",
-  "textures": {
-    "front": "minecraft:block/blast_furnace_front_on"
+  "parent": "industrial_overkill:block/machine/generator",
+  "loader": "neoforge:composite",
+  "children": {
+    "casing": {"parent": "industrial_overkill:block/machine/generator"},
+    "lights": {
+      "parent": "industrial_overkill:block/machine/powered_sides",
+      "textures": {"lights": "industrial_overkill:block/generator/_base/side_powered"}
+    },
+    "front": {"parent": "industrial_overkill:block/omnivorous_generator_front"}
   }
 }

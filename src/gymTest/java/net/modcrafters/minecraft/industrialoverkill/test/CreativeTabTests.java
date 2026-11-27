@@ -24,7 +24,7 @@ public final class CreativeTabTests {
         for (int rebuild = 0; rebuild < 2; rebuild++) {
             var machines = contents(h, "industrial_overkill:machines");
             require(machines.equals(List.of(item("industrial_overkill:agri_brain"),
-                item("industrial_overkill:animal_gym"), item("industrial_overkill:baa_rber_shop"),
+                item("industrial_overkill:animal_gym"), item("industrial_overkill:ash"), item("industrial_overkill:baa_rber_shop"),
                 item("industrial_overkill:critter_courier"),
                 item("industrial_overkill:fertilizer"), item("industrial_overkill:fertilizer_maker"),
                 item("industrial_overkill:filter_cake"), item("industrial_overkill:filtered_fertilizer"),
