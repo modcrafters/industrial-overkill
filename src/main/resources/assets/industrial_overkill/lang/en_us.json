@@ -9,6 +9,8 @@
   "omnivore.remaining": "Remaining fuel energy: %s FE",
   "omnivore.rate.tip": "Fuel burn rate: %s FE/t",
   "omnivore.serving": "%1$s FE per item at %2$s FE/t",
+  "omnivore.recipes.food": "Food",
+  "omnivore.recipes.fuel": "Solid fuels",
   "subtitles.industrial_overkill.agri_drone_rotor": "Drone rotors hum",
   "subtitles.industrial_overkill.agri_water_sprinkle": "Water sprinkles",
   "subtitles.industrial_overkill.agri_water_splash": "Water splashes",

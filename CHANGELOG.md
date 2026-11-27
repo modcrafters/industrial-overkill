@@ -6,6 +6,8 @@ For Minecraft 1.21.1 on NeoForge 21.1.265 or later in the 21.1 series. Requires 
 
 ### New since v0.0.1-alpha
 
+- **Generator recipe browser.** Open the recipe-book tab to browse foods and solid fuels, including their burn time, FE yield, and possible remains. The processing arrow opens the generator category in JEI when installed or the built-in drawer otherwise. JEI supports lookups by fuel, returned container, charcoal, and ash.
+
 - **Omnivorous Generator.** Burn food or solid furnace fuel to power adjacent machines. A raw potato supplies 800 FE over five seconds at 8 FE/t. Coal and charcoal each supply 32,000 FE over 40 seconds at 40 FE/t. An Animal Gym still gets more from food its animal can eat. A pig gets 3,840 FE from that same potato.
 - **Fuel and burn remains.** The burning item stays visible and reserved until it burns out. Redstone or a full buffer prevents the next ignition. A lit item keeps burning and any FE that cannot fit is lost. Four output slots collect returned containers, one charcoal per burnable log, and ash with a one-in-eight chance per item when space permits. Hover the processing arrow for remaining FE and the current burn rate.
 - **Generator fluid tanks and datapacks.** The 4,000 mB **Catalyst** input accepts water and lava by default. The 4,000 mB **Byproduct** output has its own pipe settings. The tanks support buckets and pipes. Current burns use solid fuel only. Pack makers can tune FE per item and FE/t in the `industrial_overkill:calories` data map and use tags to exclude fuels or allow additional catalyst fluids.

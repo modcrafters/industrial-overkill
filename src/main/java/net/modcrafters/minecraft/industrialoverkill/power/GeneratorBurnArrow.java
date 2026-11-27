@@ -12,7 +12,7 @@ import zone.moddev.mc.lib.gui.model.ProgressDirection;
 import zone.moddev.mc.lib.gui.model.elements.ProgressElement;
 import zone.moddev.mc.lib.gui.runtime.ScreenHost;
 
-final class GeneratorBurnArrow extends ProgressElement {
+public final class GeneratorBurnArrow extends ProgressElement {
     private GeneratorBurnArrow(Common common) {
         super(common, Optional.empty(), ProgressDirection.RIGHT);
     }

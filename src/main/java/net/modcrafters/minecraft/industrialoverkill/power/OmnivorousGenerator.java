@@ -1,6 +1,8 @@
 package net.modcrafters.minecraft.industrialoverkill.power;
 
+import java.util.List;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -17,9 +19,15 @@ import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import zone.moddev.mc.lib.api.automation.ResourceType;
 import zone.moddev.mc.lib.api.capabilities.IoMode;
 import zone.moddev.mc.lib.api.capabilities.MachineCapabilities;
+import zone.moddev.mc.lib.gui.drawer.DrawerDefinition;
+import zone.moddev.mc.lib.gui.drawer.DrawerPlacement;
+import zone.moddev.mc.lib.gui.drawer.DrawerRegistry;
+import zone.moddev.mc.lib.gui.model.Edge;
 
 public final class OmnivorousGenerator {
     private static final String NAME = "omnivorous_generator";
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(IndustrialOverkill.MOD_ID, NAME);
+    public static final ResourceLocation RECIPES = ID.withPath("generator_recipes");
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Registries.BLOCK, IndustrialOverkill.MOD_ID);
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(IndustrialOverkill.MOD_ID);
     public static final DeferredItem<Item> ASH = ITEMS.registerSimpleItem("ash");
@@ -33,6 +41,8 @@ public final class OmnivorousGenerator {
 
     public static void register(IEventBus bus) {
         GeneratorBurnArrow.register();
+        DrawerRegistry.GLOBAL.register(RECIPES, context -> context.screen().id().equals(ID)
+            ? List.of(new DrawerDefinition(RECIPES, RECIPES.getPath(), DrawerPlacement.top(Edge.LEFT, 50))) : List.of());
         ITEMS.register(NAME, () -> new BlockItem(BLOCK.get(), new Item.Properties()));
         BLOCKS.register(bus);
         ITEMS.register(bus);

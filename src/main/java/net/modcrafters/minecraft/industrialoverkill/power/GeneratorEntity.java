@@ -2,7 +2,6 @@ package net.modcrafters.minecraft.industrialoverkill.power;
 
 import com.mojang.logging.LogUtils;
 import java.util.List;
-import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -13,7 +12,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.Containers;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -28,14 +26,12 @@ import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.api.capabilities.Role;
 import zone.moddev.mc.lib.api.capabilities.SideConfig;
 import zone.moddev.mc.lib.api.capabilities.Transfer;
-import zone.moddev.mc.lib.machine.ingredient.MachineIngredient.ItemPart;
 import zone.moddev.mc.lib.machine.inventory.MachineInventory;
 import zone.moddev.mc.lib.machine.neoforge.BasePoweredMachine;
 import zone.moddev.mc.lib.machine.neoforge.MachineInventoryLifecycle;
 import zone.moddev.mc.lib.machine.neoforge.MachineRecoveryItem;
 import zone.moddev.mc.lib.machine.neoforge.MachineResources;
 import zone.moddev.mc.lib.machine.recipe.CyclePlan;
-import zone.moddev.mc.lib.machine.recipe.MachineRecipe;
 
 public final class GeneratorEntity extends BasePoweredMachine {
     private static final int EXPORT = 128;
@@ -84,10 +80,7 @@ public final class GeneratorEntity extends BasePoweredMachine {
         var stack = items.getStackInSlot(0);
         var fuel = GeneratorFuel.forStack(level, stack);
         if (fuel == null) return false;
-        var serving = stack.copyWithCount(1);
-        var recipe = new MachineRecipe(Map.of("fuel", List.of(new ItemPart(Ingredient.of(serving), 1))),
-            Map.of("containers", GeneratorFuel.products(serving)), Math.ceilDiv(fuel.energy(), fuel.rate()));
-        burn = CyclePlan.of(OmnivorousGenerator.TYPE.getId(), recipe, burnInventory)
+        burn = CyclePlan.of(OmnivorousGenerator.TYPE.getId(), fuel.recipe(stack), burnInventory)
             .filter(plan -> plan.reserve(burnInventory)).orElse(null);
         if (burn == null) return false;
         total = fuel.energy();

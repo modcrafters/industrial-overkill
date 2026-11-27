@@ -5,7 +5,7 @@
     <hbox spacing="6" align="center">
       <fluid-tank id="catalyst" tank="0" orientation="vertical" length="3s"/>
       <inventory storage="items"><item-slot id="fuel" index="0" tooltip="omnivore.fuel"/></inventory>
-      <io:burn-arrow id="burn" value="#getProgress" max="#getTime"/>
+      <io:burn-arrow id="burn" value="#getProgress" max="#getTime" jei-recipes="industrial_overkill:omnivorous_generator"/>
       <inventory storage="items" columns="2" spacing="2">
         <item-slot id="containers" index="1" tooltip="omnivore.containers"/>
         <item-slot id="output2" index="2" tooltip="omnivore.containers"/>

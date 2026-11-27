@@ -26,6 +26,8 @@ import net.modcrafters.minecraft.industrialoverkill.power.GeneratorFuel;
 import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
 import net.modcrafters.minecraft.industrialoverkill.waste.FarmFluids;
 import zone.moddev.mc.lib.gui.model.elements.FluidTankElement;
+import zone.moddev.mc.lib.gui.drawer.DrawerRegistry;
+import zone.moddev.mc.lib.gui.layout.TextMeasure;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
 
 import static net.modcrafters.minecraft.industrialoverkill.test.AnimalGymTests.require;
@@ -56,6 +58,9 @@ public final class OmnivorousGeneratorTests {
             "The first tick burns eight FE of a still-visible potato even when only three FE fit");
         require(fuel.extractItem(0, 64, true).getCount() == 1, "Only the surplus potato can be picked up");
         var arrow = menu.bound.screen().find("burn").orElseThrow();
+        var drawers = DrawerRegistry.GLOBAL.resolve(new DrawerRegistry.Context(menu.bound.screen(), TextMeasure.NONE, generator));
+        require(drawers.stream().anyMatch(drawer -> drawer.type().equals(OmnivorousGenerator.RECIPES))
+            && arrow.common().jeiRecipes().contains(OmnivorousGenerator.ID), "The generator has a recipe drawer and JEI arrow link");
         require(arrow.tooltip(generator, ItemStack.EMPTY).equals(List.of(Component.translatable("omnivore.remaining", 792),
             Component.translatable("omnivore.rate.tip", 8))), "The arrow shows the remaining FE and burn rate on separate rows");
         var registries = h.getLevel().registryAccess();

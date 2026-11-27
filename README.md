@@ -537,6 +537,10 @@ The Catalyst input and Byproduct output each hold 4,000 mB and have independent
 side settings. The Catalyst tank accepts water and lava by default through the
 `industrial_overkill:generator_catalysts` fluid tag. Current burns use solid
 fuel only. Hover the processing arrow to see remaining FE and the current FE/t.
+The recipe-book tab lists food and solid fuels with burn time, total FE, FE/t,
+and possible item outputs. Click the arrow to open the same recipes in JEI
+when installed, or the built-in drawer otherwise. In JEI, look up a fuel's
+uses or a byproduct's recipes to find matching burns.
 
 ## Animal Gym 2.0
 
