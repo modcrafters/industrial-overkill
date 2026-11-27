@@ -94,12 +94,6 @@ jobs:
           name: release-jar
           path: jars
 
-      - name: Generate release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f "tag_name=$TAG" --jq .body > release-notes.md
-
       - name: Upload the JAR
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,4 +104,4 @@ jobs:
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
           MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: bash .github/scripts/release-publish.sh upload "$VERSION" release-notes.md "jars/industrial-overkill-${VERSION}.jar"
+        run: bash .github/scripts/release-publish.sh upload "$VERSION" CHANGELOG.md "jars/industrial-overkill-${VERSION}.jar"

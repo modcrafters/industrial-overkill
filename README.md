@@ -971,8 +971,10 @@ version pinned; use a new release version rather than overwriting it.
 Push a tag such as `v0.1.0`, `v0.1.0-alpha`, or `v0.1.0-beta` on a commit
 already on `main`. The Release workflow uses the tag as the JAR version and
 builds against the published MMDLib pin above. The build must pass before the
-workflow uploads the NeoForge JAR and GitHub-generated release notes to
-CurseForge and GitHub Releases.
+workflow uploads the NeoForge JAR and the tagged commit's [changelog](CHANGELOG.md)
+to CurseForge, GitHub Releases, and Modrinth when configured. Update that file
+with the player-facing notes for the upcoming release before tagging. Each tag
+preserves its own copy.
 
 Set the repository variable `CURSEFORGE_PROJECT_ID` and the repository secret
 `CURSEFORGE_TOKEN`. Leave `MODRINTH_PROJECT_ID` unset to skip Modrinth validation
