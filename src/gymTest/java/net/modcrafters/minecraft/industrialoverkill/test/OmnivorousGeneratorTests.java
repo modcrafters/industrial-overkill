@@ -108,6 +108,61 @@ public final class OmnivorousGeneratorTests {
     }
 
     @GameTest(template = "gym_empty")
+    public static void lavaBoostSurvivesReloadAndConsumesOneDose(GameTestHelper h) {
+        var generator = place(h);
+        var tanks = generator.screenFluids();
+        generator.screenItems().insertItem(0, new ItemStack(Items.POTATO), false);
+        tanks.fill(new FluidStack(Fluids.LAVA, 99), FluidAction.EXECUTE);
+        generator.serverTick();
+        require(generator.getProgress() == 0 && generator.energy.stored() == 0, "A partial dose waits for lava");
+        tanks.fill(new FluidStack(Fluids.LAVA, 1), FluidAction.EXECUTE);
+        generator.serverTick();
+        require(generator.getBurnRate() == 16 && generator.getTime() == 1600 && tanks.tank(0).drain(100, FluidAction.EXECUTE).isEmpty(),
+            "Lava doubles potato energy and rate and reserves the dose at ignition");
+        var registries = h.getLevel().registryAccess();
+        generator.loadWithComponents(generator.saveWithoutMetadata(registries), registries);
+        for (int i = 1; i < 100; i++) generator.serverTick();
+        require(generator.getProgress() == 0 && generator.energy.stored() == 1600 && tanks.getFluidInTank(0).isEmpty()
+            && generator.screenItems().getStackInSlot(0).isEmpty(), "Reloaded lava burn spends one potato and one dose over five seconds");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void waterWaitsForSpaceAndCollectsSewage(GameTestHelper h) {
+        var generator = place(h);
+        var tanks = generator.screenFluids();
+        generator.screenItems().insertItem(0, new ItemStack(Items.POTATO), false);
+        tanks.fill(new FluidStack(Fluids.WATER, 50), FluidAction.EXECUTE);
+        tanks.fillResult(1, new FluidStack(FarmFluids.SEWAGE.source.get(), 4000), FluidAction.EXECUTE);
+        generator.serverTick();
+        require(generator.getProgress() == 0 && tanks.getFluidInTank(0).getAmount() == 50, "A full byproduct tank prevents ignition");
+        tanks.tank(1).drain(25, FluidAction.EXECUTE);
+        generator.serverTick();
+        require(generator.getBurnRate() == 8 && tanks.getFluidInTank(1).getAmount() == 3975, "Water keeps the normal rate");
+        for (int i = 1; i < 100; i++) generator.serverTick();
+        require(generator.energy.stored() == 800 && tanks.getFluidInTank(0).isEmpty() && tanks.getFluidInTank(1).getAmount() == 4000,
+            "Water produces 25 mB of sewage at burnout");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void datapackCatalystControlsEffectsAndOutputs(GameTestHelper h) {
+        var generator = place(h);
+        var tanks = generator.screenFluids();
+        require(tanks.fill(new FluidStack(FarmFluids.FILTERED_SEWAGE.source.get(), 10), FluidAction.EXECUTE) == 10,
+            "A datapack recipe alone admits a new catalyst");
+        generator.screenItems().insertItem(0, new ItemStack(Items.POTATO), false);
+        generator.serverTick();
+        require(generator.getTime() == 3839 && generator.getBurnRate() == 40, "Independent multipliers respect the pig's 3840 FE yield");
+        for (int i = 1; i < 96; i++) generator.serverTick();
+        var slots = generator.screenItems();
+        require(generator.energy.stored() == 3839 && tanks.getFluidInTank(1).isEmpty()
+            && slots.getStackInSlot(1).is(Items.CLAY_BALL) && slots.getStackInSlot(1).getCount() == 2
+            && slots.getStackInSlot(2).isEmpty(), "Guaranteed item is returned, while zero fluid and ash chances produce nothing");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
     public static void solidFuelRatesAndGymAdvantage(GameTestHelper h) {
         var level = h.getLevel();
         for (var coal : new Item[]{Items.COAL, Items.CHARCOAL}) {

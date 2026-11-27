@@ -5,19 +5,14 @@ import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.Containers;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.material.Fluid;
-import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import zone.moddev.mc.lib.api.automation.ResourceGroup;
 import zone.moddev.mc.lib.api.automation.ResourceType;
 import zone.moddev.mc.lib.api.capabilities.FluidStorage;
@@ -35,8 +30,6 @@ import zone.moddev.mc.lib.machine.recipe.CyclePlan;
 
 public final class GeneratorEntity extends BasePoweredMachine {
     private static final int EXPORT = 128;
-    private static final TagKey<Fluid> CATALYSTS = TagKey.create(Registries.FLUID,
-        ResourceLocation.fromNamespaceAndPath(IndustrialOverkill.MOD_ID, "generator_catalysts"));
     private final ItemStorage items = new ItemStorage(5).role(Role.INPUT, 0).role(Role.OUTPUT, 1, 2, 3, 4)
         .restrict(stack -> GeneratorFuel.forStack(getLevel(), stack) != null, 0).onChange(this::setChanged);
     private final MachineInventoryLifecycle inventory;
@@ -50,8 +43,9 @@ public final class GeneratorEntity extends BasePoweredMachine {
     public GeneratorEntity(BlockPos pos, BlockState state) {
         super(OmnivorousGenerator.TYPE.get(), pos, state, 32_000, 0, EXPORT);
         var resources = new MachineResources(this, this::facing);
-        int catalyst = fluids.addTank(4000, Role.INPUT, stack -> stack.is(CATALYSTS));
-        int byproduct = fluids.addTank(4000, Role.OUTPUT);
+        int catalyst = fluids.addTank(GeneratorCatalyst.CAPACITY, Role.INPUT);
+        fluids.restrict(stack -> GeneratorCatalyst.rules(getLevel()).containsKey(stack.getFluid()), catalyst);
+        int byproduct = fluids.addTank(GeneratorCatalyst.CAPACITY, Role.OUTPUT);
         fluids.tankId(catalyst, "catalyst").tankId(byproduct, "byproduct");
         resources.items(new ResourceGroup<>("fuel", Component.translatable("omnivore.fuel"), 0xe49d4a,
             ResourceType.ITEMS, IoMode.INPUT, List.of(0), List.of("fuel"), new SideConfig(IoMode.INPUT)).inventory("items"), items);
@@ -78,9 +72,12 @@ public final class GeneratorEntity extends BasePoweredMachine {
 
     private boolean loadFuel() {
         var stack = items.getStackInSlot(0);
-        var fuel = GeneratorFuel.forStack(level, stack);
+        var liquid = fluids.getFluidInTank(0);
+        var rule = liquid.isEmpty() ? null : GeneratorCatalyst.rules(level).get(liquid.getFluid());
+        var catalyst = rule == null ? null : rule.value();
+        var fuel = GeneratorFuel.forStack(level, stack, catalyst);
         if (fuel == null) return false;
-        burn = CyclePlan.of(OmnivorousGenerator.TYPE.getId(), fuel.recipe(stack), burnInventory)
+        burn = CyclePlan.of(rule == null ? OmnivorousGenerator.ID : rule.id(), fuel.recipe(stack, catalyst), burnInventory)
             .filter(plan -> plan.reserve(burnInventory)).orElse(null);
         if (burn == null) return false;
         total = fuel.energy();

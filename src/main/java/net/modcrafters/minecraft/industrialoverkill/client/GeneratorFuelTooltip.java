@@ -18,6 +18,6 @@ public final class GeneratorFuelTooltip {
         if (player == null || !(player.containerMenu instanceof MachineMenu menu)
             || !(menu.blockEntity instanceof GeneratorEntity)) return;
         var fuel = GeneratorFuel.forStack(player.level(), event.getItemStack());
-        if (fuel != null) event.getToolTip().add(Component.translatable("omnivore.serving", fuel.energy(), fuel.rate()));
+        if (fuel != null) event.getToolTip().add(Component.translatable("omnivore.dry_serving", fuel.energy(), fuel.rate()));
     }
 }

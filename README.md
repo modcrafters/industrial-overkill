@@ -514,7 +514,7 @@ generator reserves space for containers and charcoal before lighting the fuel.
 Other edible items supply 400 FE per nutrition point at 8 FE/t. Solid furnace
 fuels supply 20 FE per furnace burn tick at 40 FE/t. Food takes precedence
 when an item qualifies for both. For any item also accepted by the Animal
-Gym, the generator caps its yield at half the lowest matching Gym ration.
+Gym, the generator caps its dry yield at half the lowest matching Gym ration.
 A pig gets 3,840 FE from the same potato. Intensity changes how quickly the
 Gym delivers that energy.
 
@@ -534,13 +534,60 @@ data map `industrial_overkill:calories`. The bundled potato entry is in
 in the data map.
 
 The Catalyst input and Byproduct output each hold 4,000 mB and have independent
-side settings. The Catalyst tank accepts water and lava by default through the
-`industrial_overkill:generator_catalysts` fluid tag. Current burns use solid
-fuel only. Hover the processing arrow to see remaining FE and the current FE/t.
-The recipe-book tab lists food and solid fuels with burn time, total FE, FE/t,
-and possible item outputs. Click the arrow to open the same recipes in JEI
-when installed, or the built-in drawer otherwise. In JEI, look up a fuel's
-uses or a byproduct's recipes to find matching burns.
+side settings. An empty input tank gives a dry burn. Each dose of catalyst
+applies to one fuel item, whether food or furnace fuel.
+
+| Catalyst per item | Raw potato yield | Burn time | Fluid byproduct |
+| --- | ---: | ---: | --- |
+| None | 800 FE at 8 FE/t | 5 seconds | None |
+| 50 mB water | 800 FE at 8 FE/t | 5 seconds | 25 mB sewage |
+| 100 mB lava | 1,600 FE at 16 FE/t | 5 seconds | None |
+
+A partial dose waits for a refill. Ignition reserves the fuel, the fluid dose,
+room for any possible fluid output, and room for guaranteed item outputs.
+At burnout the generator consumes the dose and rolls each output independently.
+Chance-based item drops use available space. A running burn keeps its recipe
+across saves and datapack reloads. Hover the processing arrow for remaining FE
+and FE/t. Its recipe drawer and JEI show dry and catalyzed burns with their
+inputs, duration, energy, outputs, and chances.
+
+### Generator catalyst recipes
+
+Place a recipe in `data/<namespace>/recipe/generator_catalyst/<name>.json` and
+use `/reload`. The recipe itself admits its fluid to the Catalyst tank. To change
+a bundled recipe, override `industrial_overkill:generator_catalyst/water` or
+`industrial_overkill:generator_catalyst/lava`. If multiple IDs specify the
+same input fluid, the first full recipe ID in alphabetical order wins.
+
+This example adds a use for filtered sewage. Each dose has a 75% chance to
+return water and a separate 25% chance to produce a clay ball.
+
+```json
+{
+  "type": "industrial_overkill:generator_catalyst",
+  "input": {"id": "industrial_overkill:filtered_sewage", "amount": 50},
+  "output_fluid": {"id": "minecraft:water", "amount": 25},
+  "output_fluid_chance": 0.75,
+  "output_item": {"id": "minecraft:clay_ball", "count": 1},
+  "output_item_chance": 0.25,
+  "energy_multiplier": 1.5,
+  "burn_rate_multiplier": 1,
+  "ash_chance": 0.2
+}
+```
+
+Fluid amounts are 1–4,000 mB. Both outputs are optional and default to a 100%
+chance when supplied. Chances range from 0 to 1. The extra item is independent
+of the usual returned container, log charcoal, and ash.
+
+| Optional effect property | Default | Effect on one serving |
+| --- | ---: | --- |
+| `energy_multiplier` | 1 | Multiplies dry FE per item. Shared foods stay at least 1 FE below the lowest matching Animal Gym ration. |
+| `burn_rate_multiplier` | 1 | Multiplies dry FE/t. A faster rate spends the serving sooner. |
+| `ash_chance` | 0.125 | Sets the probability of one base ash drop. Use 0 to disable it or 1 to guarantee it. |
+
+Multipliers must be finite and positive. Energy and rate round to the nearest
+whole FE with a minimum of one. The last tick produces only the remaining FE.
 
 ## Animal Gym 2.0
 

@@ -3,8 +3,9 @@ package net.modcrafters.minecraft.industrialoverkill.power;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -22,6 +23,8 @@ import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.registries.datamaps.DataMapType;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
+import zone.moddev.mc.lib.machine.ingredient.MachineIngredient;
+import zone.moddev.mc.lib.machine.ingredient.MachineIngredient.FluidPart;
 import zone.moddev.mc.lib.machine.ingredient.MachineIngredient.ItemPart;
 import zone.moddev.mc.lib.machine.recipe.MachineProduct;
 import zone.moddev.mc.lib.machine.recipe.MachineProduct.ItemProduct;
@@ -40,6 +43,10 @@ public record GeneratorFuel(int energy, int rate) {
         ResourceLocation.fromNamespaceAndPath(IndustrialOverkill.MOD_ID, "generator_denied"));
 
     public static GeneratorFuel forStack(Level level, ItemStack stack) {
+        return forStack(level, stack, null);
+    }
+
+    public static GeneratorFuel forStack(Level level, ItemStack stack, GeneratorCatalyst catalyst) {
         if (level == null || stack.isEmpty() || stack.is(DENIED) || stack.has(DataComponents.BLOCK_ENTITY_DATA)
             || stack.has(DataComponents.ENTITY_DATA) || stack.has(DataComponents.BUNDLE_CONTENTS)
             || stack.getItem() instanceof BlockItem block && block.getBlock() instanceof ShulkerBoxBlock) return null;
@@ -58,25 +65,40 @@ public record GeneratorFuel(int energy, int rate) {
             }
         }
         if (FluidUtil.getFluidContained(stack).isPresent()) return null;
-        int energy = fuel.energy;
+        long gymYield = Long.MAX_VALUE;
         for (var rule : GymAnimalRecipe.rules(level)) {
-            if (rule.food().test(stack)) {
-                long gymYield = (long) rule.energyPerTick() * rule.foodDurationTicks();
-                energy = (int) Math.min(energy, gymYield / 2);
-            }
+            if (rule.food().test(stack)) gymYield = Math.min(gymYield, (long) rule.energyPerTick() * rule.foodDurationTicks());
         }
-        return energy == 0 ? null : new GeneratorFuel(energy, Math.min(energy, fuel.rate));
+        int energy = (int) Math.min(fuel.energy, gymYield / 2);
+        if (energy == 0) return null;
+        int rate = Math.min(energy, fuel.rate);
+        if (catalyst != null) {
+            energy = Math.clamp(Math.round(energy * catalyst.energyMultiplier()), 1, (int) Math.min(Integer.MAX_VALUE, gymYield - 1));
+            rate = Math.clamp(Math.round(rate * catalyst.burnRateMultiplier()), 1, energy);
+        }
+        return new GeneratorFuel(energy, rate);
     }
 
-    public MachineRecipe recipe(ItemStack stack) {
+    public MachineRecipe recipe(ItemStack stack, GeneratorCatalyst catalyst) {
         var serving = stack.copyWithCount(1);
+        var inputs = new LinkedHashMap<String, List<MachineIngredient>>();
+        inputs.put("fuel", List.of(new ItemPart(Ingredient.of(serving), 1)));
+        var outputs = new LinkedHashMap<String, List<MachineProduct>>();
         var products = new ArrayList<MachineProduct>();
         var container = remainder(serving);
         if (!container.isEmpty()) products.add(new ItemProduct(container, 1));
         if (serving.is(ItemTags.LOGS_THAT_BURN)) products.add(new ItemProduct(new ItemStack(Items.CHARCOAL), 1));
-        products.add(new ItemProduct(new ItemStack(OmnivorousGenerator.ASH.get()), 0.125F));
-        return new MachineRecipe(Map.of("fuel", List.of(new ItemPart(Ingredient.of(serving), 1))),
-            Map.of("containers", products), Math.ceilDiv(energy, rate));
+        float ashChance = catalyst == null ? GeneratorCatalyst.BASE_ASH_CHANCE : catalyst.ashChance();
+        if (ashChance > 0) products.add(new ItemProduct(new ItemStack(OmnivorousGenerator.ASH.get()), ashChance));
+        if (catalyst != null) {
+            inputs.put("catalyst", List.of(new FluidPart(HolderSet.direct(catalyst.input().fluid()), catalyst.input().amount())));
+            if (catalyst.outputItemChance() > 0)
+                catalyst.outputItem().ifPresent(item -> products.add(new ItemProduct(item, catalyst.outputItemChance())));
+        }
+        outputs.put("containers", products);
+        if (catalyst != null && catalyst.outputFluidChance() > 0)
+            catalyst.outputFluid().ifPresent(fluid -> outputs.put("byproduct", List.of(new MachineProduct.FluidProduct(fluid, catalyst.outputFluidChance()))));
+        return new MachineRecipe(inputs, outputs, Math.ceilDiv(energy, rate));
     }
 
     private static ItemStack remainder(ItemStack serving) {

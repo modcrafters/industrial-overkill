@@ -40,6 +40,7 @@ public final class OmnivorousGenerator {
     private OmnivorousGenerator() {}
 
     public static void register(IEventBus bus) {
+        GeneratorCatalyst.register(bus);
         GeneratorBurnArrow.register();
         DrawerRegistry.GLOBAL.register(RECIPES, context -> context.screen().id().equals(ID)
             ? List.of(new DrawerDefinition(RECIPES, RECIPES.getPath(), DrawerPlacement.top(Edge.LEFT, 50))) : List.of());

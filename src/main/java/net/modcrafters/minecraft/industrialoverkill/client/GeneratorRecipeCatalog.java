@@ -21,6 +21,7 @@ import net.neoforged.neoforge.event.TagsUpdatedEvent;
 import net.neoforged.neoforge.registries.datamaps.DataMapsUpdatedEvent;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.power.GeneratorBurnArrow;
+import net.modcrafters.minecraft.industrialoverkill.power.GeneratorCatalyst;
 import net.modcrafters.minecraft.industrialoverkill.power.GeneratorFuel;
 import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
 import zone.moddev.mc.lib.gui.client.DefaultElementBehavior;
@@ -62,16 +63,28 @@ public final class GeneratorRecipeCatalog implements RecipeCatalog {
     public static List<Entry> recipes(ClientLevel level) {
         if (level == null) return List.of();
         var entries = new ArrayList<Entry>();
+        var catalysts = GeneratorCatalyst.rules(level).values();
         for (var id : BuiltInRegistries.ITEM.keySet().stream().sorted().toList()) {
             var stack = BuiltInRegistries.ITEM.get(id).getDefaultInstance();
             var fuel = GeneratorFuel.forStack(level, stack);
             if (fuel == null) continue;
-            var stats = Component.translatable("omnivore.serving", fuel.energy(), fuel.rate());
             var food = stack.getFoodProperties(null);
+            boolean edible = food != null && food.nutrition() > 0;
             var recipeId = OmnivorousGenerator.ID.withPath("burn/" + id.getNamespace() + "/" + id.getPath());
-            entries.add(new Entry(recipeId, food != null && food.nutrition() > 0, new FarmRecipeView(fuel.recipe(stack), stats)));
+            entries.add(entry(recipeId, edible, stack, fuel, null));
+            for (var rule : catalysts) {
+                var catalyst = rule.value();
+                var variant = recipeId.withPath("catalyzed/" + rule.id().getNamespace() + "/" + rule.id().getPath()
+                    + "/" + id.getNamespace() + "/" + id.getPath());
+                entries.add(entry(variant, edible, stack, GeneratorFuel.forStack(level, stack, catalyst), catalyst));
+            }
         }
         return List.copyOf(entries);
+    }
+
+    private static Entry entry(ResourceLocation id, boolean food, ItemStack stack, GeneratorFuel fuel, GeneratorCatalyst catalyst) {
+        var stats = Component.translatable("omnivore.serving", fuel.energy(), fuel.rate());
+        return new Entry(id, food, new FarmRecipeView(fuel.recipe(stack, catalyst), stats));
     }
 
     @Override public List<Group> groups() {

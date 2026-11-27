@@ -92,6 +92,9 @@ public final class FarmRecipeView implements RecipePresentation {
 
     public List<ItemCell> itemCells() { return itemCells; }
     public List<FluidCell> fluidCells() { return fluidCells; }
+    @Override public List<Fluid> fluids() {
+        return fluidCells.stream().flatMap(cell -> cell.stacks().stream().map(stack -> new Fluid(stack, cell.role()))).toList();
+    }
     public boolean available() {
         return itemCells.stream().noneMatch(cell -> cell.stacks().isEmpty())
             && fluidCells.stream().noneMatch(cell -> cell.stacks().isEmpty());

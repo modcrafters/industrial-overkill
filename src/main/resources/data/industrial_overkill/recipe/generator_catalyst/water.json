@@ -1,0 +1,6 @@
+{
+  "type": "industrial_overkill:generator_catalyst",
+  "input": {"id": "minecraft:water", "amount": 50},
+  "output_fluid": {"id": "industrial_overkill:sewage", "amount": 25},
+  "output_fluid_chance": 1
+}
