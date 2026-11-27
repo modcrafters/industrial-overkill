@@ -20,6 +20,8 @@ import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 final class AgriPlanting {
     static final TagKey<Item> SEEDS = TagKey.create(Registries.ITEM,
         ResourceLocation.parse("industrial_overkill:agri_brain_seeds"));
+    static final TagKey<Item> DIRECT = TagKey.create(Registries.ITEM,
+        ResourceLocation.parse("industrial_overkill:agri_brain_direct_planting"));
 
     private AgriPlanting() {}
 
@@ -30,11 +32,15 @@ final class AgriPlanting {
             || !level.hasChunkAt(soil) || level.isOutsideBuildHeight(soil.above())
             || !level.getWorldBorder().isWithinBounds(soil.above())
             || level.captureBlockSnapshots || level.restoringBlockSnapshots
-            || !level.getBlockState(soil).is(Blocks.FARMLAND)
             || !level.isEmptyBlock(soil.above())) return false;
         var inventory = machine.items.inventory("seeds");
         var stored = inventory.getStackInSlot(slot);
         if (!accepts(stored)) return false;
+        if (stored.is(DIRECT)) {
+            // Vanilla placement checks can read neighboring blocks (water for cane, clearance for cactus).
+            if (level.getBlockState(soil).canBeReplaced()
+                || !level.hasChunksAt(soil.offset(-1, 0, -1), soil.offset(1, 1, 1))) return false;
+        } else if (!level.getBlockState(soil).is(Blocks.FARMLAND)) return false;
         var player = FakePlayerFactory.get(level, AgriTilling.PROFILE);
         if (!player.mayBuild() || !level.mayInteract(player, soil)
             || !level.mayInteract(player, soil.above())) return false;

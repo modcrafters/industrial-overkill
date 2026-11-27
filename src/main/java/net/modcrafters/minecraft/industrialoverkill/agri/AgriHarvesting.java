@@ -2,9 +2,13 @@ package net.modcrafters.minecraft.industrialoverkill.agri;
 
 import java.util.ArrayList;
 import java.util.List;
+import javax.annotation.Nullable;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -17,14 +21,43 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
+import net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler;
+import net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler.Harvest;
 import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 
 /** Plans all loot destinations before removing a mature crop. */
 final class AgriHarvesting {
+    private static final TagKey<Block> COLUMNS = TagKey.create(Registries.BLOCK,
+        ResourceLocation.parse("industrial_overkill:agri_brain_column_crops"));
+
     private AgriHarvesting() {}
 
-    static boolean mature(BlockState state) {
+    @Nullable
+    static Harvest inspect(ServerLevel level, BlockPos base) {
+        var state = level.getBlockState(base);
+        if (state.isAir()) return null;
+        var handler = level.getCapability(AgriHarvestHandler.CAPABILITY, base, null);
+        if (handler != null) {
+            var harvest = handler.inspect(level, base, state);
+            if (harvest == null) return null;
+            var target = harvest.target();
+            if (target.getX() != base.getX() || target.getZ() != base.getZ() || target.getY() < base.getY()
+                || level.isOutsideBuildHeight(target) || level.getBlockState(target).isAir()
+                || level.getBlockState(target).equals(harvest.replacement())) return null;
+            return harvest;
+        }
+        if (state.is(COLUMNS)) {
+            // Take the top first so cutting a support cannot spill unaccounted drops into the world.
+            var top = base;
+            while (top.getY() + 1 < level.getMaxBuildHeight() && level.getBlockState(top.above()).is(state.getBlock()))
+                top = top.above();
+            return top.equals(base) ? null : Harvest.cut(top);
+        }
+        return mature(state) ? Harvest.cut(base) : null;
+    }
+
+    private static boolean mature(BlockState state) {
         if (state.getBlock() instanceof CropBlock crop) return crop.isMaxAge(state);
         if (state.is(Blocks.PITCHER_CROP))
             return state.getValue(PitcherCropBlock.HALF) == DoubleBlockHalf.LOWER
@@ -32,13 +65,15 @@ final class AgriHarvesting {
         return state.is(Blocks.TORCHFLOWER) || state.is(Blocks.MELON) || state.is(Blocks.PUMPKIN);
     }
 
-    static boolean harvest(DefinedMachineEntity machine, BlockPos pos) {
+    static boolean harvest(DefinedMachineEntity machine, BlockPos base) {
         if (!(machine.getLevel() instanceof ServerLevel level) || machine.isRemoved()
-            || !level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos)
-            || !level.getWorldBorder().isWithinBounds(pos)
+            || !level.hasChunkAt(base) || level.isOutsideBuildHeight(base)
+            || !level.getWorldBorder().isWithinBounds(base)
             || level.captureBlockSnapshots || level.restoringBlockSnapshots) return false;
+        var harvest = inspect(level, base);
+        if (harvest == null) return false;
+        var pos = harvest.target();
         var state = level.getBlockState(pos);
-        if (!mature(state)) return false;
         var player = FakePlayerFactory.get(level, AgriTilling.PROFILE);
         if (!player.mayBuild() || !level.mayInteract(player, pos)) return false;
         var oldPosition = player.position();
@@ -48,23 +83,29 @@ final class AgriHarvesting {
             player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
             if (CommonHooks.fireBlockBreak(level, player.gameMode.getGameModeForPlayer(), player, pos, state).isCanceled()
                 || !level.getBlockState(pos).equals(state) || machine.isRemoved()) return false;
+            var current = inspect(level, base);
+            if (current == null || !current.target().equals(pos) || !current.replacement().equals(harvest.replacement())) return false;
 
             // Roll loot exactly once for this attempt, then simulate the entire batch.
-            var drops = Block.getDrops(state, level, pos, level.getBlockEntity(pos), player, ItemStack.EMPTY);
+            var drops = current.drops().roll(level, pos, state, player);
             var seeds = new Buffer(machine.items.inventory("seeds"));
             var output = new Buffer(machine.items.inventory("output"));
             for (var drop : drops) {
                 var remaining = drop.copy();
-                if (AgriPlanting.accepts(remaining)) seeds.insert(remaining, true);
+                if (current.clearsBase(base) && AgriPlanting.accepts(remaining)) seeds.insert(remaining, true);
                 output.insert(remaining, false);
                 if (!remaining.isEmpty()) return false;
             }
-            if (!level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL | Block.UPDATE_SUPPRESS_DROPS))
+            if (!level.setBlock(pos, current.replacement(), Block.UPDATE_ALL | Block.UPDATE_SUPPRESS_DROPS))
                 return false;
             seeds.commit();
             output.commit();
-            level.levelEvent(2001, pos, Block.getId(state));
-            level.gameEvent(GameEvent.BLOCK_DESTROY, pos, GameEvent.Context.of(player, state));
+            if (current.replacement().isAir()) {
+                level.levelEvent(2001, pos, Block.getId(state));
+                level.gameEvent(GameEvent.BLOCK_DESTROY, pos, GameEvent.Context.of(player, state));
+            } else {
+                level.gameEvent(GameEvent.BLOCK_CHANGE, pos, GameEvent.Context.of(player, current.replacement()));
+            }
             return true;
         } finally {
             player.setItemInHand(InteractionHand.MAIN_HAND, oldHand);

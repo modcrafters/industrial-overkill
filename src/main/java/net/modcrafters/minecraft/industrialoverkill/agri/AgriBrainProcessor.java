@@ -8,6 +8,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.TorchflowerCropBlock;
@@ -279,21 +280,24 @@ public final class AgriBrainProcessor extends StoredProcessor implements Working
         var pos = soil.above();
         var crop = level.getBlockState(pos);
         var dose = AgriFertilizing.choose(host, level, pos, crop, variables.get(fertilizingMode));
-        boolean harvest = AgriHarvesting.mature(crop) || AgriFertilizing.canFinish(crop, dose);
+        var harvest = AgriHarvesting.inspect(level, pos);
+        boolean finishingDose = AgriFertilizing.canFinish(crop, dose);
         int plan = dose == null ? 0 : Phase.FERTILIZE.bit();
-        if (harvest) plan |= Phase.HARVEST.bit();
+        if (harvest != null || finishingDose) plan |= Phase.HARVEST.bit();
         var ground = level.getBlockState(soil);
-        boolean plantable = ground.is(Blocks.FARMLAND) || (ground.is(Blocks.DIRT) || ground.is(Blocks.GRASS_BLOCK))
+        var seed = selectedSeed(host, seedSlot(area));
+        boolean plantable = seed.is(AgriPlanting.DIRECT) ? !ground.canBeReplaced()
+            : ground.is(Blocks.FARMLAND) || (ground.is(Blocks.DIRT) || ground.is(Blocks.GRASS_BLOCK))
             && !host.items.inventory("hoe").getStackInSlot(0).isEmpty();
+        boolean clearsPlot = harvest == null ? finishingDose : harvest.clearsBase(pos);
         boolean cropCanRefillSeeds = crop.getBlock() instanceof CropBlock && !(crop.getBlock() instanceof TorchflowerCropBlock);
-        if (plantable && (crop.isAir() || harvest) && (hasSeed(host, seedSlot(area))
-            || harvest && cropCanRefillSeeds))
+        if (plantable && (crop.isAir() || clearsPlot) && (AgriPlanting.accepts(seed) || clearsPlot && cropCanRefillSeeds))
             plan |= Phase.PLANT.bit();
         return plan;
     }
 
-    private static boolean hasSeed(DefinedMachineEntity host, int slot) {
-        return slot >= 0 && AgriPlanting.accepts(host.items.inventory("seeds").getStackInSlot(slot));
+    private static ItemStack selectedSeed(DefinedMachineEntity host, int slot) {
+        return slot < 0 ? ItemStack.EMPTY : host.items.inventory("seeds").getStackInSlot(slot);
     }
 
     private void finishVisit(DefinedMachineEntity host, ServerLevel level, ProcessorState state, WorkingArea area,
@@ -311,11 +315,12 @@ public final class AgriBrainProcessor extends StoredProcessor implements Working
         }
         if (prepareHarvest)
             poweredAction(energy, HARVEST_FE, () -> AgriHarvesting.harvest(host, pos));
-        if (poweredAction(energy, TILL_FE, () -> AgriTilling.till(host, soil, state.get(hoeWearDue))))
+        int slot = seedSlot(area);
+        if (!selectedSeed(host, slot).is(AgriPlanting.DIRECT)
+            && poweredAction(energy, TILL_FE, () -> AgriTilling.till(host, soil, state.get(hoeWearDue))))
             state.set(hoeWearDue, !state.get(hoeWearDue));
         AgriIrrigation.waterVisitedSoil(host, soil);
         if ((plan & Phase.PLANT.bit()) == 0) return;
-        int slot = seedSlot(area);
         if (poweredAction(energy, PLANT_FE, () -> AgriPlanting.plant(host, soil, slot))) {
             if (plantingMode() == 1) state.set(nextSeed, (slot + 1) % 4);
             if (strategy == AgriFertilizing.SMART || strategy == AgriFertilizing.PELLETS_ONLY)

@@ -6,6 +6,8 @@ For Minecraft 1.21.1 on NeoForge 21.1.265 or later in the 21.1 series. Requires 
 
 ### New since v0.0.1-alpha
 
+- **Agri-Brain stalk crops.** Plant sugar cane, cactus and bamboo on their usual ground. The drone trims the top block and leaves the base to regrow. Compatibility packs can add stalks through item and block tags, and mods can register a harvest handler for crops with custom drops or regrowth.
+
 - **Generator recipe browser.** Open the recipe-book tab to browse foods and solid fuels, including their burn time, FE yield, and possible remains. The processing arrow opens the generator category in JEI when installed or the built-in drawer otherwise. JEI supports lookups by fuel, returned container, charcoal, and ash.
 
 - **Omnivorous Generator.** Burn food or solid furnace fuel to power adjacent machines. A raw potato supplies 800 FE over five seconds at 8 FE/t. Coal and charcoal each supply 32,000 FE over 40 seconds at 40 FE/t. An Animal Gym still gets more from food its animal can eat. A pig gets 3,840 FE from that same potato.

@@ -75,9 +75,11 @@ The planting selector uses MMDLib's shared `<cycle-button>`: mode values, icons,
 labels, help and selection actions live in the machine XML. Its processor actions
 change the saved mode and reset the seed cursor; no custom UI element is needed.
 Inputs accept `industrial_overkill:agri_brain_seeds`, which includes
-the common seeds tag, vanilla farmland seeds, carrots and potatoes. On each scan
-visit, the machine evaluates fertilizer, then checks for harvest, tills, and plants in the empty crop space
-above farmland. Planting existing farmland needs no hoe. Each successful placement
+the common seeds tag, vanilla farmland seeds, carrots, potatoes, sugar cane,
+cactus and bamboo. Farmland crops can use the hoe to prepare dirt or grass.
+For cane, cactus and bamboo the drone plants directly on the existing ground.
+Prepare the plot as you would by hand, including adjacent water for cane and
+clear sides for cactus. The irrigation tank waters farmland. Each successful placement
 consumes one seed, honors normal placement/cancellation rules, and preserves
 immature crops. Planting failure consumes nothing and does not advance the cursor.
 
@@ -89,7 +91,41 @@ uses the selected planting mode, including newly collected seeds. Harvesting
 needs no hoe and uses empty-hand loot. It respects block-break cancellation.
 Wheat-style crops (including carrots, potatoes and beetroot), mature torchflowers
 and pitcher plants are supported, as are melon and pumpkin fruits; their stems
-stay in place. Other plants are left alone.
+stay in place. For cane, cactus and bamboo, each harvest takes the top block
+and sends it to the harvest output. A lone base stays planted for regrowth.
+
+### Adding Agri-Brain crops
+
+A compatibility datapack for a cane-like crop needs two tag entries. For
+example, a mod whose reed item and block both have the ID `example:reed` can
+put `{"values":["example:reed"]}` in both of these files:
+
+- `data/industrial_overkill/tags/item/agri_brain_direct_planting.json` admits the item to the seed slots and uses its normal placement action on the plot's existing soil. The item must plant one crop above the clicked soil on success.
+- `data/industrial_overkill/tags/block/agri_brain_column_crops.json` lets Agri-Brain trim a vertical run of that same block from the top, leaving the base. Use the growing block ID here if it differs from the item.
+
+For special harvests, a compatibility mod can register the public
+`net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler`
+block capability in NeoForge's `RegisterCapabilitiesEvent`. This example
+picks two berries from a ripe bush and resets its age:
+
+```java
+AgriHarvestHandler picker = (level, base, state) -> {
+    if (state.getValue(SweetBerryBushBlock.AGE) < 3) return null;
+    return new AgriHarvestHandler.Harvest(base, state.setValue(SweetBerryBushBlock.AGE, 1),
+        (world, pos, harvested, player) -> List.of(new ItemStack(Items.SWEET_BERRIES, 2)));
+};
+event.registerBlock(AgriHarvestHandler.CAPABILITY,
+    (level, pos, state, blockEntity, context) -> picker, Blocks.SWEET_BERRY_BUSH);
+```
+
+The handler owns harvest detection for that block. Inspection can run several
+times per visit and must be read-only. Return `null` to wait, `Harvest.cut(pos)`
+for normal block loot, or a replacement state and a drops callback for picking.
+The target is one block in the plot's vertical column, at or above the base.
+Agri-Brain checks protection, rolls drops once per attempt, checks storage space,
+and commits the block change and outputs. Crops that keep their base send produce
+to Harvest. Add a bush's planting item to the direct-planting tag to enable
+automatic planting as well.
 
 ### Fertilizer and sewage
 
