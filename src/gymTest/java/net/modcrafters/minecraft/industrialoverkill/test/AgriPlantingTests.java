@@ -2,6 +2,7 @@ package net.modcrafters.minecraft.industrialoverkill.test;
 
 import static net.modcrafters.minecraft.industrialoverkill.test.AnimalGymTests.require;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
@@ -30,6 +31,8 @@ import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler;
 import net.modcrafters.minecraft.industrialoverkill.upgrade.MachineUpgrades;
 import zone.moddev.mc.lib.gui.ElementActions;
+import zone.moddev.mc.lib.gui.drawer.BuiltinDrawers;
+import zone.moddev.mc.lib.gui.drawer.DrawerPlacement;
 import zone.moddev.mc.lib.gui.model.Edge;
 import zone.moddev.mc.lib.gui.model.elements.CycleButtonElement;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
@@ -345,8 +348,12 @@ public final class AgriPlantingTests {
             var settings = (AgriSettings) menu.bound.screen().find("settings").orElseThrow();
             var button = (CycleButtonElement) menu.bound.screen().find("planting_mode").orElseThrow();
             var fertilizer = (CycleButtonElement) menu.bound.screen().find("fertilizing_mode").orElseThrow();
-            require(menu.layout().drawers().stream().anyMatch(drawer -> drawer.element().orElse(null) == settings
-                && drawer.placement().edge() == Edge.LEFT), "Settings is docked on the left edge");
+            var leftTabs = menu.layout().drawers().stream().filter(drawer -> drawer.placement().edge() == Edge.LEFT
+                && drawer.placement().anchor() == DrawerPlacement.Anchor.TOP)
+                .sorted(Comparator.comparingInt(drawer -> drawer.placement().order()))
+                .limit(3).map(BuiltinDrawers::featureType).toList();
+            require(leftTabs.equals(List.of(BuiltinDrawers.INFO, BuiltinDrawers.STATS, AgriSettings.ID)),
+                "The first three tabs on the left are Info, Stats, and Settings");
             require(!menu.visible(button) && !menu.visible(fertilizer), "Both mode controls start hidden");
             var open = AgriSettings.SET_OPEN;
             var opened = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),

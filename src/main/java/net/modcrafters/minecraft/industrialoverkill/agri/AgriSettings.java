@@ -52,7 +52,7 @@ public record AgriSettings(Common common, List<Element> children) implements Syn
                 .groups("dock").children("buttons", 2, 2).build());
         DrawerRegistry.GLOBAL.register(ID, context -> context.screen().tabs().stream()
             .filter(AgriSettings.class::isInstance)
-            .map(tab -> new DrawerDefinition(ID, tab.common().id().orElseThrow(), DrawerPlacement.top(Edge.LEFT, 20),
+            .map(tab -> new DrawerDefinition(ID, tab.common().id().orElseThrow(), DrawerPlacement.top(Edge.LEFT, 50),
                 Optional.of(tab), 0, true)).toList());
         MenuComponentRegistry.GLOBAL.register(SESSION, 20, context -> context.menu().bound.screen().tabs().stream()
             .filter(AgriSettings.class::isInstance).map(AgriSettings.class::cast)
