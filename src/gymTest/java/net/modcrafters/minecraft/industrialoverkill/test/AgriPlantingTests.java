@@ -104,6 +104,66 @@ public final class AgriPlantingTests {
     }
 
     @GameTest(template = "gym_empty")
+    public static void keepsTheFourPlotsBesideCactusClear(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var cactus = crop(machine, 3, 4);
+        level.setBlockAndUpdate(cactus.below(), Blocks.SAND.defaultBlockState());
+        level.setBlockAndUpdate(cactus, Blocks.CACTUS.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.WHEAT_SEEDS, 12));
+        ticks(machine, 300);
+        for (int i : List.of(1, 3, 5, 7))
+            require(level.isEmptyBlock(crop(machine, 3, i)), "Cactus keeps each face-adjacent plot empty");
+        for (int i : List.of(0, 2, 6, 8))
+            require(level.getBlockState(crop(machine, 3, i)).is(Blocks.WHEAT), "Diagonal plots can grow wheat");
+        require(seeds.getStackInSlot(0).getCount() == 8, "Only the four planted plots spend seeds");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void rechecksCactusClearanceBeforeSpendingTheBerry(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var target = crop(machine, 3, 0);
+        var neighbor = crop(machine, 3, 5);
+        level.setBlockAndUpdate(target.below(), Blocks.DIRT.defaultBlockState());
+        level.setBlockAndUpdate(neighbor.below(), Blocks.SAND.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.SWEET_BERRIES));
+        seeds.setStackInSlot(1, new ItemStack(Items.BAMBOO));
+        var processor = AgriBrainProcessor.from(machine);
+        processor.cyclePlantingMode();
+        ticks(machine, 11);
+        require(processor.phase() == AgriBrainProcessor.Phase.PLANT, "The clear plot has a planned berry planting");
+        level.setBlockAndUpdate(neighbor, Blocks.CACTUS.defaultBlockState());
+        ticks(machine, 5);
+        require(level.isEmptyBlock(target) && seeds.getStackInSlot(0).getCount() == 1 && processor.nextSeedSlot() == 0
+            && machine.energy.stored() == 100000 - 16 * AgriBrainProcessor.SCAN_FE_PER_TICK,
+            "A new cactus during hover preserves the berry, its turn, and the planting FE");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void waitsForSpaceBeforePlantingCactusBesideWheat(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var target = crop(machine, 3, 0);
+        var neighbor = crop(machine, 3, 1);
+        level.setBlockAndUpdate(target.below(), Blocks.SAND.defaultBlockState());
+        level.setBlockAndUpdate(neighbor, Blocks.WHEAT.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.CACTUS));
+        ticks(machine, 16);
+        require(level.isEmptyBlock(target) && seeds.getStackInSlot(0).getCount() == 1, "A growing crop keeps cactus out");
+        level.removeBlock(neighbor, false);
+        ticks(machine, 300);
+        require(level.getBlockState(target).is(Blocks.CACTUS) && seeds.getStackInSlot(0).isEmpty(),
+            "The same plot accepts cactus after the neighbor is cleared");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
     public static void trimsColumnsAndPicksCustomCropsOnlyWhenDropsFit(GameTestHelper h) {
         var machine = place(h, 0);
         var level = h.getLevel();

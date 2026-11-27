@@ -83,6 +83,11 @@ clear sides for cactus. The irrigation tank waters farmland. Each successful pla
 consumes one seed, honors normal placement/cancellation rules, and preserves
 immature crops. Planting failure consumes nothing and does not advance the cursor.
 
+The drone leaves the four plots directly beside a cactus clear at crop height.
+Diagonal plots can still grow crops. When planting a cactus, the drone also
+checks its four sides for existing blocks. Air and fluids pass the clearance
+check, and the planting item's normal survival rules still apply.
+
 Mature crops are harvested into nine output slots arranged in a 3×3 grid.
 Seed drops refill matching seed input stacks first, then empty seed inputs;
 overflow and other drops go to output. All drops must fit before a crop is
@@ -105,6 +110,11 @@ put `{"values":["example:reed"]}` in both of these files:
 
 - `data/industrial_overkill/tags/item/agri_brain_direct_planting.json` admits the item to the seed slots and uses its normal placement action on the plot's existing soil. The item must plant one crop above the clicked soil on success.
 - `data/industrial_overkill/tags/block/agri_brain_column_crops.json` lets Agri-Brain trim a vertical run of that same block from the top, leaving the base. Use the growing block ID here if it differs from the item.
+
+Add a cactus-like block to `data/industrial_overkill/tags/block/agri_brain_needs_clear_sides.json`
+to keep its four horizontal neighbors free of new plantings. When its planting
+item is a block item for that tagged block, the same clearance check applies
+before the drone plants it.
 
 For a sweet-berry-style bush, add its block ID to
 `data/industrial_overkill/tags/block/agri_brain_bushes.json` and its planting

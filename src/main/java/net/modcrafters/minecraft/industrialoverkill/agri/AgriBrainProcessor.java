@@ -291,7 +291,8 @@ public final class AgriBrainProcessor extends StoredProcessor implements Working
             && !host.items.inventory("hoe").getStackInSlot(0).isEmpty();
         boolean clearsPlot = harvest == null ? finishingDose : harvest.clearsBase(pos);
         boolean cropCanRefillSeeds = crop.getBlock() instanceof CropBlock && !(crop.getBlock() instanceof TorchflowerCropBlock);
-        if (plantable && (crop.isAir() || clearsPlot) && (AgriPlanting.accepts(seed) || clearsPlot && cropCanRefillSeeds))
+        if (plantable && (crop.isAir() || clearsPlot) && (AgriPlanting.accepts(seed) || clearsPlot && cropCanRefillSeeds)
+            && AgriPlanting.hasPlantingClearance(level, pos, seed))
             plan |= Phase.PLANT.bit();
         return plan;
     }

@@ -6,6 +6,8 @@ For Minecraft 1.21.1 on NeoForge 21.1.265 or later in the 21.1 series. Requires 
 
 ### New since v0.0.1-alpha
 
+- **Agri-Brain cactus spacing.** The drone leaves the four sides of a cactus free of new plantings, including when replanting after harvest. Diagonal plots remain available. Datapacks can give other blocks the same clearance with the `industrial_overkill:agri_brain_needs_clear_sides` block tag.
+
 - **Agri-Brain bush care.** Plant sweet berries from a seed slot and pick 2–3 berries from each fully ripe bush. The bush stays in place to regrow. Datapacks can add compatible bushes with the `industrial_overkill:agri_brain_bushes` block tag.
 
 - **Agri-Brain stalk crops.** Plant sugar cane, cactus and bamboo on their usual ground. The drone trims the top block and leaves the base to regrow. Compatibility packs can add stalks through item and block tags, and mods can register a harvest handler for crops with custom drops or regrowth.
