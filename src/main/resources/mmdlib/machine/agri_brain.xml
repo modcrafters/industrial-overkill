@@ -42,48 +42,23 @@
     <fill name="machine">
       <fluid-tank id="tank_0" tank="0" orientation="vertical" length="3s" tooltip="agri.irrigation.water"/>
       <hbox spacing="12" align="center">
-        <vbox spacing="2" align="center">
+        <vbox spacing="2" align="start">
           <inventory id="seed" storage="seeds" columns="2" spacing="2" slot-tooltip="agri.seeds"
                      value="net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen#selectedSeedSlot"/>
-          <hbox spacing="2" align="center">
-            <inventory storage="hoe" columns="1">
-              <agri:hinted-slot id="hoe_0" index="0" item="minecraft:wooden_hoe" tooltip="agri.hoe"/>
-            </inventory>
-            <cycle-button id="planting_mode" variable="$processors.agri.planting_mode" tooltip="agri.planting.cycle">
-              <cycle-mode value="0" icon="industrial_overkill:planting_first_found"
-                          label="agri.planting.mode.0" tooltip="agri.planting.help.0"
-                          action="industrial_overkill:planting_first_found"/>
-              <cycle-mode value="1" icon="industrial_overkill:planting_round_robin"
-                          label="agri.planting.mode.1" tooltip="agri.planting.help.1"
-                          action="industrial_overkill:planting_round_robin"/>
-              <cycle-mode value="2" icon="industrial_overkill:planting_rows"
-                          label="agri.planting.mode.2" tooltip="agri.planting.help.2"
-                          action="industrial_overkill:planting_rows"/>
-            </cycle-button>
-          </hbox>
+          <inventory storage="hoe" columns="1">
+            <agri:hinted-slot id="hoe_0" index="0" item="minecraft:wooden_hoe" tooltip="agri.hoe"/>
+          </inventory>
         </vbox>
-        <hbox spacing="2" align="center">
+        <hbox spacing="2" align="start">
           <inventory storage="fertilizer" columns="1" spacing="2">
             <item-slot id="fertilizer_0" index="0" icon="industrial_overkill:slot_fertilizer" tooltip="agri.fertilizer.regular"/>
             <item-slot id="filtered_fertilizer_0" index="1" icon="industrial_overkill:slot_filtered_fertilizer" tooltip="agri.fertilizer.filtered"/>
             <item-slot id="pellets_0" index="2" icon="industrial_overkill:slot_pellets" tooltip="agri.fertilizer.pellets"/>
           </inventory>
-          <vbox spacing="2" align="center">
-            <inventory storage="fertilizer" columns="1" spacing="2">
-              <agri:hinted-slot id="alternative_fertilizers_0" index="3" item="minecraft:bone_meal" tooltip="agri.fertilizer.alternative"/>
-              <agri:hinted-slot id="alternative_fertilizers_1" index="4" item="minecraft:bone_meal" tooltip="agri.fertilizer.alternative"/>
-            </inventory>
-            <cycle-button id="fertilizing_mode" variable="$processors.agri.fertilizing_mode" tooltip="agri.fertilizer.cycle">
-              <cycle-mode value="0" icon="industrial_overkill:fertilizing_off" action="industrial_overkill:fertilizing_off"
-                          label="agri.fertilizer.mode.0" tooltip="agri.fertilizer.help.0"/>
-              <cycle-mode value="1" icon="industrial_overkill:fertilizing_smart" action="industrial_overkill:fertilizing_smart"
-                          label="agri.fertilizer.mode.1" tooltip="agri.fertilizer.help.1"/>
-              <cycle-mode value="2" icon="industrial_overkill:fertilizing_finish" action="industrial_overkill:fertilizing_finish"
-                          label="agri.fertilizer.mode.2" tooltip="agri.fertilizer.help.2"/>
-              <cycle-mode value="3" icon="industrial_overkill:fertilizing_pellets" action="industrial_overkill:fertilizing_pellets"
-                          label="agri.fertilizer.mode.3" tooltip="agri.fertilizer.help.3"/>
-            </cycle-button>
-          </vbox>
+          <inventory storage="fertilizer" columns="1" spacing="2">
+            <agri:hinted-slot id="alternative_fertilizers_0" index="3" item="minecraft:bone_meal" tooltip="agri.fertilizer.alternative"/>
+            <agri:hinted-slot id="alternative_fertilizers_1" index="4" item="minecraft:bone_meal" tooltip="agri.fertilizer.alternative"/>
+          </inventory>
         </hbox>
         <inventory id="harvest" storage="output" columns="3" spacing="2" slot-tooltip="agri.output"/>
       </hbox>
@@ -97,6 +72,29 @@
       </inventory-controls>
     </fill>
     <fill name="upgrades">
+      <agri:settings-drawer id="settings">
+        <cycle-button id="planting_mode" variable="$processors.agri.planting_mode" tooltip="agri.planting.cycle">
+          <cycle-mode value="0" icon="industrial_overkill:planting_first_found"
+                      label="agri.planting.mode.0" tooltip="agri.planting.help.0"
+                      action="industrial_overkill:planting_first_found"/>
+          <cycle-mode value="1" icon="industrial_overkill:planting_round_robin"
+                      label="agri.planting.mode.1" tooltip="agri.planting.help.1"
+                      action="industrial_overkill:planting_round_robin"/>
+          <cycle-mode value="2" icon="industrial_overkill:planting_rows"
+                      label="agri.planting.mode.2" tooltip="agri.planting.help.2"
+                      action="industrial_overkill:planting_rows"/>
+        </cycle-button>
+        <cycle-button id="fertilizing_mode" variable="$processors.agri.fertilizing_mode" tooltip="agri.fertilizer.cycle">
+          <cycle-mode value="0" icon="industrial_overkill:fertilizing_off" action="industrial_overkill:fertilizing_off"
+                      label="agri.fertilizer.mode.0" tooltip="agri.fertilizer.help.0"/>
+          <cycle-mode value="1" icon="industrial_overkill:fertilizing_smart" action="industrial_overkill:fertilizing_smart"
+                      label="agri.fertilizer.mode.1" tooltip="agri.fertilizer.help.1"/>
+          <cycle-mode value="2" icon="industrial_overkill:fertilizing_finish" action="industrial_overkill:fertilizing_finish"
+                      label="agri.fertilizer.mode.2" tooltip="agri.fertilizer.help.2"/>
+          <cycle-mode value="3" icon="industrial_overkill:fertilizing_pellets" action="industrial_overkill:fertilizing_pellets"
+                      label="agri.fertilizer.mode.3" tooltip="agri.fertilizer.help.3"/>
+        </cycle-button>
+      </agri:settings-drawer>
       <upgrades-drawer id="upgrades">
         <machine-upgrades storage="upgrades"/>
       </upgrades-drawer>

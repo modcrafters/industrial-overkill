@@ -52,14 +52,13 @@ hoe); Unbreaking applies on the charged uses. Skips and cancelled actions cost
 nothing. The wear counter survives saves and tool swaps, and a broken hoe leaves
 the slot empty. Tool names, enchantments and other components are retained.
 
-Four seed inputs form a 2×2 grid, numbered left to right, top to bottom. A third
-row places the hoe under the left column and the 18×18 planting-mode button
-under the right column, forming a compact 2×3 grid. The empty hoe slot shows a
-muted hoe icon and accepts only items tagged `minecraft:hoes`, including through
-automation. The button's 16×16 pixel-art
-icon uses native pixel art with a padded 12×12 drawing area, without resizing.
-It changes with the mode (sprouting seed, cycling arrows, or planted rows);
-hovering shows the current mode name and instructions:
+Four seed inputs form a 2×2 grid, numbered left to right, top to bottom. The hoe
+sits below the left column. Its empty slot shows a wooden hoe and accepts items
+tagged `minecraft:hoes`, including through automation.
+
+Open **Settings** on the left edge of Agri-Brain to change modes. The top button
+cycles through the planting modes below. The bottom button changes the fertilizing
+strategy. Hover over either button to see its current mode and instructions.
 
 - **First found:** use the first non-empty seed slot until it runs out.
 - **One at a time:** plant one from each slot in order, skipping empty slots.
@@ -184,7 +183,7 @@ machine's recovery data and is dropped in a recovery capsule when it is broken.
 
 All five fertilizer slots share one colour and side configuration. The left
 column takes regular fertilizer, filtered fertilizer, and slow-release pellets
-from top to bottom. The two slots above the mode button accept bone meal, ash,
+from top to bottom. The two slots in the right column accept bone meal, ash,
 and anything added to the `industrial_overkill:agri_brain_alternative_fertilizers`
 item tag. These doses advance a crop one stage for the regular fertilizer cost.
 Ash has a 30% chance to advance the crop and costs one dose and the usual FE per attempt.

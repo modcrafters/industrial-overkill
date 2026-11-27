@@ -21,6 +21,7 @@ public final class AgriBrainScreen {
     private AgriBrainScreen() {}
 
     public static void register() {
+        AgriSettings.register();
         ScreenTags.GLOBAL.register(new QName("https://moddev.zone/industrial-overkill/screen", "hinted-slot"),
             ScreenTag.element(HintedSlot.class, xml -> new HintedSlot(xml.common(), xml.integer("index"),
                 BuiltInRegistries.ITEM.getOptional(xml.id("item").orElseThrow())
