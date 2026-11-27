@@ -6,6 +6,8 @@ For Minecraft 1.21.1 on NeoForge 21.1.265 or later in the 21.1 series. Requires 
 
 ### New since v0.0.1-alpha
 
+- **Agri-Brain bush care.** Plant sweet berries from a seed slot and pick 2–3 berries from each fully ripe bush. The bush stays in place to regrow. Datapacks can add compatible bushes with the `industrial_overkill:agri_brain_bushes` block tag.
+
 - **Agri-Brain stalk crops.** Plant sugar cane, cactus and bamboo on their usual ground. The drone trims the top block and leaves the base to regrow. Compatibility packs can add stalks through item and block tags, and mods can register a harvest handler for crops with custom drops or regrowth.
 
 - **Generator recipe browser.** Open the recipe-book tab to browse foods and solid fuels, including their burn time, FE yield, and possible remains. The processing arrow opens the generator category in JEI when installed or the built-in drawer otherwise. JEI supports lookups by fuel, returned container, charcoal, and ash.

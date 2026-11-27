@@ -13,6 +13,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
 import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.common.NeoForge;
@@ -67,11 +68,11 @@ public final class AgriPlantingTests {
     // A test-only compatibility provider, registered exactly as a separate mod would register one.
     @SubscribeEvent
     public static void registerBerryHarvest(RegisterCapabilitiesEvent event) {
-        AgriHarvestHandler picker = (level, base, state) -> state.getValue(SweetBerryBushBlock.AGE) == 3
-            ? new AgriHarvestHandler.Harvest(base, state.setValue(SweetBerryBushBlock.AGE, 1),
-                (world, target, harvested, player) -> List.of(new ItemStack(Items.SWEET_BERRIES, 2)))
+        AgriHarvestHandler picker = (level, base, state) -> state.getValue(BlockStateProperties.BERRIES)
+            ? new AgriHarvestHandler.Harvest(base, state.setValue(BlockStateProperties.BERRIES, false),
+                (world, target, harvested, player) -> List.of(new ItemStack(Items.GLOW_BERRIES)))
             : null;
-        event.registerBlock(AgriHarvestHandler.CAPABILITY, (level, pos, state, entity, context) -> picker, Blocks.SWEET_BERRY_BUSH);
+        event.registerBlock(AgriHarvestHandler.CAPABILITY, (level, pos, state, entity, context) -> picker, Blocks.CAVE_VINES);
     }
 
     @GameTest(template = "gym_empty")
@@ -112,8 +113,9 @@ public final class AgriPlantingTests {
             level.setBlockAndUpdate(base.below(), Blocks.DIRT.defaultBlockState());
             for (int height = 0; height < 3; height++) level.setBlockAndUpdate(base.above(height), Blocks.BAMBOO.defaultBlockState());
         }
-        var bush = crop(machine, 3, 2);
-        level.setBlockAndUpdate(bush, Blocks.SWEET_BERRY_BUSH.defaultBlockState().setValue(SweetBerryBushBlock.AGE, 3));
+        var vine = crop(machine, 3, 2);
+        level.setBlockAndUpdate(vine.above(), Blocks.STONE.defaultBlockState());
+        level.setBlockAndUpdate(vine, Blocks.CAVE_VINES.defaultBlockState().setValue(BlockStateProperties.BERRIES, true));
         for (int slot = 0; slot < output.getSlots(); slot++) output.setStackInSlot(slot, new ItemStack(Items.STONE, 64));
         ticks(machine, 16);
         require(level.getBlockState(crop(machine, 3, 0).above(2)).is(Blocks.BAMBOO), "Full output preserves the entire column");
@@ -125,8 +127,42 @@ public final class AgriPlantingTests {
             && output.getStackInSlot(0).getCount() == 1, "The top harvest goes to output and preserves its supports");
         output.setStackInSlot(1, ItemStack.EMPTY);
         ticks(machine, 16);
-        require(level.getBlockState(bush).getValue(SweetBerryBushBlock.AGE) == 1 && output.getStackInSlot(1).is(Items.SWEET_BERRIES)
-            && output.getStackInSlot(1).getCount() == 2, "The compatibility handler picks berries and leaves the bush");
+        require(!level.getBlockState(vine).getValue(BlockStateProperties.BERRIES) && output.getStackInSlot(1).is(Items.GLOW_BERRIES)
+            && output.getStackInSlot(1).getCount() == 1, "The compatibility handler picks berries and leaves the vine");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void plantsAndPicksTaggedBushesWithoutUpgrades(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var bush = crop(machine, 3, 0);
+        level.setBlockAndUpdate(bush.below(), Blocks.DIRT.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        require(seeds.insertItem(0, new ItemStack(Items.SWEET_BERRIES), false).isEmpty(), "Seed slots accept sweet berries");
+        ticks(machine, 16);
+        require(level.getBlockState(bush).is(Blocks.SWEET_BERRY_BUSH) && level.getBlockState(bush.below()).is(Blocks.DIRT)
+            && seeds.getStackInSlot(0).isEmpty(), "One berry plants a bush directly on dirt");
+
+        var unripe = crop(machine, 3, 1);
+        level.setBlockAndUpdate(unripe, Blocks.SWEET_BERRY_BUSH.defaultBlockState().setValue(SweetBerryBushBlock.AGE, 2));
+        var wart = crop(machine, 3, 2);
+        level.setBlockAndUpdate(wart.below(), Blocks.SOUL_SAND.defaultBlockState());
+        level.setBlockAndUpdate(wart, Blocks.NETHER_WART.defaultBlockState().setValue(NetherWartBlock.AGE, 3));
+        level.setBlockAndUpdate(bush, level.getBlockState(bush).setValue(SweetBerryBushBlock.AGE, 3));
+        var output = machine.screenInventory("output");
+        for (int slot = 0; slot < output.getSlots(); slot++) output.setStackInSlot(slot, new ItemStack(Items.STONE, 64));
+        ticks(machine, 300);
+        require(level.getBlockState(bush).getValue(SweetBerryBushBlock.AGE) == 3, "A full harvest inventory preserves ripe berries");
+        output.setStackInSlot(0, ItemStack.EMPTY);
+        output.setStackInSlot(1, ItemStack.EMPTY);
+        ticks(machine, 300);
+        var picked = output.getStackInSlot(0);
+        require(picked.is(Items.SWEET_BERRIES) && picked.getCount() >= 2 && picked.getCount() <= 3
+            && seeds.getStackInSlot(0).isEmpty(), "Picking sends the full ripe yield to Harvest");
+        require(level.getBlockState(bush).getValue(SweetBerryBushBlock.AGE) == 1
+            && level.getBlockState(unripe).getValue(SweetBerryBushBlock.AGE) == 2, "The picked bush regrows and the unripe bush is untouched");
+        require(level.getBlockState(wart).getValue(NetherWartBlock.AGE) == 3, "An untagged age-based plant is left alone");
         h.succeed();
     }
 

@@ -76,8 +76,8 @@ labels, help and selection actions live in the machine XML. Its processor action
 change the saved mode and reset the seed cursor; no custom UI element is needed.
 Inputs accept `industrial_overkill:agri_brain_seeds`, which includes
 the common seeds tag, vanilla farmland seeds, carrots, potatoes, sugar cane,
-cactus and bamboo. Farmland crops can use the hoe to prepare dirt or grass.
-For cane, cactus and bamboo the drone plants directly on the existing ground.
+cactus, bamboo and sweet berries. Farmland crops can use the hoe to prepare dirt or grass.
+For cane, cactus, bamboo and sweet berries the drone plants directly on the existing ground.
 Prepare the plot as you would by hand, including adjacent water for cane and
 clear sides for cactus. The irrigation tank waters farmland. Each successful placement
 consumes one seed, honors normal placement/cancellation rules, and preserves
@@ -93,6 +93,9 @@ Wheat-style crops (including carrots, potatoes and beetroot), mature torchflower
 and pitcher plants are supported, as are melon and pumpkin fruits; their stems
 stay in place. For cane, cactus and bamboo, each harvest takes the top block
 and sends it to the harvest output. A lone base stays planted for regrowth.
+Put sweet berries in a seed slot to start a berry patch. The drone picks fully
+ripe bushes for 2–3 berries each and leaves the bush planted at age 1. If the
+harvest output is full, the berries stay on the bush until a later visit.
 
 ### Adding Agri-Brain crops
 
@@ -103,19 +106,26 @@ put `{"values":["example:reed"]}` in both of these files:
 - `data/industrial_overkill/tags/item/agri_brain_direct_planting.json` admits the item to the seed slots and uses its normal placement action on the plot's existing soil. The item must plant one crop above the clicked soil on success.
 - `data/industrial_overkill/tags/block/agri_brain_column_crops.json` lets Agri-Brain trim a vertical run of that same block from the top, leaving the base. Use the growing block ID here if it differs from the item.
 
+For a sweet-berry-style bush, add its block ID to
+`data/industrial_overkill/tags/block/agri_brain_bushes.json` and its planting
+item to the direct-planting item tag. The built-in picker reads the block's
+integer `age` property. At its highest age above 1, it returns 2–3 of the
+block's item and resets the age to 1. Use this tag for bushes whose item is
+the edible or harvestable fruit and whose age property includes 1.
+
 For special harvests, a compatibility mod can register the public
 `net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler`
-block capability in NeoForge's `RegisterCapabilitiesEvent`. This example
-picks two berries from a ripe bush and resets its age:
+block capability in NeoForge's `RegisterCapabilitiesEvent`. A registered handler
+takes precedence over the tag defaults. This example picks a glow berry from a fruiting vine:
 
 ```java
 AgriHarvestHandler picker = (level, base, state) -> {
-    if (state.getValue(SweetBerryBushBlock.AGE) < 3) return null;
-    return new AgriHarvestHandler.Harvest(base, state.setValue(SweetBerryBushBlock.AGE, 1),
-        (world, pos, harvested, player) -> List.of(new ItemStack(Items.SWEET_BERRIES, 2)));
+    if (!state.getValue(BlockStateProperties.BERRIES)) return null;
+    return new AgriHarvestHandler.Harvest(base, state.setValue(BlockStateProperties.BERRIES, false),
+        (world, pos, harvested, player) -> List.of(new ItemStack(Items.GLOW_BERRIES)));
 };
 event.registerBlock(AgriHarvestHandler.CAPABILITY,
-    (level, pos, state, blockEntity, context) -> picker, Blocks.SWEET_BERRY_BUSH);
+    (level, pos, state, blockEntity, context) -> picker, Blocks.CAVE_VINES);
 ```
 
 The handler owns harvest detection for that block. Inspection can run several

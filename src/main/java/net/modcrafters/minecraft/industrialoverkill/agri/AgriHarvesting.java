@@ -1,6 +1,7 @@
 package net.modcrafters.minecraft.industrialoverkill.agri;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import javax.annotation.Nullable;
 
@@ -11,12 +12,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.PitcherCropBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.CommonHooks;
@@ -30,6 +33,8 @@ import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 final class AgriHarvesting {
     private static final TagKey<Block> COLUMNS = TagKey.create(Registries.BLOCK,
         ResourceLocation.parse("industrial_overkill:agri_brain_column_crops"));
+    private static final TagKey<Block> BUSHES = TagKey.create(Registries.BLOCK,
+        ResourceLocation.parse("industrial_overkill:agri_brain_bushes"));
 
     private AgriHarvesting() {}
 
@@ -38,6 +43,7 @@ final class AgriHarvesting {
         var state = level.getBlockState(base);
         if (state.isAir()) return null;
         var handler = level.getCapability(AgriHarvestHandler.CAPABILITY, base, null);
+        if (handler == null && state.is(BUSHES)) handler = AgriHarvesting::pickBush;
         if (handler != null) {
             var harvest = handler.inspect(level, base, state);
             if (harvest == null) return null;
@@ -55,6 +61,19 @@ final class AgriHarvesting {
             return top.equals(base) ? null : Harvest.cut(top);
         }
         return mature(state) ? Harvest.cut(base) : null;
+    }
+
+    @Nullable
+    private static Harvest pickBush(ServerLevel level, BlockPos base, BlockState state) {
+        var block = state.getBlock();
+        if (!(block.getStateDefinition().getProperty("age") instanceof IntegerProperty age)) return null;
+        int stage = state.getValue(age);
+        if (stage <= 1 || stage != Collections.max(age.getPossibleValues()) || !age.getPossibleValues().contains(1))
+            return null;
+        var fruit = block.asItem();
+        if (fruit == Items.AIR) return null;
+        return new Harvest(base, state.setValue(age, 1), (world, pos, ripe, player) ->
+            List.of(new ItemStack(fruit, 2 + world.random.nextInt(2))));
     }
 
     private static boolean mature(BlockState state) {
