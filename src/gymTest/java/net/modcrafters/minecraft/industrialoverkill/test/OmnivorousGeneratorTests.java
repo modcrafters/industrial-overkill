@@ -21,6 +21,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
+import net.modcrafters.minecraft.industrialoverkill.power.GeneratorCatalyst;
 import net.modcrafters.minecraft.industrialoverkill.power.GeneratorEntity;
 import net.modcrafters.minecraft.industrialoverkill.power.GeneratorFuel;
 import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
@@ -131,6 +132,14 @@ public final class OmnivorousGeneratorTests {
     public static void waterWaitsForSpaceAndCollectsSewage(GameTestHelper h) {
         var generator = place(h);
         var tanks = generator.screenFluids();
+        var water = GeneratorCatalyst.rules(h.getLevel()).get(Fluids.WATER).value();
+        var log = new ItemStack(Items.OAK_LOG);
+        var recipe = GeneratorFuel.forStack(h.getLevel(), log, water).recipe(log, water);
+        require(recipe.outputs().get("containers").isEmpty(), "Water produces neither ash nor charcoal, even from a log");
+        var stew = new ItemStack(Items.MUSHROOM_STEW);
+        var remains = GeneratorFuel.forStack(h.getLevel(), stew, water).recipe(stew, water).outputs().get("containers");
+        require(remains.size() == 1 && remains.getFirst() instanceof zone.moddev.mc.lib.machine.recipe.MachineProduct.ItemProduct item
+            && item.stack().is(Items.BOWL), "Wet fuel still returns its container");
         generator.screenItems().insertItem(0, new ItemStack(Items.POTATO), false);
         tanks.fill(new FluidStack(Fluids.WATER, 50), FluidAction.EXECUTE);
         tanks.fillResult(1, new FluidStack(FarmFluids.SEWAGE.source.get(), 4000), FluidAction.EXECUTE);

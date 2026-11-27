@@ -64,8 +64,7 @@ public final class AgriPellets extends SavedData {
             }
             active.remove(boost.pos);
             setDirty();
-            if (AgriFertilizing.advance(level, boost.pos, 1)) {
-                level.levelEvent(1505, boost.pos, 4);
+            if (AgriFertilizing.advance(level, boost.pos, 1, false, 4)) {
                 if (boost.remaining > 1 && AgriFertilizing.remaining(level.getBlockState(boost.pos)) > 0)
                     schedule(new Boost(boost.pos, now + INTERVAL, boost.remaining - 1));
             }

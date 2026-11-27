@@ -87,7 +87,9 @@ public record GeneratorFuel(int energy, int rate) {
         var products = new ArrayList<MachineProduct>();
         var container = remainder(serving);
         if (!container.isEmpty()) products.add(new ItemProduct(container, 1));
-        if (serving.is(ItemTags.LOGS_THAT_BURN)) products.add(new ItemProduct(new ItemStack(Items.CHARCOAL), 1));
+        float charcoalChance = catalyst == null ? 1 : catalyst.charcoalChance();
+        if (charcoalChance > 0 && serving.is(ItemTags.LOGS_THAT_BURN))
+            products.add(new ItemProduct(new ItemStack(Items.CHARCOAL), charcoalChance));
         float ashChance = catalyst == null ? GeneratorCatalyst.BASE_ASH_CHANCE : catalyst.ashChance();
         if (ashChance > 0) products.add(new ItemProduct(new ItemStack(OmnivorousGenerator.ASH.get()), ashChance));
         if (catalyst != null) {

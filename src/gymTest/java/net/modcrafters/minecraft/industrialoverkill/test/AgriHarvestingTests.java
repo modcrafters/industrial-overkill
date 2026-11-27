@@ -5,14 +5,18 @@ import static net.modcrafters.minecraft.industrialoverkill.test.AnimalGymTests.r
 import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
@@ -22,11 +26,14 @@ import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainProcessor;
+import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
 import net.modcrafters.minecraft.industrialoverkill.waste.FarmSupplies;
 import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
@@ -139,6 +146,7 @@ public final class AgriHarvestingTests {
         var boneMeal = new ItemStack(Items.BONE_MEAL);
         require(fertilizer.getSlots() == 5, "Both columns share the five-slot fertilizer inventory");
         for (int slot = 3; slot < 5; slot++) {
+            require(fertilizer.isItemValid(slot, new ItemStack(OmnivorousGenerator.ASH.get())), "Both alternative slots accept ash");
             require(fertilizer.insertItem(slot, regular, true).getCount() == 1
                 && fertilizer.insertItem(slot, boneMeal.copy(), false).isEmpty(), "Both alternative slots filter their inputs");
         }
@@ -163,6 +171,31 @@ public final class AgriHarvestingTests {
         ticks(machine, 26);
         require(fertilizer.getStackInSlot(4).isEmpty() && count(machine, "output", Items.WHEAT) == 1,
             "Finish Only can spend the lower alternative on the last growth stage");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void ashSpendsOneDosePerValidBoneMealAttempt(GameTestHelper h) {
+        var player = h.makeMockPlayer(GameType.SURVIVAL);
+        var pos = h.absolutePos(new BlockPos(2, 2, 2));
+        var level = h.getLevel();
+        var ash = new ItemStack(OmnivorousGenerator.ASH.get(), 3);
+        player.setItemInHand(InteractionHand.MAIN_HAND, ash);
+        var use = new UseOnContext(player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+        var wheat = (CropBlock) Blocks.WHEAT;
+        level.setBlockAndUpdate(pos.below(), Blocks.FARMLAND.defaultBlockState());
+        level.setBlockAndUpdate(pos, wheat.getStateForAge(0));
+        player.getRandom().setSeed(0); // First roll is 60.
+        require(ash.getItem().useOn(use).consumesAction() && wheat.getAge(level.getBlockState(pos)) == 0
+            && ash.getCount() == 2, "A missed dose is spent on an eligible crop");
+        player.getRandom().setSeed(2); // First roll is 8.
+        require(ash.getItem().useOn(use).consumesAction() && wheat.getAge(level.getBlockState(pos)) > 0
+            && ash.getCount() == 1, "A successful dose applies bone meal");
+        level.setBlockAndUpdate(pos, wheat.getStateForAge(wheat.getMaxAge()));
+        for (long seed : new long[]{0, 2}) {
+            player.getRandom().setSeed(seed);
+            require(ash.getItem().useOn(use) == InteractionResult.PASS && ash.getCount() == 1, "Mature wheat consumes no ash");
+        }
         h.succeed();
     }
 

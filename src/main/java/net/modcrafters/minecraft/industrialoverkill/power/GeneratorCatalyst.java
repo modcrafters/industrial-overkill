@@ -38,7 +38,7 @@ import zone.moddev.mc.lib.machine.recipe.MachineRecipeInput;
 /** One dose of fluid modifies one solid-fuel burn. Recipes synchronize through the vanilla recipe manager. */
 public record GeneratorCatalyst(Dose input, Optional<FluidAmount> outputFluid, float outputFluidChance,
     Optional<ItemStack> outputItem, float outputItemChance, double energyMultiplier, double burnRateMultiplier,
-    float ashChance) implements Recipe<MachineRecipeInput> {
+    float ashChance, float charcoalChance) implements Recipe<MachineRecipeInput> {
     static final int CAPACITY = 4000;
     static final float BASE_ASH_CHANCE = 0.125F;
     private static final Codec<Float> CHANCE = Codec.floatRange(0, 1);
@@ -60,7 +60,8 @@ public record GeneratorCatalyst(Dose input, Optional<FluidAmount> outputFluid, f
         CHANCE.optionalFieldOf("output_item_chance", 1F).forGetter(GeneratorCatalyst::outputItemChance),
         MULTIPLIER.optionalFieldOf("energy_multiplier", 1D).forGetter(GeneratorCatalyst::energyMultiplier),
         MULTIPLIER.optionalFieldOf("burn_rate_multiplier", 1D).forGetter(GeneratorCatalyst::burnRateMultiplier),
-        CHANCE.optionalFieldOf("ash_chance", BASE_ASH_CHANCE).forGetter(GeneratorCatalyst::ashChance)
+        CHANCE.optionalFieldOf("ash_chance", BASE_ASH_CHANCE).forGetter(GeneratorCatalyst::ashChance),
+        CHANCE.optionalFieldOf("charcoal_chance", 1F).forGetter(GeneratorCatalyst::charcoalChance)
     ).apply(i, GeneratorCatalyst::new)).validate(rule -> {
         if (rule.input.fluid.value() == Fluids.EMPTY || rule.outputFluid.filter(f -> f.isEmpty() || f.amount() > CAPACITY).isPresent())
             return DataResult.error(() -> "Generator fluids must be nonempty and fit in the tank");

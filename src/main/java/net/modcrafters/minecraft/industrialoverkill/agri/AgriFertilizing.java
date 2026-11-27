@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import net.modcrafters.minecraft.industrialoverkill.mixin.PitcherCropGrowth;
+import net.modcrafters.minecraft.industrialoverkill.power.AshItem;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 
 final class AgriFertilizing {
@@ -68,11 +69,10 @@ final class AgriFertilizing {
         if (!dose.stocked(machine) || (dose == Dose.PELLET && AgriPellets.active(level, pos))) return false;
         var contents = machine.items.inventory("fertilizer");
         var stack = contents.getStackInSlot(dose.slot).copy();
-        if (!advance(level, pos, dose.stages)) return false;
+        if (!advance(level, pos, dose.stages, stack.getItem() instanceof AshItem, 8)) return false;
         stack.shrink(1);
         contents.setStackInSlot(dose.slot, stack);
         if (dose == Dose.PELLET && remaining(level.getBlockState(pos)) > 0) AgriPellets.start(level, pos);
-        level.levelEvent(1505, pos, 8);
         return true;
     }
 
@@ -90,7 +90,7 @@ final class AgriFertilizing {
         return dose != null && !(crop.getBlock() instanceof StemBlock) && remaining(crop) <= dose.stages;
     }
 
-    static boolean advance(ServerLevel level, BlockPos pos, int stages) {
+    static boolean advance(ServerLevel level, BlockPos pos, int stages, boolean usingAsh, int particles) {
         if (!level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos) || !level.getWorldBorder().isWithinBounds(pos)
             || level.captureBlockSnapshots || level.restoringBlockSnapshots) return false;
         var state = level.getBlockState(pos);
@@ -99,6 +99,8 @@ final class AgriFertilizing {
         var player = FakePlayerFactory.get(level, AgriTilling.PROFILE);
         if (!player.mayBuild() || !level.mayInteract(player, pos)
             || !CommonHooks.canCropGrow(level, pos, state, true) || level.getBlockState(pos) != state) return false;
+        // An eligible ash attempt spends the dose and FE even when the crop stays at its current age.
+        if (usingAsh && !AshItem.takesEffect(level.random)) return true;
         int growth = Math.min(stages, remaining);
         boolean changed = switch (state.getBlock()) {
             case CropBlock crop -> level.setBlock(pos, crop.getStateForAge(crop.getAge(state) + growth), Block.UPDATE_CLIENTS);
@@ -110,7 +112,10 @@ final class AgriFertilizing {
             }
             default -> false;
         };
-        if (changed) CommonHooks.fireCropGrowPost(level, pos, state);
+        if (changed) {
+            CommonHooks.fireCropGrowPost(level, pos, state);
+            level.levelEvent(1505, pos, particles);
+        }
         return changed;
     }
 }

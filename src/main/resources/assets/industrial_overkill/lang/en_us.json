@@ -2,6 +2,7 @@
   "block.industrial_overkill.omnivorous_generator": "Omnivorous Generator",
   "industrial_overkill:omnivorous_generator.info": "Burn food and solid furnace fuels for FE. Add lava for more power or water to collect sewage. The recipe book shows catalyst doses, burn rates, and byproducts. Redstone or a full buffer prevents ignition. Once lit, the fuel burns completely and excess FE is lost.",
   "item.industrial_overkill.ash": "Ash",
+  "item.industrial_overkill.ash.fertilizer": "%s%% chance to fertilize like bone meal",
   "omnivore.fuel": "Fuel",
   "omnivore.containers": "Burn outputs",
   "omnivore.catalyst": "Catalyst",

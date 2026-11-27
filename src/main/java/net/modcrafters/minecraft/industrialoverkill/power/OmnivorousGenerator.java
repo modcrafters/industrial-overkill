@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -30,7 +31,7 @@ public final class OmnivorousGenerator {
     public static final ResourceLocation RECIPES = ID.withPath("generator_recipes");
     private static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(Registries.BLOCK, IndustrialOverkill.MOD_ID);
     private static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(IndustrialOverkill.MOD_ID);
-    public static final DeferredItem<Item> ASH = ITEMS.registerSimpleItem("ash");
+    public static final DeferredItem<AshItem> ASH = ITEMS.registerItem("ash", AshItem::new);
     private static final DeferredRegister<BlockEntityType<?>> TYPES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, IndustrialOverkill.MOD_ID);
     public static final DeferredHolder<Block, GeneratorBlock> BLOCK = BLOCKS.register(NAME,
         () -> new GeneratorBlock(BlockBehaviour.Properties.of().strength(3.5F).requiresCorrectToolForDrops()));
@@ -48,6 +49,7 @@ public final class OmnivorousGenerator {
         BLOCKS.register(bus);
         ITEMS.register(bus);
         TYPES.register(bus);
+        bus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(AshItem::registerDispenserBehavior));
         bus.addListener((RegisterDataMapTypesEvent event) -> event.register(GeneratorFuel.CALORIES));
         bus.addListener((RegisterCapabilitiesEvent event) -> {
             event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, TYPE.get(), (machine, side) ->

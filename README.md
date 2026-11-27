@@ -128,9 +128,10 @@ machine's recovery data and is dropped in a recovery capsule when it is broken.
 
 All five fertilizer slots share one colour and side configuration. The left
 column takes regular fertilizer, filtered fertilizer, and slow-release pellets
-from top to bottom. The two slots above the mode button both accept bone
-meal and anything added to the `industrial_overkill:agri_brain_alternative_fertilizers`
-item tag. Each item supplies one stage of growth for the regular fertilizer cost.
+from top to bottom. The two slots above the mode button accept bone meal, ash,
+and anything added to the `industrial_overkill:agri_brain_alternative_fertilizers`
+item tag. These doses advance a crop one stage for the regular fertilizer cost.
+Ash has a 30% chance to advance the crop and costs one dose and the usual FE per attempt.
 When a strategy calls for a one-stage dose, Agri-Brain tries regular fertilizer
 first, then the upper and lower alternative slots in order.
 
@@ -501,10 +502,12 @@ The screen runner is `gradlew.bat runRockStewClientSmoke` (JEI production paths)
 Craft the generator with `IHI / IFI /  R ` (iron ingots, a hopper, a furnace,
 and redstone dust). Put one kind of food or solid furnace fuel in the left
 slot. Hover an item in the generator screen to see its FE per item and FE/t.
-The four output slots collect returned containers and burn remains. Each
-burnable log (including tagged modded logs) produces one charcoal. Any
-fuel has a one-in-eight chance to leave one ash if there is room. The
-generator reserves space for containers and charcoal before lighting the fuel.
+The four output slots collect returned containers and burn remains. Dry and
+lava burns produce one charcoal per burnable log (including tagged modded logs)
+and have a one-in-eight chance to leave one ash per fuel item if there is room.
+With water, sewage is the only burn residue. Fuel containers such as bowls
+still come back. Using ash by hand or in a dispenser spends one ash per valid
+target, with a 30% chance to apply the usual bone meal effect.
 
 | Fuel | FE per item | Burn rate | Working time |
 | --- | ---: | ---: | ---: |
@@ -585,6 +588,7 @@ of the usual returned container, log charcoal, and ash.
 | `energy_multiplier` | 1 | Multiplies dry FE per item. Shared foods stay at least 1 FE below the lowest matching Animal Gym ration. |
 | `burn_rate_multiplier` | 1 | Multiplies dry FE/t. A faster rate spends the serving sooner. |
 | `ash_chance` | 0.125 | Sets the probability of one base ash drop. Use 0 to disable it or 1 to guarantee it. |
+| `charcoal_chance` | 1 | Sets the probability of one charcoal from a burnable log. The bundled water recipe sets this and `ash_chance` to 0. |
 
 Multipliers must be finite and positive. Energy and rate round to the nearest
 whole FE with a minimum of one. The last tick produces only the remaining FE.
