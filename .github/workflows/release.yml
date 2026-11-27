@@ -94,6 +94,11 @@ jobs:
           name: release-jar
           path: jars
 
+      - name: Select changelog for the tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 .github/scripts/release-notes.py CHANGELOG.md "$TAG" > release-notes.md
+
       - name: Upload the JAR
         env:
           GH_TOKEN: ${{ github.token }}
@@ -104,4 +109,4 @@ jobs:
           CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
           MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: bash .github/scripts/release-publish.sh upload "$VERSION" CHANGELOG.md "jars/industrial-overkill-${VERSION}.jar"
+        run: bash .github/scripts/release-publish.sh upload "$VERSION" release-notes.md "jars/industrial-overkill-${VERSION}.jar"
