@@ -34,7 +34,6 @@
   "agri.planting.help.0": "Plants from the first non-empty seed slot, in slot order.",
   "agri.planting.help.1": "Plants once from each slot in turn, skipping empty slots. The green border marks the next slot. Advances only after successful planting.",
   "agri.planting.help.2": "Rows nearest the machine come first. Rows 1, 5, 9 use slot 1; rows 2, 6, 10 use slot 2, and so on. Missing seeds leave their rows empty.",
-  "agri.settings": "Settings",
   "agri.planting.cycle": "Click to change planting mode.",
   "agri.fertilizer.cycle": "Click to change fertilizing strategy.",
   "agri.fertilizer.mode.0": "Off",

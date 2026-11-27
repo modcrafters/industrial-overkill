@@ -2,7 +2,6 @@ package net.modcrafters.minecraft.industrialoverkill.test;
 
 import static net.modcrafters.minecraft.industrialoverkill.test.AnimalGymTests.require;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
@@ -26,15 +25,10 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainProcessor;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen;
-import net.modcrafters.minecraft.industrialoverkill.agri.AgriSettings;
 import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler;
 import net.modcrafters.minecraft.industrialoverkill.upgrade.MachineUpgrades;
 import zone.moddev.mc.lib.gui.ElementActions;
-import zone.moddev.mc.lib.gui.drawer.BuiltinDrawers;
-import zone.moddev.mc.lib.gui.drawer.DrawerPlacement;
-import zone.moddev.mc.lib.gui.model.Edge;
-import zone.moddev.mc.lib.gui.model.elements.CycleButtonElement;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
 import zone.moddev.mc.lib.gui.runtime.ScreenNetwork;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
@@ -345,29 +339,14 @@ public final class AgriPlantingTests {
                 && menu.slot(slots.get(2)).x == menu.slot(slots.get(0)).x
                 && menu.slot(slots.get(2)).y > menu.slot(slots.get(0)).y,
                 "Native seed slots form a two-by-two grid in row-major order");
-            var settings = (AgriSettings) menu.bound.screen().find("settings").orElseThrow();
-            var button = (CycleButtonElement) menu.bound.screen().find("planting_mode").orElseThrow();
-            var fertilizer = (CycleButtonElement) menu.bound.screen().find("fertilizing_mode").orElseThrow();
-            var leftTabs = menu.layout().drawers().stream().filter(drawer -> drawer.placement().edge() == Edge.LEFT
-                && drawer.placement().anchor() == DrawerPlacement.Anchor.TOP)
-                .sorted(Comparator.comparingInt(drawer -> drawer.placement().order()))
-                .limit(3).map(BuiltinDrawers::featureType).toList();
-            require(leftTabs.equals(List.of(BuiltinDrawers.INFO, BuiltinDrawers.STATS, AgriSettings.ID)),
-                "The first three tabs on the left are Info, Stats, and Settings");
-            require(!menu.visible(button) && !menu.visible(fertilizer), "Both mode controls start hidden");
-            var open = AgriSettings.SET_OPEN;
-            var opened = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
-                menu.elements.indexOf(settings), 1, open.id(), open.encode(player.registryAccess(), true)));
-            require(opened.accepted() && menu.visible(button) && menu.visible(fertilizer)
-                && menu.layout().bounds(button).right() <= menu.layout().bounds(settings).x()
-                && menu.layout().bounds(button).bottom() <= menu.layout().bounds(fertilizer).y(),
-                "Opening Settings reveals planting above fertilizing in the left drawer");
+            var button = (zone.moddev.mc.lib.gui.model.elements.CycleButtonElement)
+                menu.bound.screen().find("planting_mode").orElseThrow();
             var seeds = (zone.moddev.mc.lib.gui.model.containers.InventoryElement)
                 menu.bound.screen().find("seed").orElseThrow();
             for (int request = 1; request <= 3; request++) {
                 var action = ElementActions.CLICK;
                 var reply = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
-                    menu.elements.indexOf(button), request + 1, action.id(), action.encode(player.registryAccess(),
+                    menu.elements.indexOf(button), request, action.id(), action.encode(player.registryAccess(),
                         new ElementActions.Click(0, 0, 0))));
                 require(reply.accepted() && AgriBrainProcessor.from(machine).plantingMode() == request % 3,
                     "The authorized mode button cycles through all three modes");
@@ -382,26 +361,17 @@ public final class AgriPlantingTests {
             }
             var clickAction = ElementActions.CLICK;
             var ignored = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
-                menu.elements.indexOf(button), 5, clickAction.id(), clickAction.encode(player.registryAccess(),
+                menu.elements.indexOf(button), 4, clickAction.id(), clickAction.encode(player.registryAccess(),
                     new ElementActions.Click(1, 0, 0))));
             require(!ignored.accepted() && AgriBrainProcessor.from(machine).plantingMode() == 0,
                 "Right clicks do not change the selected mode");
             // A change outside this menu must be read fresh when cycling, even in the same tick.
             AgriBrainProcessor.from(machine).cyclePlantingMode();
             var next = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
-                menu.elements.indexOf(button), 6, clickAction.id(), clickAction.encode(player.registryAccess(),
+                menu.elements.indexOf(button), 5, clickAction.id(), clickAction.encode(player.registryAccess(),
                     new ElementActions.Click(0, 0, 0))));
             require(next.accepted() && AgriBrainProcessor.from(machine).plantingMode() == 2,
                 "The shared cycle uses current server state, not an old menu snapshot");
-            var fertilized = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
-                menu.elements.indexOf(fertilizer), 7, clickAction.id(), clickAction.encode(player.registryAccess(),
-                    new ElementActions.Click(0, 0, 0))));
-            var closed = menu.elementAction(player, new ScreenNetwork.Widget(menu.containerId, menu.sessionId(),
-                menu.elements.indexOf(settings), 8, open.id(), open.encode(player.registryAccess(), false)));
-            require(fertilized.accepted() && closed.accepted() && !menu.visible(button) && !menu.visible(fertilizer)
-                && fertilizer.modeFor(fertilizer.snapshot(machine).orElseThrow().value()).orElseThrow().value() == 1
-                && AgriBrainProcessor.from(machine).plantingMode() == 2,
-                "Closing Settings hides both controls and preserves their independent selections");
         } finally {
             menu.removed(player);
             player.containerMenu = previous;
