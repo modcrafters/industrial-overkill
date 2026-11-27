@@ -288,7 +288,7 @@ public final class AgriBrainTests {
         h.getLevel().setBlock(pos, BuiltInRegistries.BLOCK.get(ResourceLocation.parse("industrial_overkill:agri_brain")).defaultBlockState(), 3);
         var machine = (DefinedMachineEntity) h.getLevel().getBlockEntity(pos);
         require(machine.screenAutomation().groups().stream().map(g -> g.id()).collect(java.util.stream.Collectors.toSet())
-            .equals(java.util.Set.of("energy", "water", "hoe", "seeds", "output", "fertilizer", "filtered_fertilizer", "pellets")),
+            .equals(java.util.Set.of("energy", "water", "hoe", "seeds", "output", "fertilizer")),
             "All inputs and outputs are configurable without exposing the manual upgrade slots");
         require(machine.fluids.getTanks() == 1 && machine.fluids.getTankCapacity(0) == 4000
             && machine.fluids.fill(new FluidStack(Fluids.LAVA, 1000), FluidAction.EXECUTE) == 0,

@@ -27,7 +27,8 @@ a development client. The optional local MMDLib workflow is described below.
 
 ## Agri-Brain foundation
 
-Agri-Brain is available in the Industrial Overkill creative tab as a powered farming controller prototype.
+Craft Agri-Brain with iron ingots in the four corners, an iron hoe at the top,
+a composter between two wheat seeds in the middle, and redstone dust at the bottom.
 The mod's tab is defined in `src/main/resources/mmdlib/creative_tab/machines.xml`;
 `include-mod-items="true"` automatically includes all of the mod's registered
 items, sorted by ID. `<exclude tag="industrial_overkill:internal_items"/>` hides
@@ -125,7 +126,15 @@ On existing makers, stored raw sewage stays in the input and stored water moves
 to the output. Filtered sewage from the removed tank is preserved in the
 machine's recovery data and is dropped in a recovery capsule when it is broken.
 
-Agri-Brain has three fertilizer slots and four strategies. **Off** skips doses.
+All five fertilizer slots share one colour and side configuration. The left
+column takes regular fertilizer, filtered fertilizer, and slow-release pellets
+from top to bottom. The two slots above the mode button both accept bone
+meal and anything added to the `industrial_overkill:agri_brain_alternative_fertilizers`
+item tag. Each item supplies one stage of growth for the regular fertilizer cost.
+When a strategy calls for a one-stage dose, Agri-Brain tries regular fertilizer
+first, then the upper and lower alternative slots in order.
+
+**Off** skips doses.
 **Smart** applies pellets at planting, lets active pellets work, and prefers
 filtered fertilizer when two stages remain. Otherwise, it prefers regular
 fertilizer and saves filtered doses for crops that can use both stages.

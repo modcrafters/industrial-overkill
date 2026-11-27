@@ -15,6 +15,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
+import net.modcrafters.minecraft.industrialoverkill.agri.AgriFertilizerMigration;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriPellets;
 import net.modcrafters.minecraft.industrialoverkill.courier.CourierOccupantLoot;
 import net.modcrafters.minecraft.industrialoverkill.ranch.RanchAddons;
@@ -39,6 +40,7 @@ public final class IndustrialOverkill {
         NeoForgeMod.enableMilkFluid();
         SOUNDS.register(bus);
         FarmSupplies.register(bus);
+        AgriFertilizerMigration.register();
         FarmFluids.register(bus);
         CourierOccupantLoot.register(bus);
         RanchAddons.register(bus);

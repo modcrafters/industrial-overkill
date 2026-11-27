@@ -31,6 +31,7 @@
   "agri.fertilizer.help.2": "Fertilize only when the full dose will mature the crop for harvest.",
   "agri.fertilizer.help.3": "Apply pellets when planting and let their later boosts run on their own.",
   "agri.fertilizer.regular": "Regular fertilizer advances a crop by one stage.",
+  "agri.fertilizer.alternative": "Bone meal or another compatible fertilizer advances a crop by one stage.",
   "agri.fertilizer.filtered": "Filtered fertilizer advances a crop by two stages.",
   "agri.fertilizer.pellets": "Slow-release pellets advance two stages now, then one after 30 seconds and another after 60 seconds.",
   "block.industrial_overkill.honest_sewer": "Honest Sewer",

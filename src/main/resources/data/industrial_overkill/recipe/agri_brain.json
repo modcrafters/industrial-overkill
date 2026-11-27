@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IHI",
+    "SCS",
+    "IRI"
+  ],
+  "key": {
+    "I": {"item": "minecraft:iron_ingot"},
+    "H": {"item": "minecraft:iron_hoe"},
+    "S": {"item": "minecraft:wheat_seeds"},
+    "C": {"item": "minecraft:composter"},
+    "R": {"item": "minecraft:redstone"}
+  },
+  "result": {"id": "industrial_overkill:agri_brain"}
+}

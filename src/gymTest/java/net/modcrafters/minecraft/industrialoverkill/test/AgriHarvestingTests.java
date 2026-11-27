@@ -28,6 +28,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainProcessor;
 import net.modcrafters.minecraft.industrialoverkill.waste.FarmSupplies;
+import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 
 @GameTestHolder("industrial_overkill_agri")
@@ -75,8 +76,8 @@ public final class AgriHarvestingTests {
         h.getLevel().setBlock(pos, ((CropBlock) Blocks.WHEAT).getStateForAge(5), 3);
         machine.screenInventory("seeds").setStackInSlot(0, new ItemStack(Items.CARROT, 8));
         machine.screenInventory("fertilizer").setStackInSlot(0, new ItemStack(FarmSupplies.FERTILIZER.get()));
-        machine.screenInventory("filtered_fertilizer").setStackInSlot(0, new ItemStack(FarmSupplies.FILTERED_FERTILIZER.get()));
-        machine.screenInventory("pellets").setStackInSlot(0, new ItemStack(FarmSupplies.SLOW_RELEASE_PELLET.get()));
+        machine.screenInventory("fertilizer").setStackInSlot(1, new ItemStack(FarmSupplies.FILTERED_FERTILIZER.get()));
+        machine.screenInventory("fertilizer").setStackInSlot(2, new ItemStack(FarmSupplies.SLOW_RELEASE_PELLET.get()));
 
         ticks(machine, 6);
         require(processor.phase() == AgriBrainProcessor.Phase.CHECK, "Travel ends before the maturity check");
@@ -97,8 +98,8 @@ public final class AgriHarvestingTests {
             && count(machine, "output", Items.WHEAT) == 1,
             "The twentieth hover tick drains the finishing dose, harvests wheat, and plants and feeds a replacement");
         require(count(machine, "fertilizer", FarmSupplies.FERTILIZER.get()) == 1
-            && count(machine, "filtered_fertilizer", FarmSupplies.FILTERED_FERTILIZER.get()) == 0
-            && count(machine, "pellets", FarmSupplies.SLOW_RELEASE_PELLET.get()) == 0
+            && count(machine, "fertilizer", FarmSupplies.FILTERED_FERTILIZER.get()) == 0
+            && count(machine, "fertilizer", FarmSupplies.SLOW_RELEASE_PELLET.get()) == 0
             && machine.energy.stored() == 100000 - 26 * 5 - 400,
             "Smart uses filtered on the old crop and one pellet on the new crop, charging each successful action once");
         h.succeed();
@@ -114,19 +115,83 @@ public final class AgriHarvestingTests {
         h.getLevel().setBlock(crop(machine, 0), wheat.getStateForAge(6), 3);
         h.getLevel().setBlock(crop(machine, 1), wheat.getStateForAge(4), 3);
         h.getLevel().setBlock(crop(machine, 2), wheat.getStateForAge(5), 3);
-        machine.screenInventory("filtered_fertilizer").setStackInSlot(0, new ItemStack(FarmSupplies.FILTERED_FERTILIZER.get()));
-        machine.screenInventory("pellets").setStackInSlot(0, new ItemStack(FarmSupplies.SLOW_RELEASE_PELLET.get()));
+        machine.screenInventory("fertilizer").setStackInSlot(1, new ItemStack(FarmSupplies.FILTERED_FERTILIZER.get()));
+        machine.screenInventory("fertilizer").setStackInSlot(2, new ItemStack(FarmSupplies.SLOW_RELEASE_PELLET.get()));
         machine.screenInventory("seeds").setStackInSlot(0, new ItemStack(Items.WHEAT_SEEDS, 8));
         ticks(machine, 22);
         require(wheat.getAge(h.getLevel().getBlockState(crop(machine, 0))) == 6
             && wheat.getAge(h.getLevel().getBlockState(crop(machine, 1))) == 4
-            && count(machine, "filtered_fertilizer", FarmSupplies.FILTERED_FERTILIZER.get()) == 1,
+            && count(machine, "fertilizer", FarmSupplies.FILTERED_FERTILIZER.get()) == 1,
             "A filtered dose is saved when one stage would be wasted or the crop would stay immature");
         ticks(machine, 26);
         require(wheat.getAge(h.getLevel().getBlockState(crop(machine, 2))) == 0
             && count(machine, "output", Items.WHEAT) == 1
-            && count(machine, "pellets", FarmSupplies.SLOW_RELEASE_PELLET.get()) == 1,
+            && count(machine, "fertilizer", FarmSupplies.SLOW_RELEASE_PELLET.get()) == 1,
             "An exact finishing dose harvests and replants while leaving pellet stock alone");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void usesBothBoneMealSlotsAsRegularDoses(GameTestHelper h) {
+        var machine = place(h);
+        var fertilizer = machine.screenInventory("fertilizer");
+        var regular = new ItemStack(FarmSupplies.FERTILIZER.get());
+        var boneMeal = new ItemStack(Items.BONE_MEAL);
+        require(fertilizer.getSlots() == 5, "Both columns share the five-slot fertilizer inventory");
+        for (int slot = 3; slot < 5; slot++) {
+            require(fertilizer.insertItem(slot, regular, true).getCount() == 1
+                && fertilizer.insertItem(slot, boneMeal.copy(), false).isEmpty(), "Both alternative slots filter their inputs");
+        }
+        for (int slot = 0; slot < 3; slot++)
+            require(!fertilizer.isItemValid(slot, boneMeal), "Bone meal belongs in the alternative slots");
+        require(fertilizer.insertItem(0, regular, false).isEmpty(), "The regular slot accepts its own fertilizer");
+
+        var processor = AgriBrainProcessor.from(machine);
+        var player = h.makeMockPlayer(GameType.SURVIVAL);
+        processor.invoke(FarmSupplies.id("fertilizing_smart"), player);
+        var wheat = (CropBlock) Blocks.WHEAT;
+        for (int i = 0; i < 3; i++) h.getLevel().setBlock(crop(machine, i), wheat.getStateForAge(i == 2 ? 6 : 2), 3);
+        ticks(machine, 16);
+        require(wheat.getAge(h.getLevel().getBlockState(crop(machine, 0))) == 3
+            && fertilizer.getStackInSlot(0).isEmpty() && count(machine, "fertilizer", Items.BONE_MEAL) == 2,
+            "Smart spends regular fertilizer before bone meal");
+        ticks(machine, 16);
+        require(wheat.getAge(h.getLevel().getBlockState(crop(machine, 1))) == 3
+            && fertilizer.getStackInSlot(3).isEmpty() && fertilizer.getStackInSlot(4).is(Items.BONE_MEAL),
+            "The upper alternative advances exactly one stage");
+        processor.invoke(FarmSupplies.id("fertilizing_finish"), player);
+        ticks(machine, 26);
+        require(fertilizer.getStackInSlot(4).isEmpty() && count(machine, "output", Items.WHEAT) == 1,
+            "Finish Only can spend the lower alternative on the last growth stage");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void restoresSeparateFertilizerInventoriesIntoOneGroup(GameTestHelper h) {
+        var machine = place(h);
+        var registries = h.getLevel().registryAccess();
+        var saved = machine.saveWithoutMetadata(registries);
+        var named = saved.getCompound("items").getCompound("Inventories");
+        var names = List.of("fertilizer", "filtered_fertilizer", "pellets");
+        var items = List.of(FarmSupplies.FERTILIZER.get(), FarmSupplies.FILTERED_FERTILIZER.get(), FarmSupplies.SLOW_RELEASE_PELLET.get());
+        for (int slot = 0; slot < items.size(); slot++) {
+            var old = new ItemStorage(1);
+            old.slotId(0, names.get(slot) + "/0");
+            old.setStackInSlot(0, new ItemStack(items.get(slot), slot + 2));
+            named.put(names.get(slot), old.serializeNBT(registries));
+        }
+        for (int pass = 0; pass < 2; pass++) {
+            machine.loadWithComponents(saved, registries);
+            var fertilizer = machine.screenInventory("fertilizer");
+            for (int slot = 0; slot < items.size(); slot++) {
+                var stack = fertilizer.getStackInSlot(slot);
+                require(stack.is(items.get(slot)) && stack.getCount() == slot + 2, "Each saved stack returns to its matching slot");
+                require(fertilizer.isItemValid(slot, stack) && !fertilizer.isItemValid((slot + 1) % 3, stack),
+                    "Slots in the shared group still filter independently");
+            }
+            require(machine.items.recoveryContents().isEmpty(), "All old fertilizer stacks have a destination");
+            saved = machine.saveWithoutMetadata(registries);
+        }
         h.succeed();
     }
 
