@@ -531,7 +531,12 @@ data map `industrial_overkill:calories`. The bundled potato entry is in
 `data/industrial_overkill/data_maps/item/calories.json`. Both `energy` and
 `rate` are positive integers. The Gym cap applies to overrides too. The
 `industrial_overkill:generator_denied` item tag takes precedence over values
-in the data map. This version burns solid items and has no catalyst tank.
+in the data map.
+
+The Catalyst input and Byproduct output each hold 4,000 mB and have independent
+side settings. The Catalyst tank accepts water and lava by default through the
+`industrial_overkill:generator_catalysts` fluid tag. Current burns use solid
+fuel only. Hover the processing arrow to see remaining FE and the current FE/t.
 
 ## Animal Gym 2.0
 

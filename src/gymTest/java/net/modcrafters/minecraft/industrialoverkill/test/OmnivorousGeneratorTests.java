@@ -1,24 +1,31 @@
 package net.modcrafters.minecraft.industrialoverkill.test;
 
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
 import net.modcrafters.minecraft.industrialoverkill.power.GeneratorEntity;
 import net.modcrafters.minecraft.industrialoverkill.power.GeneratorFuel;
 import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
+import net.modcrafters.minecraft.industrialoverkill.waste.FarmFluids;
+import zone.moddev.mc.lib.gui.model.elements.FluidTankElement;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
 
 import static net.modcrafters.minecraft.industrialoverkill.test.AnimalGymTests.require;
@@ -48,6 +55,9 @@ public final class OmnivorousGeneratorTests {
         require(generator.energy.stored() == 32000 && generator.getProgress() == 792 && fuel.getStackInSlot(0).getCount() == 2,
             "The first tick burns eight FE of a still-visible potato even when only three FE fit");
         require(fuel.extractItem(0, 64, true).getCount() == 1, "Only the surplus potato can be picked up");
+        var arrow = menu.bound.screen().find("burn").orElseThrow();
+        require(arrow.tooltip(generator, ItemStack.EMPTY).equals(List.of(Component.translatable("omnivore.remaining", 792),
+            Component.translatable("omnivore.rate.tip", 8))), "The arrow shows the remaining FE and burn rate on separate rows");
         var registries = h.getLevel().registryAccess();
         generator.loadWithComponents(generator.saveWithoutMetadata(registries), registries);
         require(fuel.extractItem(0, 64, true).getCount() == 1, "Reload reinstates the reservation on the same potato");
@@ -64,6 +74,31 @@ public final class OmnivorousGeneratorTests {
         h.getLevel().removeBlock(switchPos, false);
         for (int i = 0; i < 100; i++) generator.serverTick();
         require(generator.energy.stored() == 800 && fuel.getStackInSlot(0).isEmpty(), "The next potato delivers 800 FE over 100 ticks");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void catalystAndByproductHaveSeparatePersistentPorts(GameTestHelper h) {
+        var generator = place(h);
+        var menu = new MachineMenu(17, h.makeMockServerPlayerInLevel().getInventory(), generator);
+        require(menu.bound.screen().find("catalyst").orElseThrow() instanceof FluidTankElement input && input.tank() == 0
+            && menu.bound.screen().find("byproduct").orElseThrow() instanceof FluidTankElement output && output.tank() == 1,
+            "The screen exposes the catalyst and byproduct tanks");
+        var port = h.getLevel().getCapability(Capabilities.FluidHandler.BLOCK, generator.getBlockPos(), Direction.UP);
+        var water = new FluidStack(Fluids.WATER, 1000);
+        var lava = new FluidStack(Fluids.LAVA, 1000);
+        var residue = new FluidStack(FarmFluids.SEWAGE.source.get(), 250);
+        require(port != null && port.getTanks() == 2 && port.getTankCapacity(0) == 4000 && port.getTankCapacity(1) == 4000,
+            "Both fluid ports have four buckets of capacity");
+        require(port.fill(lava, FluidAction.SIMULATE) == 1000 && port.fill(residue, FluidAction.EXECUTE) == 0
+            && port.fill(water, FluidAction.EXECUTE) == 1000 && port.fill(lava, FluidAction.EXECUTE) == 0,
+            "Only one of water or lava goes into Catalyst, and external fills cannot spill into Byproduct");
+        require(port.drain(1000, FluidAction.EXECUTE).isEmpty(), "Pipes cannot extract from the catalyst input");
+        generator.screenFluids().fillResult(1, residue, FluidAction.EXECUTE);
+        var registries = h.getLevel().registryAccess();
+        generator.loadWithComponents(generator.saveWithoutMetadata(registries), registries);
+        require(port.getFluidInTank(0).getAmount() == 1000 && port.drain(residue, FluidAction.EXECUTE).getAmount() == 250
+            && port.getFluidInTank(1).isEmpty(), "Reload preserves both tanks and only Byproduct drains to a pipe");
         h.succeed();
     }
 

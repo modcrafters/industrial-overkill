@@ -6,17 +6,23 @@ import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.Containers;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluid;
+import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
 import zone.moddev.mc.lib.api.automation.ResourceGroup;
 import zone.moddev.mc.lib.api.automation.ResourceType;
+import zone.moddev.mc.lib.api.capabilities.FluidStorage;
 import zone.moddev.mc.lib.api.capabilities.IoMode;
 import zone.moddev.mc.lib.api.capabilities.ItemStorage;
 import zone.moddev.mc.lib.api.capabilities.Role;
@@ -33,9 +39,12 @@ import zone.moddev.mc.lib.machine.recipe.MachineRecipe;
 
 public final class GeneratorEntity extends BasePoweredMachine {
     private static final int EXPORT = 128;
+    private static final TagKey<Fluid> CATALYSTS = TagKey.create(Registries.FLUID,
+        ResourceLocation.fromNamespaceAndPath(IndustrialOverkill.MOD_ID, "generator_catalysts"));
     private final ItemStorage items = new ItemStorage(5).role(Role.INPUT, 0).role(Role.OUTPUT, 1, 2, 3, 4)
         .restrict(stack -> GeneratorFuel.forStack(getLevel(), stack) != null, 0).onChange(this::setChanged);
     private final MachineInventoryLifecycle inventory;
+    private final FluidStorage fluids = new FluidStorage().onChange(this::setChanged);
     private final MachineInventory burnInventory;
     private CyclePlan burn;
     private int total;
@@ -45,6 +54,9 @@ public final class GeneratorEntity extends BasePoweredMachine {
     public GeneratorEntity(BlockPos pos, BlockState state) {
         super(OmnivorousGenerator.TYPE.get(), pos, state, 32_000, 0, EXPORT);
         var resources = new MachineResources(this, this::facing);
+        int catalyst = fluids.addTank(4000, Role.INPUT, stack -> stack.is(CATALYSTS));
+        int byproduct = fluids.addTank(4000, Role.OUTPUT);
+        fluids.tankId(catalyst, "catalyst").tankId(byproduct, "byproduct");
         resources.items(new ResourceGroup<>("fuel", Component.translatable("omnivore.fuel"), 0xe49d4a,
             ResourceType.ITEMS, IoMode.INPUT, List.of(0), List.of("fuel"), new SideConfig(IoMode.INPUT)).inventory("items"), items);
         resources.items(new ResourceGroup<>("containers", Component.translatable("omnivore.containers"), 0x69b4b0,
@@ -52,11 +64,16 @@ public final class GeneratorEntity extends BasePoweredMachine {
             new SideConfig(IoMode.OUTPUT)).inventory("items"), items);
         resources.energy(new ResourceGroup<>("energy", Component.translatable("gym.group.energy"), 0xd95b40,
             ResourceType.ENERGY, IoMode.OUTPUT, List.of(0), List.of("energy"), new SideConfig(IoMode.OUTPUT)), energy);
-        inventory = poweredInventory(resources.build().automation()).items("items", items);
+        resources.fluids(new ResourceGroup<>("catalyst", Component.translatable("omnivore.catalyst"), 0x5387d1,
+            ResourceType.FLUIDS, IoMode.INPUT, List.of(catalyst), List.of("catalyst"), new SideConfig(IoMode.INPUT)), fluids);
+        resources.fluids(new ResourceGroup<>("byproduct", Component.translatable("omnivore.byproduct"), 0xa488bb,
+            ResourceType.FLUIDS, IoMode.OUTPUT, List.of(byproduct), List.of("byproduct"), new SideConfig(IoMode.OUTPUT)), fluids);
+        inventory = poweredInventory(resources.build().automation()).items("items", items).fluids("fluids", fluids);
         burnInventory = resources.recipes();
     }
 
     @Override public ItemStorage screenItems() { return items; }
+    @Override public FluidStorage screenFluids() { return fluids; }
     @Override protected MachineInventoryLifecycle machineInventory() { return inventory; }
     @Override public boolean screenAutomationAddons() { return false; }
     @Override public int getProgress() { return remaining; }

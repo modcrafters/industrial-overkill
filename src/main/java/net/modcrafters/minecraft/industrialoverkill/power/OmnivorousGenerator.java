@@ -32,6 +32,7 @@ public final class OmnivorousGenerator {
     private OmnivorousGenerator() {}
 
     public static void register(IEventBus bus) {
+        GeneratorBurnArrow.register();
         ITEMS.register(NAME, () -> new BlockItem(BLOCK.get(), new Item.Properties()));
         BLOCKS.register(bus);
         ITEMS.register(bus);
@@ -41,6 +42,8 @@ public final class OmnivorousGenerator {
             event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, TYPE.get(), (machine, side) ->
                 machine.screenItems().view(slot -> side == null ? (slot == 0 ? IoMode.INPUT : IoMode.OUTPUT)
                     : machine.screenAutomation().mode(ResourceType.ITEMS, slot, side)));
+            event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, TYPE.get(), (machine, side) ->
+                machine.screenFluids().view(tank -> machine.screenAutomation().mode(ResourceType.FLUIDS, tank, side)));
             MachineCapabilities.energy(event, TYPE.get(), machine -> machine.energy,
                 (machine, side) -> machine.screenAutomation().mode(ResourceType.ENERGY, 0, side));
         });

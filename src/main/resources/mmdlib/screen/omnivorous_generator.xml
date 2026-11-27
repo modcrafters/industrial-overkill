@@ -1,18 +1,18 @@
-<screen xmlns="https://moddev.zone/mmdlib/screen" title="block.industrial_overkill.omnivorous_generator"
+<screen xmlns="https://moddev.zone/mmdlib/screen" xmlns:io="https://moddev.zone/industrial-overkill/screen"
+        title="block.industrial_overkill.omnivorous_generator"
         block-entity="net.modcrafters.minecraft.industrialoverkill.power.GeneratorEntity" extends="mmdlib:base_powered_machine">
   <fill name="machine">
     <hbox spacing="6" align="center">
+      <fluid-tank id="catalyst" tank="0" orientation="vertical" length="3s"/>
       <inventory storage="items"><item-slot id="fuel" index="0" tooltip="omnivore.fuel"/></inventory>
-      <vbox spacing="3" align="center">
-        <progress id="burn" direction="right" value="#getProgress" max="#getTime" tooltip="omnivore.remaining"/>
-        <label text="omnivore.rate" value="#getBurnRate" tooltip="omnivore.rate.tip"/>
-      </vbox>
+      <io:burn-arrow id="burn" value="#getProgress" max="#getTime"/>
       <inventory storage="items" columns="2" spacing="2">
         <item-slot id="containers" index="1" tooltip="omnivore.containers"/>
         <item-slot id="output2" index="2" tooltip="omnivore.containers"/>
         <item-slot id="output3" index="3" tooltip="omnivore.containers"/>
         <item-slot id="output4" index="4" tooltip="omnivore.containers"/>
       </inventory>
+      <fluid-tank id="byproduct" tank="1" orientation="vertical" length="3s"/>
     </hbox>
   </fill>
   <fill name="inventory_controls"/>
