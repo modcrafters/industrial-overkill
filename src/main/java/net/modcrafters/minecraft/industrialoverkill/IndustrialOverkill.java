@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
+import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriFertilizerMigration;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriPellets;
 import net.modcrafters.minecraft.industrialoverkill.courier.CourierOccupantLoot;
@@ -41,6 +42,7 @@ public final class IndustrialOverkill {
         NeoForgeMod.enableMilkFluid();
         SOUNDS.register(bus);
         FarmSupplies.register(bus);
+        AgriBrainScreen.register();
         AgriFertilizerMigration.register();
         FarmFluids.register(bus);
         CourierOccupantLoot.register(bus);

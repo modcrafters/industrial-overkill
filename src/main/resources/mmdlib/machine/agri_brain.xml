@@ -38,14 +38,17 @@
            members="fertilizer/0 filtered_fertilizer/0 pellets/0 alternative_fertilizers/0 alternative_fertilizers/1"/>
   </groups>
   <processor id="agri" class="net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainProcessor"/>
-  <screen xmlns="https://moddev.zone/mmdlib/screen">
+  <screen xmlns="https://moddev.zone/mmdlib/screen" xmlns:agri="https://moddev.zone/industrial-overkill/screen">
     <fill name="machine">
+      <fluid-tank id="tank_0" tank="0" orientation="vertical" length="3s" tooltip="agri.irrigation.water"/>
       <hbox spacing="12" align="center">
         <vbox spacing="2" align="center">
           <inventory id="seed" storage="seeds" columns="2" spacing="2" slot-tooltip="agri.seeds"
                      value="net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen#selectedSeedSlot"/>
           <hbox spacing="2" align="center">
-            <inventory storage="hoe" columns="1" slot-icon="industrial_overkill:slot_hoe" slot-tooltip="agri.hoe"/>
+            <inventory storage="hoe" columns="1">
+              <agri:hinted-slot id="hoe_0" index="0" item="minecraft:wooden_hoe" tooltip="agri.hoe"/>
+            </inventory>
             <cycle-button id="planting_mode" variable="$processors.agri.planting_mode" tooltip="agri.planting.cycle">
               <cycle-mode value="0" icon="industrial_overkill:planting_first_found"
                           label="agri.planting.mode.0" tooltip="agri.planting.help.0"
@@ -67,8 +70,8 @@
           </inventory>
           <vbox spacing="2" align="center">
             <inventory storage="fertilizer" columns="1" spacing="2">
-              <item-slot id="alternative_fertilizers_0" index="3" icon="minecraft:item/bone_meal" icon-atlas="minecraft:textures/atlas/blocks.png" tooltip="agri.fertilizer.alternative"/>
-              <item-slot id="alternative_fertilizers_1" index="4" icon="minecraft:item/bone_meal" icon-atlas="minecraft:textures/atlas/blocks.png" tooltip="agri.fertilizer.alternative"/>
+              <agri:hinted-slot id="alternative_fertilizers_0" index="3" item="minecraft:bone_meal" tooltip="agri.fertilizer.alternative"/>
+              <agri:hinted-slot id="alternative_fertilizers_1" index="4" item="minecraft:bone_meal" tooltip="agri.fertilizer.alternative"/>
             </inventory>
             <cycle-button id="fertilizing_mode" variable="$processors.agri.fertilizing_mode" tooltip="agri.fertilizer.cycle">
               <cycle-mode value="0" icon="industrial_overkill:fertilizing_off" action="industrial_overkill:fertilizing_off"
@@ -85,9 +88,7 @@
         <inventory id="harvest" storage="output" columns="3" spacing="2" slot-tooltip="agri.output"/>
       </hbox>
     </fill>
-    <fill name="tanks">
-      <fluid-tank id="tank_0" tank="0" orientation="vertical" length="3s" tooltip="agri.irrigation.water"/>
-    </fill>
+    <fill name="tanks"/>
     <fill name="energy"><energy-gauge id="energy" length="3s"/></fill>
     <fill name="inventory_controls">
       <inventory-controls id="inventory_controls">
