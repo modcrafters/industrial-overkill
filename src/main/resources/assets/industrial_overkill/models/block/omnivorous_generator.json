@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable_with_bottom",
+  "textures": {
+    "top": "industrial_overkill:block/generator/_base/top",
+    "bottom": "industrial_overkill:block/generator/_base/bottom",
+    "side": "industrial_overkill:block/generator/_base/side",
+    "front": "minecraft:block/blast_furnace_front"
+  }
+}

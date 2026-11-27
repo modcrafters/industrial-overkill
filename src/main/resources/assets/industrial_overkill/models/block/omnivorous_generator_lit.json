@@ -1,0 +1,6 @@
+{
+  "parent": "industrial_overkill:block/omnivorous_generator",
+  "textures": {
+    "front": "minecraft:block/blast_furnace_front_on"
+  }
+}

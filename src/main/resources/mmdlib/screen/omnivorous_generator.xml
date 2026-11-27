@@ -1,0 +1,14 @@
+<screen xmlns="https://moddev.zone/mmdlib/screen" title="block.industrial_overkill.omnivorous_generator"
+        block-entity="net.modcrafters.minecraft.industrialoverkill.power.GeneratorEntity" extends="mmdlib:base_powered_machine">
+  <fill name="machine">
+    <hbox spacing="6" align="center">
+      <inventory storage="items"><item-slot id="fuel" index="0" tooltip="omnivore.fuel"/></inventory>
+      <vbox spacing="3" align="center">
+        <progress id="burn" direction="right" value="#getProgress" max="#getTime" tooltip="omnivore.remaining"/>
+        <label text="omnivore.rate" value="#getBurnRate" tooltip="omnivore.rate.tip"/>
+      </vbox>
+      <inventory storage="items"><item-slot id="containers" index="1" tooltip="omnivore.containers"/></inventory>
+    </hbox>
+  </fill>
+  <fill name="inventory_controls"/>
+</screen>

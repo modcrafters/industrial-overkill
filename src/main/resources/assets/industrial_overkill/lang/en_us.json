@@ -1,4 +1,12 @@
 {
+  "block.industrial_overkill.omnivorous_generator": "Omnivorous Generator",
+  "industrial_overkill:omnivorous_generator.info": "Burn food and solid furnace fuels for FE. A full buffer or a redstone signal pauses the burn. Empty containers collect on the right.",
+  "omnivore.fuel": "Fuel",
+  "omnivore.containers": "Returned containers",
+  "omnivore.remaining": "Remaining fuel energy: {value} FE",
+  "omnivore.rate": "Burn rate",
+  "omnivore.rate.tip": "Fuel burn rate: {value} FE/t",
+  "omnivore.serving": "%1$s FE per item at %2$s FE/t",
   "subtitles.industrial_overkill.agri_drone_rotor": "Drone rotors hum",
   "subtitles.industrial_overkill.agri_water_sprinkle": "Water sprinkles",
   "subtitles.industrial_overkill.agri_water_splash": "Water splashes",

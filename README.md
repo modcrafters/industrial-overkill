@@ -3,7 +3,7 @@
 NeoForge 1.21.1 / Java 21 mod using MMDLib. The entry point is
 `net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill`; the mod ID is
 `industrial_overkill`. Machines include **Animal Gym 2.0**, **Critter Courier**, and
-**Rock Stew Factory**, **Agri-Brain**, and **Ranch Controller**.
+**Rock Stew Factory**, **Agri-Brain**, **Ranch Controller**, and the **Omnivorous Generator**.
 
 This is a development version. MMDLib is a required, separate mod; JEI is optional.
 
@@ -495,6 +495,38 @@ The screen runner is `gradlew.bat runRockStewClientSmoke` (JEI production paths)
 `-PwithoutJei` to exercise the built-in fallback panel. Its screenshots are in
 `build/rock-stew-client-smoke/screenshots`. JEI has a separate
 `runRockStewJeiSmoke` runner. Routine validation is left to CI.
+
+## Omnivorous Generator
+
+Craft the generator with `IHI / IFI /  R ` (iron ingots, a hopper, a furnace,
+and redstone dust). Put one kind of food or solid furnace fuel in the left
+slot. Hover an item in the generator screen to see its FE per item and FE/t.
+Bowls, bottles, and other returned containers collect in the right slot.
+If the container cannot fit, the generator waits before starting that item.
+
+| Fuel | FE per item | Burn rate | Working time |
+| --- | ---: | ---: | ---: |
+| Raw potato | 800 | 8 FE/t | 5 seconds |
+| Coal or charcoal | 32,000 | 40 FE/t | 40 seconds |
+
+Other edible items supply 400 FE per nutrition point at 8 FE/t. Solid furnace
+fuels supply 20 FE per furnace burn tick at 40 FE/t. Food takes precedence
+when an item qualifies for both. For any item also accepted by the Animal
+Gym, the generator caps its yield at half the lowest matching Gym ration.
+A pig gets 3,840 FE from the same potato. Intensity changes how quickly the
+Gym delivers that energy.
+
+The 32,000 FE buffer supplies adjacent consumers on output-enabled faces.
+A full buffer or a redstone signal suspends burning. Unused energy in the
+current serving survives pauses and world reloads. The next item stays in the
+fuel slot until some energy can be produced.
+
+Datapacks can set per-item or tagged fuel values in the synced NeoForge item
+data map `industrial_overkill:calories`. The bundled potato entry is in
+`data/industrial_overkill/data_maps/item/calories.json`. Both `energy` and
+`rate` are positive integers. The Gym cap applies to overrides too. The
+`industrial_overkill:generator_denied` item tag takes precedence over values
+in the data map. This version burns solid items and has no catalyst tank.
 
 ## Animal Gym 2.0
 
