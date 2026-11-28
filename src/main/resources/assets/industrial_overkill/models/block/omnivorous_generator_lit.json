@@ -25,6 +25,7 @@
     },
     "front": {
       "parent": "industrial_overkill:block/omnivorous_generator_front",
+      "transform": {"translation": [0, 0, -0.015625]},
       "textures": {"front": "industrial_overkill:block/generator/omnivorous/front_working"}
     }
   }

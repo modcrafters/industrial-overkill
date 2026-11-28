@@ -9,6 +9,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.Containers;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -36,6 +37,7 @@ public final class GeneratorEntity extends BasePoweredMachine {
     private final FluidStorage fluids = new FluidStorage().onChange(this::setChanged);
     private final MachineInventory burnInventory;
     private CyclePlan burn;
+    private ItemStack displayedFuel = ItemStack.EMPTY;
     private int total;
     private int remaining;
     private int rate;
@@ -69,6 +71,8 @@ public final class GeneratorEntity extends BasePoweredMachine {
     @Override public int getProgress() { return remaining; }
     @Override public int getTime() { return Math.max(1, total); }
     public int getBurnRate() { return remaining > 0 ? rate : 0; }
+    /** The reserved item sent to the client for the firebox renderer. */
+    public ItemStack displayedFuel() { return displayedFuel; }
 
     private boolean loadFuel() {
         var stack = items.getStackInSlot(0);
@@ -87,6 +91,7 @@ public final class GeneratorEntity extends BasePoweredMachine {
     }
 
     @Override protected void beforeMachineTick() {
+        var previousBurn = burn;
         boolean burning = remaining > 0 || (energy.space() > 0 && !level.hasNeighborSignal(worldPosition) && loadFuel());
         if (burning) {
             int generated = Math.min(remaining, rate);
@@ -98,6 +103,8 @@ public final class GeneratorEntity extends BasePoweredMachine {
         var state = getBlockState();
         if (state.getValue(BlockStateProperties.LIT) != burning) {
             level.setBlock(worldPosition, state.setValue(BlockStateProperties.LIT, burning), Block.UPDATE_CLIENTS);
+        } else if (previousBurn != burn) {
+            syncToClient();
         }
     }
 
@@ -135,12 +142,25 @@ public final class GeneratorEntity extends BasePoweredMachine {
     }
 
     @Override public void clearContent() {
-        if (burn != null) burn.release(burnInventory);
-        burn = null;
+        if (burn != null) {
+            burn.release(burnInventory);
+            burn = null;
+            syncToClient();
+        }
         total = 0;
         remaining = 0;
         rate = 0;
         super.clearContent();
+    }
+
+    @Override protected void saveClientData(CompoundTag tag, HolderLookup.Provider registries) {
+        if (burn != null && !burn.items().isEmpty()) {
+            tag.put("burning_item", burn.items().getFirst().stack().save(registries));
+        }
+    }
+
+    @Override protected void loadClientData(CompoundTag tag, HolderLookup.Provider registries) {
+        displayedFuel = ItemStack.parseOptional(registries, tag.getCompound("burning_item"));
     }
 
     @Override protected void loadMachineData(CompoundTag tag, HolderLookup.Provider registries) {

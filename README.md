@@ -580,6 +580,7 @@ Gym delivers that energy.
 The 32,000 FE buffer supplies adjacent consumers on output-enabled faces.
 A full buffer or a redstone signal prevents the next item from lighting.
 Once lit, one item stays reserved in the fuel slot until its burn finishes.
+The open grate shows that item in front of the flames.
 Any surplus items can be removed. The burn continues through redstone signals
 and discards FE the buffer cannot hold. Reloading the world resumes the same
 burn. Breaking the generator consumes the lit item and drops its remains

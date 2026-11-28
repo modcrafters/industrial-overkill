@@ -3,6 +3,7 @@ package net.modcrafters.minecraft.industrialoverkill.test;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -49,10 +50,16 @@ public final class OmnivorousGeneratorTests {
         require(menu.bound.screen().find("fuel").isPresent() && menu.bound.screen().find("output4").isPresent(),
             "The survival machine opens with fuel and four output slots");
         var fuel = generator.screenItems();
-        fuel.insertItem(0, new ItemStack(Items.POTATO, 2), false);
+        var potatoes = new ItemStack(Items.POTATO, 2);
+        potatoes.set(DataComponents.CUSTOM_NAME, Component.literal("Firebox potato"));
+        fuel.insertItem(0, potatoes, false);
+        var registries = h.getLevel().registryAccess();
+        var replica = new GeneratorEntity(generator.getBlockPos(), generator.getBlockState());
         generator.energy.setStored(32000);
         generator.serverTick();
         require(fuel.getStackInSlot(0).getCount() == 2, "A full generator leaves unstarted fuel alone");
+        replica.loadWithComponents(generator.getUpdateTag(registries), registries);
+        require(replica.displayedFuel().isEmpty(), "Queued fuel stays out of the idle firebox");
         generator.energy.extract(3, false);
         generator.serverTick();
         require(generator.energy.stored() == 32000 && generator.getProgress() == 792 && fuel.getStackInSlot(0).getCount() == 2,
@@ -64,9 +71,11 @@ public final class OmnivorousGeneratorTests {
             && arrow.common().jeiRecipes().contains(OmnivorousGenerator.ID), "The generator has a recipe drawer and JEI arrow link");
         require(arrow.tooltip(generator, ItemStack.EMPTY).equals(List.of(Component.translatable("omnivore.remaining", 792),
             Component.translatable("omnivore.rate.tip", 8))), "The arrow shows the remaining FE and burn rate on separate rows");
-        var registries = h.getLevel().registryAccess();
         generator.loadWithComponents(generator.saveWithoutMetadata(registries), registries);
         require(fuel.extractItem(0, 64, true).getCount() == 1, "Reload reinstates the reservation on the same potato");
+        replica.loadWithComponents(generator.getUpdateTag(registries), registries);
+        require(ItemStack.isSameItemSameComponents(replica.displayedFuel(), potatoes) && replica.displayedFuel().getCount() == 1,
+            "A tracking client sees the one reserved potato with its components after reload");
         var switchPos = generator.getBlockPos().above();
         h.getLevel().setBlockAndUpdate(switchPos, Blocks.REDSTONE_BLOCK.defaultBlockState());
         generator.serverTick();
@@ -74,6 +83,8 @@ public final class OmnivorousGeneratorTests {
         for (int i = 0; i < 98; i++) generator.serverTick();
         require(generator.getProgress() == 0 && fuel.getStackInSlot(0).getCount() == 1 && !fuel.hasPlan(0),
             "The 100th tick consumes exactly the reserved potato and frees the slot");
+        replica.loadWithComponents(generator.getUpdateTag(registries), registries);
+        require(replica.displayedFuel().isEmpty(), "Completing the burn clears the display even with a potato still queued");
         generator.energy.setStored(0);
         generator.serverTick();
         require(generator.energy.stored() == 0 && !fuel.hasPlan(0), "Redstone prevents ignition of the queued potato");
@@ -250,6 +261,9 @@ public final class OmnivorousGeneratorTests {
         old.putInt("burn_remaining", 3);
         old.putInt("burn_rate", 8);
         generator.loadWithComponents(old, registries);
+        var replica = new GeneratorEntity(generator.getBlockPos(), generator.getBlockState());
+        replica.loadWithComponents(generator.getUpdateTag(registries), registries);
+        require(replica.displayedFuel().isEmpty(), "A legacy burn with no reserved item does not display queued fuel");
         generator.serverTick();
         require(generator.energy.stored() == 3 && generator.screenItems().getStackInSlot(0).is(Items.POTATO)
             && generator.getProgress() == 0, "A prepaid legacy burn pays its final partial tick without consuming the next item");
