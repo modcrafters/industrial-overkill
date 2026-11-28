@@ -8,7 +8,31 @@ trap 'rm -f -- "$fixtures/"*; rmdir -- "$fixtures"' EXIT
 trace="$fixtures/requests"
 notes_file="$fixtures/notes.md"
 jar_file="$fixtures/industrial-overkill-0.1.0-alpha.jar"
-printf 'Release notes\n' > "$notes_file"
+cat > "$fixtures/CHANGELOG.md" <<'MARKDOWN'
+# Changelog
+
+## [Unreleased]
+
+Upcoming changes.
+
+## [0.1.0-alpha] - 2026-11-27
+
+### Added
+
+- A new machine.
+
+## [0.0.1-alpha]
+
+Older changes.
+MARKDOWN
+python3 "$here/release-notes.py" "$fixtures/CHANGELOG.md" v0.1.0-alpha > "$notes_file"
+printf '### Added\n\n- A new machine.\n' > "$fixtures/expected.md"
+cmp "$fixtures/expected.md" "$notes_file"
+[[ "$(python3 "$here/release-notes.py" "$fixtures/CHANGELOG.md" 0.2.0)" == "Upcoming changes." ]]
+printf '\n## [0.2.0-beta]\n' >> "$fixtures/CHANGELOG.md"
+if python3 "$here/release-notes.py" "$fixtures/CHANGELOG.md" v0.2.0-beta; then
+  die "An empty tagged section must stop publication"
+fi
 touch "$jar_file"
 
 export TAG=v0.1.0-alpha RELEASE_TYPE=alpha
@@ -43,7 +67,8 @@ http_code() {
     https://minecraft.curseforge.com/api/game/version-types) cp "$fixtures/types.json" "$1" ;;
     https://minecraft.curseforge.com/api/projects/123/files) printf '[]' > "$1" ;;
     https://minecraft.curseforge.com/api/projects/123/upload-file)
-      jq -e '.gameVersions == [101, 102, 103, 104, 105] and .releaseType == "alpha"
+      jq -e --rawfile expected "$notes_file" '.changelog == $expected
+        and .gameVersions == [101, 102, 103, 104, 105] and .releaseType == "alpha"
         and .relations.projects == [{slug: "mmdlib", type: "requiredDependency"}]' \
         "$work/curseforge.json" > /dev/null || die "Wrong CurseForge metadata"
       printf '{"id":1}' > "$1"
@@ -54,7 +79,8 @@ http_code() {
       return
       ;;
     https://api.modrinth.com/v2/version)
-      jq -e '.project_id == "AbC123" and .version_type == "alpha" and .version_number == "0.1.0-alpha"
+      jq -e --rawfile expected "$notes_file" '.changelog == $expected
+        and .project_id == "AbC123" and .version_type == "alpha" and .version_number == "0.1.0-alpha"
         and .loaders == ["neoforge"] and .game_versions == ["1.21.1"]' \
         "$work/modrinth.json" > /dev/null || die "Wrong Modrinth metadata"
       printf '{"id":"test-version"}' > "$1"
@@ -66,6 +92,16 @@ http_code() {
 
 gh() {
   printf 'gh %s %s\n' "$1" "$2" >> "$trace"
+  if [[ "$2" == create ]]; then
+    while (( $# >= 2 )); do
+      if [[ "$1" == --notes-file ]]; then
+        cmp "$fixtures/expected.md" "$2"
+        return
+      fi
+      shift
+    done
+    die "GitHub release is missing --notes-file"
+  fi
   [[ "$2" != view ]]
 }
 

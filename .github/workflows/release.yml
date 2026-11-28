@@ -94,11 +94,10 @@ jobs:
           name: release-jar
           path: jars
 
-      - name: Generate release notes
+      - name: Select changelog for the tag
         env:
-          GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" -f "tag_name=$TAG" --jq .body > release-notes.md
+        run: python3 .github/scripts/release-notes.py CHANGELOG.md "$TAG" > release-notes.md
 
       - name: Upload the JAR
         env:

@@ -25,6 +25,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.BlockHitResult;
@@ -45,6 +46,7 @@ import net.modcrafters.minecraft.industrialoverkill.client.GymFoodDisplay;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGymEntity;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalFit;
+import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
 import zone.moddev.mc.lib.MMDLib;
 import zone.moddev.mc.lib.api.capabilities.IoMode;
 import zone.moddev.mc.lib.api.capabilities.RelativeFace;
@@ -258,6 +260,7 @@ public final class GymClientSmoke {
                     POS.west().above()) < 12)
                     throw new AssertionError("Working lamps must illuminate the animal space");
                 verifyGantryLighting(mc);
+                verifyGeneratorFront(mc);
                 var atlas = mc.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
                 var faceAtlasId = AnimalGym.id("block/gym_attachment_faces");
                 var faceAtlas = atlas.apply(faceAtlasId).contents();
@@ -511,6 +514,27 @@ public final class GymClientSmoke {
             fail(failure);
         }
     }
+    private static void verifyGeneratorFront(Minecraft mc) {
+        var fire = AnimalGym.id("block/generator/omnivorous/fire_animation");
+        var sprite = mc.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(fire).contents();
+        if (sprite.width() != 16 || sprite.height() != 13 || sprite.getUniqueFrames().count() != 6)
+            throw new AssertionError("The generator fire must load as six 16×13 frames");
+
+        var idleFront = AnimalGym.id("block/generator/omnivorous/front");
+        var workingFront = AnimalGym.id("block/generator/omnivorous/front_working");
+        var generator = OmnivorousGenerator.BLOCK.get().defaultBlockState()
+            .setValue(BlockStateProperties.HORIZONTAL_FACING, Direction.NORTH);
+        for (boolean lit : new boolean[]{false, true}) {
+            var state = generator.setValue(BlockStateProperties.LIT, lit);
+            var textures = mc.getBlockRenderer().getBlockModel(state)
+                .getQuads(state, Direction.NORTH, RandomSource.create(42), ModelData.EMPTY, RenderType.cutout())
+                .stream().map(quad -> quad.getSprite().contents().name()).toList();
+            if (textures.contains(fire) != lit || textures.contains(workingFront) != lit
+                || textures.contains(idleFront) == lit)
+                throw new AssertionError("Unexpected generator front textures for lit=" + lit + ": " + textures);
+        }
+    }
+
     private static void verifyGantryLighting(Minecraft mc) {
         var level = mc.level;
         var state = level.getBlockState(POS);

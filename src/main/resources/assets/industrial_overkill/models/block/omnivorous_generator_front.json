@@ -1,0 +1,14 @@
+{
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "front": "industrial_overkill:block/generator/omnivorous/front",
+    "particle": "#front"
+  },
+  "elements": [{
+    "from": [0, 0, -0.03],
+    "to": [16, 16, -0.03],
+    "faces": {
+      "north": {"uv": [0, 0, 16, 16], "texture": "#front", "cullface": "north"}
+    }
+  }]
+}

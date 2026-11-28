@@ -9,6 +9,7 @@ import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -36,8 +37,14 @@ public final class FarmRecipeView implements RecipePresentation {
     private final int rows;
     private final Component duration;
     private final Component energy;
+    private final List<FormattedCharSequence> footer;
 
     public FarmRecipeView(MachineRecipe recipe) {
+        this(recipe, Component.empty());
+    }
+
+    public FarmRecipeView(MachineRecipe recipe, Component detail) {
+        footer = detail.getString().isEmpty() ? List.of() : Minecraft.getInstance().font.split(detail, WIDTH - 4);
         var items = new ArrayList<ItemCell>();
         var fluids = new ArrayList<FluidCell>();
         int inputs = 0;
@@ -85,12 +92,15 @@ public final class FarmRecipeView implements RecipePresentation {
 
     public List<ItemCell> itemCells() { return itemCells; }
     public List<FluidCell> fluidCells() { return fluidCells; }
+    @Override public List<Fluid> fluids() {
+        return fluidCells.stream().flatMap(cell -> cell.stacks().stream().map(stack -> new Fluid(stack, cell.role()))).toList();
+    }
     public boolean available() {
         return itemCells.stream().noneMatch(cell -> cell.stacks().isEmpty())
             && fluidCells.stream().noneMatch(cell -> cell.stacks().isEmpty());
     }
     @Override public int width() { return WIDTH; }
-    @Override public int height() { return rows * PITCH + 13; }
+    @Override public int height() { return rows * PITCH + 13 + footer.size() * 10; }
 
     @Override
     public List<Item> items() {
@@ -129,6 +139,8 @@ public final class FarmRecipeView implements RecipePresentation {
         var font = Minecraft.getInstance().font;
         graphics.drawString(font, duration, 2, rows * PITCH + 2, 0xff333333, false);
         graphics.drawString(font, energy, OUTPUT_X, rows * PITCH + 2, 0xff333333, false);
+        for (int i = 0; i < footer.size(); i++)
+            graphics.drawString(font, footer.get(i), 2, rows * PITCH + 12 + i * 10, 0xff333333, false);
     }
 
     private static <T> T current(List<T> stacks) {

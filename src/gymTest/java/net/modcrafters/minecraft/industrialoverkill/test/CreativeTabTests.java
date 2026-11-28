@@ -24,12 +24,13 @@ public final class CreativeTabTests {
         for (int rebuild = 0; rebuild < 2; rebuild++) {
             var machines = contents(h, "industrial_overkill:machines");
             require(machines.equals(List.of(item("industrial_overkill:agri_brain"),
-                item("industrial_overkill:animal_gym"), item("industrial_overkill:baa_rber_shop"),
+                item("industrial_overkill:animal_gym"), item("industrial_overkill:ash"), item("industrial_overkill:baa_rber_shop"),
                 item("industrial_overkill:critter_courier"),
                 item("industrial_overkill:fertilizer"), item("industrial_overkill:fertilizer_maker"),
                 item("industrial_overkill:filter_cake"), item("industrial_overkill:filtered_fertilizer"),
                 item("industrial_overkill:filtered_sewage_bucket"), item("industrial_overkill:honest_sewer"),
-                item("industrial_overkill:livestock_to_go"), item("industrial_overkill:pair_pressure"),
+                item("industrial_overkill:livestock_to_go"), item("industrial_overkill:omnivorous_generator"),
+                item("industrial_overkill:pair_pressure"),
                 item("industrial_overkill:ranch_controller"), item("industrial_overkill:rock_stew_factory"),
                 item("industrial_overkill:sewage_bucket"),
                 item("industrial_overkill:sewage_filter"), item("industrial_overkill:slow_release_pellet"),

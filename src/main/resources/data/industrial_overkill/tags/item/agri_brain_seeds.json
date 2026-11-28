@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
+    "#industrial_overkill:agri_brain_direct_planting",
     {"id": "#c:seeds", "required": false},
     "minecraft:wheat_seeds",
     "minecraft:beetroot_seeds",

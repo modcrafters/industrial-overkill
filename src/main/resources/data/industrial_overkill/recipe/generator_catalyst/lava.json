@@ -1,0 +1,6 @@
+{
+  "type": "industrial_overkill:generator_catalyst",
+  "input": {"id": "minecraft:lava", "amount": 100},
+  "energy_multiplier": 2,
+  "burn_rate_multiplier": 2
+}

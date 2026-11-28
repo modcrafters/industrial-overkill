@@ -1,0 +1,11 @@
+{
+  "type": "industrial_overkill:generator_catalyst",
+  "input": {"id": "industrial_overkill:filtered_sewage", "amount": 10},
+  "output_fluid": {"id": "minecraft:water", "amount": 5},
+  "output_fluid_chance": 0,
+  "output_item": {"id": "minecraft:clay_ball", "count": 2},
+  "output_item_chance": 1,
+  "energy_multiplier": 10,
+  "burn_rate_multiplier": 5,
+  "ash_chance": 0
+}

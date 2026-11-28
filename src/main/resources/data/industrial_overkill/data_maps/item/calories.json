@@ -1,0 +1,8 @@
+{
+  "values": {
+    "minecraft:potato": {
+      "energy": 800,
+      "rate": 8
+    }
+  }
+}

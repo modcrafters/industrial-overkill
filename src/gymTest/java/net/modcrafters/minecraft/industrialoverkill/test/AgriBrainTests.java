@@ -3,6 +3,7 @@ package net.modcrafters.minecraft.industrialoverkill.test;
 import static net.modcrafters.minecraft.industrialoverkill.test.AnimalGymTests.require;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import net.minecraft.core.BlockPos;
@@ -23,6 +24,7 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import zone.moddev.mc.lib.gui.model.elements.ItemSlotElement;
 import zone.moddev.mc.lib.gui.model.elements.UpgradeSlotElement;
 import zone.moddev.mc.lib.gui.model.elements.FluidTankElement;
 import zone.moddev.mc.lib.gui.model.elements.WorkingAreaButtonElement;
@@ -288,7 +290,7 @@ public final class AgriBrainTests {
         h.getLevel().setBlock(pos, BuiltInRegistries.BLOCK.get(ResourceLocation.parse("industrial_overkill:agri_brain")).defaultBlockState(), 3);
         var machine = (DefinedMachineEntity) h.getLevel().getBlockEntity(pos);
         require(machine.screenAutomation().groups().stream().map(g -> g.id()).collect(java.util.stream.Collectors.toSet())
-            .equals(java.util.Set.of("energy", "water", "hoe", "seeds", "output", "fertilizer", "filtered_fertilizer", "pellets")),
+            .equals(java.util.Set.of("energy", "water", "hoe", "seeds", "output", "fertilizer")),
             "All inputs and outputs are configurable without exposing the manual upgrade slots");
         require(machine.fluids.getTanks() == 1 && machine.fluids.getTankCapacity(0) == 4000
             && machine.fluids.fill(new FluidStack(Fluids.LAVA, 1000), FluidAction.EXECUTE) == 0,
@@ -325,13 +327,22 @@ public final class AgriBrainTests {
             // This catches unsupported ordinary snapshot values, even if the screen constructs.
             menu.broadcastChanges();
             var tank = (FluidTankElement) menu.bound.screen().find("tank_0").orElseThrow();
+            for (var group : List.of("seed", "fertilizer_0", "harvest", "energy"))
+                require(menu.layout().bounds(tank).right() <= menu.layout().bounds(menu.bound.screen().find(group).orElseThrow()).x(),
+                    "The irrigation tank sits to the left of " + group);
             menu.setCarried(new ItemStack(Items.WATER_BUCKET));
             tank.interact(new ScreenClick(player, menu, tank, 0, false, false, false, 0));
             require(menu.getCarried().is(Items.BUCKET) && machine.fluids.getFluidInTank(0).getAmount() == 1321,
                 "The irrigation gauge accepts a bucket of water");
             menu.setCarried(ItemStack.EMPTY);
-            var hoeSlot = (zone.moddev.mc.lib.gui.model.elements.ItemSlotElement)
-                menu.bound.screen().find("hoe_0").orElseThrow();
+            var hoeSlot = (ItemSlotElement) menu.bound.screen().find("hoe_0").orElseThrow();
+            require(hoeSlot.hint(machine, "hoe").is(Items.WOODEN_HOE), "The empty hoe slot shows a wooden hoe");
+            for (var id : List.of("alternative_fertilizers_0", "alternative_fertilizers_1")) {
+                var slot = (ItemSlotElement) menu.bound.screen().find(id).orElseThrow();
+                require(slot.hint(machine, "fertilizer").is(Items.BONE_MEAL) && slot.icon().isEmpty()
+                    && slot.appearance().ghostAlpha() == hoeSlot.appearance().ghostAlpha(),
+                    "Both alternative fertilizers use the same translucent hint treatment as the hoe");
+            }
             require(menu.slot(hoeSlot).mayPlace(new ItemStack(Items.IRON_HOE))
                 && !menu.slot(hoeSlot).mayPlace(new ItemStack(Items.DIRT))
                 && menu.slot(hoeSlot).getMaxStackSize() == 1,

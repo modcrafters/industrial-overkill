@@ -24,6 +24,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 import net.modcrafters.minecraft.industrialoverkill.client.jei.GymRecipeCategory;
+import net.modcrafters.minecraft.industrialoverkill.client.jei.GeneratorJeiPlugin;
+import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
 import net.modcrafters.minecraft.industrialoverkill.client.GymRecipeDisplay;
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
 import net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe;
@@ -44,6 +46,31 @@ public final class GymJeiClientSmoke implements IModPlugin {
     private final java.util.Map<EntityType<?>, Float> previousPhases = new java.util.HashMap<>();
     private long sampledAt;
     private double previousRate;
+
+    private void checkGeneratorRecipes() {
+        var manager = runtime.getRecipeManager();
+        var type = GeneratorJeiPlugin.TYPE;
+        var focuses = runtime.getJeiHelpers().getFocusFactory();
+        var potato = focuses.createFocus(RecipeIngredientRole.INPUT, VanillaTypes.ITEM_STACK, new ItemStack(Items.POTATO));
+        var ash = focuses.createFocus(RecipeIngredientRole.OUTPUT, VanillaTypes.ITEM_STACK, new ItemStack(OmnivorousGenerator.ASH.get()));
+        var rejected = focuses.createFocus(RecipeIngredientRole.INPUT, VanillaTypes.ITEM_STACK, new ItemStack(Items.LAVA_BUCKET));
+        var entries = manager.createRecipeLookup(type).limitFocus(List.of(potato)).get().toList();
+        check(entries.stream().anyMatch(e -> e.id().getPath().equals("burn/minecraft/potato")),
+            "Potato usage includes its dry generator recipe");
+        var lava = focuses.createFocus(RecipeIngredientRole.INPUT, mezz.jei.api.neoforge.NeoForgeTypes.FLUID_STACK,
+            new net.neoforged.neoforge.fluids.FluidStack(net.minecraft.world.level.material.Fluids.LAVA, 100));
+        var sewage = focuses.createFocus(RecipeIngredientRole.OUTPUT, mezz.jei.api.neoforge.NeoForgeTypes.FLUID_STACK,
+            new net.neoforged.neoforge.fluids.FluidStack(net.modcrafters.minecraft.industrialoverkill.waste.FarmFluids.SEWAGE.source.get(), 25));
+        check(manager.createRecipeLookup(type).limitFocus(List.of(lava)).get().anyMatch(entries::contains)
+            && manager.createRecipeLookup(type).limitFocus(List.of(sewage)).get().anyMatch(entries::contains),
+            "Potato variants can be found by catalyst input and byproduct fluid output");
+        check(manager.createRecipeLookup(type).limitFocus(List.of(ash)).get().anyMatch(entries::contains),
+            "The potato recipe is also discoverable from its optional ash output");
+        check(manager.createRecipeLookup(type).limitFocus(List.of(rejected)).get().findAny().isEmpty(),
+            "Lava buckets are excluded from solid fuel recipes");
+        check(manager.createRecipeCatalystLookup(type).getItemStack().anyMatch(stack -> stack.is(OmnivorousGenerator.BLOCK.get().asItem())),
+            "The generator item opens its category");
+    }
 
     private final long deadline = System.currentTimeMillis() + 180000;
     public GymJeiClientSmoke() {
@@ -89,6 +116,7 @@ public final class GymJeiClientSmoke implements IModPlugin {
             var focuses = runtime.getJeiHelpers().getFocusFactory();
             switch (stage) {
                 case 0 -> {
+                    checkGeneratorRecipes();
                     check(entries.size() == 18, "One entry per animal including tag members");
                     check(
                         entries.stream().map(entry -> entry.animal().getType()).distinct()

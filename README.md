@@ -3,7 +3,7 @@
 NeoForge 1.21.1 / Java 21 mod using MMDLib. The entry point is
 `net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill`; the mod ID is
 `industrial_overkill`. Machines include **Animal Gym 2.0**, **Critter Courier**, and
-**Rock Stew Factory**, **Agri-Brain**, and **Ranch Controller**.
+**Rock Stew Factory**, **Agri-Brain**, **Ranch Controller**, and the **Omnivorous Generator**.
 
 This is a development version. MMDLib is a required, separate mod; JEI is optional.
 
@@ -27,7 +27,8 @@ a development client. The optional local MMDLib workflow is described below.
 
 ## Agri-Brain foundation
 
-Agri-Brain is available in the Industrial Overkill creative tab as a powered farming controller prototype.
+Craft Agri-Brain with iron ingots in the four corners, an iron hoe at the top,
+a composter between two wheat seeds in the middle, and redstone dust at the bottom.
 The mod's tab is defined in `src/main/resources/mmdlib/creative_tab/machines.xml`;
 `include-mod-items="true"` automatically includes all of the mod's registered
 items, sorted by ID. `<exclude tag="industrial_overkill:internal_items"/>` hides
@@ -74,11 +75,18 @@ The planting selector uses MMDLib's shared `<cycle-button>`: mode values, icons,
 labels, help and selection actions live in the machine XML. Its processor actions
 change the saved mode and reset the seed cursor; no custom UI element is needed.
 Inputs accept `industrial_overkill:agri_brain_seeds`, which includes
-the common seeds tag, vanilla farmland seeds, carrots and potatoes. On each scan
-visit, the machine evaluates fertilizer, then checks for harvest, tills, and plants in the empty crop space
-above farmland. Planting existing farmland needs no hoe. Each successful placement
+the common seeds tag, vanilla farmland seeds, carrots, potatoes, sugar cane,
+cactus, bamboo and sweet berries. Farmland crops can use the hoe to prepare dirt or grass.
+For cane, cactus, bamboo and sweet berries the drone plants directly on the existing ground.
+Prepare the plot as you would by hand, including adjacent water for cane and
+clear sides for cactus. The irrigation tank waters farmland. Each successful placement
 consumes one seed, honors normal placement/cancellation rules, and preserves
 immature crops. Planting failure consumes nothing and does not advance the cursor.
+
+The drone leaves the four plots directly beside a cactus clear at crop height.
+Diagonal plots can still grow crops. When planting a cactus, the drone also
+checks its four sides for existing blocks. Air and fluids pass the clearance
+check, and the planting item's normal survival rules still apply.
 
 Mature crops are harvested into nine output slots arranged in a 3×3 grid.
 Seed drops refill matching seed input stacks first, then empty seed inputs;
@@ -88,7 +96,56 @@ uses the selected planting mode, including newly collected seeds. Harvesting
 needs no hoe and uses empty-hand loot. It respects block-break cancellation.
 Wheat-style crops (including carrots, potatoes and beetroot), mature torchflowers
 and pitcher plants are supported, as are melon and pumpkin fruits; their stems
-stay in place. Other plants are left alone.
+stay in place. For cane, cactus and bamboo, each harvest takes the top block
+and sends it to the harvest output. A lone base stays planted for regrowth.
+Put sweet berries in a seed slot to start a berry patch. The drone picks fully
+ripe bushes for 2–3 berries each and leaves the bush planted at age 1. If the
+harvest output is full, the berries stay on the bush until a later visit.
+
+### Adding Agri-Brain crops
+
+A compatibility datapack for a cane-like crop needs two tag entries. For
+example, a mod whose reed item and block both have the ID `example:reed` can
+put `{"values":["example:reed"]}` in both of these files:
+
+- `data/industrial_overkill/tags/item/agri_brain_direct_planting.json` admits the item to the seed slots and uses its normal placement action on the plot's existing soil. The item must plant one crop above the clicked soil on success.
+- `data/industrial_overkill/tags/block/agri_brain_column_crops.json` lets Agri-Brain trim a vertical run of that same block from the top, leaving the base. Use the growing block ID here if it differs from the item.
+
+Add a cactus-like block to `data/industrial_overkill/tags/block/agri_brain_needs_clear_sides.json`
+to keep its four horizontal neighbors free of new plantings. When its planting
+item is a block item for that tagged block, the same clearance check applies
+before the drone plants it.
+
+For a sweet-berry-style bush, add its block ID to
+`data/industrial_overkill/tags/block/agri_brain_bushes.json` and its planting
+item to the direct-planting item tag. The built-in picker reads the block's
+integer `age` property. At its highest age above 1, it returns 2–3 of the
+block's item and resets the age to 1. Use this tag for bushes whose item is
+the edible or harvestable fruit and whose age property includes 1.
+
+For special harvests, a compatibility mod can register the public
+`net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler`
+block capability in NeoForge's `RegisterCapabilitiesEvent`. A registered handler
+takes precedence over the tag defaults. This example picks a glow berry from a fruiting vine:
+
+```java
+AgriHarvestHandler picker = (level, base, state) -> {
+    if (!state.getValue(BlockStateProperties.BERRIES)) return null;
+    return new AgriHarvestHandler.Harvest(base, state.setValue(BlockStateProperties.BERRIES, false),
+        (world, pos, harvested, player) -> List.of(new ItemStack(Items.GLOW_BERRIES)));
+};
+event.registerBlock(AgriHarvestHandler.CAPABILITY,
+    (level, pos, state, blockEntity, context) -> picker, Blocks.CAVE_VINES);
+```
+
+The handler owns harvest detection for that block. Inspection can run several
+times per visit and must be read-only. Return `null` to wait, `Harvest.cut(pos)`
+for normal block loot, or a replacement state and a drops callback for picking.
+The target is one block in the plot's vertical column, at or above the base.
+Agri-Brain checks protection, rolls drops once per attempt, checks storage space,
+and commits the block change and outputs. Crops that keep their base send produce
+to Harvest. Add a bush's planting item to the direct-planting tag to enable
+automatic planting as well.
 
 ### Fertilizer and sewage
 
@@ -125,7 +182,16 @@ On existing makers, stored raw sewage stays in the input and stored water moves
 to the output. Filtered sewage from the removed tank is preserved in the
 machine's recovery data and is dropped in a recovery capsule when it is broken.
 
-Agri-Brain has three fertilizer slots and four strategies. **Off** skips doses.
+All five fertilizer slots share one colour and side configuration. The left
+column takes regular fertilizer, filtered fertilizer, and slow-release pellets
+from top to bottom. The two slots above the mode button accept bone meal, ash,
+and anything added to the `industrial_overkill:agri_brain_alternative_fertilizers`
+item tag. These doses advance a crop one stage for the regular fertilizer cost.
+Ash has a 30% chance to advance the crop and costs one dose and the usual FE per attempt.
+When a strategy calls for a one-stage dose, Agri-Brain tries regular fertilizer
+first, then the upper and lower alternative slots in order.
+
+**Off** skips doses.
 **Smart** applies pellets at planting, lets active pellets work, and prefers
 filtered fertilizer when two stages remain. Otherwise, it prefers regular
 fertilizer and saves filtered doses for crops that can use both stages.
@@ -486,6 +552,103 @@ The screen runner is `gradlew.bat runRockStewClientSmoke` (JEI production paths)
 `-PwithoutJei` to exercise the built-in fallback panel. Its screenshots are in
 `build/rock-stew-client-smoke/screenshots`. JEI has a separate
 `runRockStewJeiSmoke` runner. Routine validation is left to CI.
+
+## Omnivorous Generator
+
+Craft the generator with `IHI / IFI /  R ` (iron ingots, a hopper, a furnace,
+and redstone dust). Put one kind of food or solid furnace fuel in the left
+slot. Hover an item in the generator screen to see its FE per item and FE/t.
+The four output slots collect returned containers and burn remains. Dry and
+lava burns produce one charcoal per burnable log (including tagged modded logs)
+and have a one-in-eight chance to leave one ash per fuel item if there is room.
+With water, sewage is the only burn residue. Fuel containers such as bowls
+still come back. Using ash by hand or in a dispenser spends one ash per valid
+target, with a 30% chance to apply the usual bone meal effect.
+
+| Fuel | FE per item | Burn rate | Working time |
+| --- | ---: | ---: | ---: |
+| Raw potato | 800 | 8 FE/t | 5 seconds |
+| Coal or charcoal | 32,000 | 40 FE/t | 40 seconds |
+
+Other edible items supply 400 FE per nutrition point at 8 FE/t. Solid furnace
+fuels supply 20 FE per furnace burn tick at 40 FE/t. Food takes precedence
+when an item qualifies for both. For any item also accepted by the Animal
+Gym, the generator caps its dry yield at half the lowest matching Gym ration.
+A pig gets 3,840 FE from the same potato. Intensity changes how quickly the
+Gym delivers that energy.
+
+The 32,000 FE buffer supplies adjacent consumers on output-enabled faces.
+A full buffer or a redstone signal prevents the next item from lighting.
+Once lit, one item stays reserved in the fuel slot until its burn finishes.
+The open grate shows that item in front of the flames.
+Any surplus items can be removed. The burn continues through redstone signals
+and discards FE the buffer cannot hold. Reloading the world resumes the same
+burn. Breaking the generator consumes the lit item and drops its remains
+alongside the rest of the inventory.
+
+Datapacks can set per-item or tagged fuel values in the synced NeoForge item
+data map `industrial_overkill:calories`. The bundled potato entry is in
+`data/industrial_overkill/data_maps/item/calories.json`. Both `energy` and
+`rate` are positive integers. The Gym cap applies to overrides too. The
+`industrial_overkill:generator_denied` item tag takes precedence over values
+in the data map.
+
+The Catalyst input and Byproduct output each hold 4,000 mB and have independent
+side settings. An empty input tank gives a dry burn. Each dose of catalyst
+applies to one fuel item, whether food or furnace fuel.
+
+| Catalyst per item | Raw potato yield | Burn time | Fluid byproduct |
+| --- | ---: | ---: | --- |
+| None | 800 FE at 8 FE/t | 5 seconds | None |
+| 50 mB water | 800 FE at 8 FE/t | 5 seconds | 25 mB sewage |
+| 100 mB lava | 1,600 FE at 16 FE/t | 5 seconds | None |
+
+A partial dose waits for a refill. Ignition reserves the fuel, the fluid dose,
+room for any possible fluid output, and room for guaranteed item outputs.
+At burnout the generator consumes the dose and rolls each output independently.
+Chance-based item drops use available space. A running burn keeps its recipe
+across saves and datapack reloads. Hover the processing arrow for remaining FE
+and FE/t. Its recipe drawer and JEI show dry and catalyzed burns with their
+inputs, duration, energy, outputs, and chances.
+
+### Generator catalyst recipes
+
+Place a recipe in `data/<namespace>/recipe/generator_catalyst/<name>.json` and
+use `/reload`. The recipe itself admits its fluid to the Catalyst tank. To change
+a bundled recipe, override `industrial_overkill:generator_catalyst/water` or
+`industrial_overkill:generator_catalyst/lava`. If multiple IDs specify the
+same input fluid, the first full recipe ID in alphabetical order wins.
+
+This example adds a use for filtered sewage. Each dose has a 75% chance to
+return water and a separate 25% chance to produce a clay ball.
+
+```json
+{
+  "type": "industrial_overkill:generator_catalyst",
+  "input": {"id": "industrial_overkill:filtered_sewage", "amount": 50},
+  "output_fluid": {"id": "minecraft:water", "amount": 25},
+  "output_fluid_chance": 0.75,
+  "output_item": {"id": "minecraft:clay_ball", "count": 1},
+  "output_item_chance": 0.25,
+  "energy_multiplier": 1.5,
+  "burn_rate_multiplier": 1,
+  "ash_chance": 0.2
+}
+```
+
+Fluid amounts are 1–4,000 mB. Both outputs are optional and default to a 100%
+chance when supplied. Chances range from 0 to 1. The extra item is independent
+of the usual returned container, log charcoal, and ash.
+
+| Optional effect property | Default | Effect on one serving |
+| --- | ---: | --- |
+| `energy_multiplier` | 1 | Multiplies dry FE per item. Shared foods stay at least 1 FE below the lowest matching Animal Gym ration. |
+| `burn_rate_multiplier` | 1 | Multiplies dry FE/t. A faster rate spends the serving sooner. |
+| `ash_chance` | 0.125 | Sets the probability of one base ash drop. Use 0 to disable it or 1 to guarantee it. |
+| `charcoal_chance` | 1 | Sets the probability of one charcoal from a burnable log. The bundled water recipe sets this and `ash_chance` to 0. |
+
+Multipliers must be finite and positive. Energy and rate round to the nearest
+whole FE with a minimum of one. The last tick produces only the remaining FE.
 
 ## Animal Gym 2.0
 
@@ -920,8 +1083,16 @@ version pinned; use a new release version rather than overwriting it.
 Push a tag such as `v0.1.0`, `v0.1.0-alpha`, or `v0.1.0-beta` on a commit
 already on `main`. The Release workflow uses the tag as the JAR version and
 builds against the published MMDLib pin above. The build must pass before the
-workflow uploads the NeoForge JAR and GitHub-generated release notes to
-CurseForge and GitHub Releases.
+workflow uploads the NeoForge JAR and one section of the [changelog](CHANGELOG.md)
+to CurseForge, GitHub Releases, and Modrinth when configured.
+
+Write upcoming notes under `## [Unreleased]` and use `###` or deeper headings
+for topics. A tag such as `v0.1.0-alpha` selects `## [0.1.0-alpha]` if present.
+The heading can include a release date, as in `## [0.1.0-alpha] - 2026-11-27`.
+If the version has no heading yet, the workflow publishes the tagged commit's
+`[Unreleased]` section. An empty selected section stops publication. When
+starting the following release, file the previous notes under their version
+and start a fresh `[Unreleased]` section.
 
 Set the repository variable `CURSEFORGE_PROJECT_ID` and the repository secret
 `CURSEFORGE_TOKEN`. Leave `MODRINTH_PROJECT_ID` unset to skip Modrinth validation

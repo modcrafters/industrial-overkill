@@ -1,0 +1,9 @@
+{
+  "parent": "industrial_overkill:block/machine/casing",
+  "textures": {
+    "front": "industrial_overkill:block/generator/_base/front",
+    "side": "industrial_overkill:block/generator/_base/side",
+    "top": "industrial_overkill:block/generator/_base/top",
+    "bottom": "industrial_overkill:block/generator/_base/bottom"
+  }
+}

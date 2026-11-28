@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import net.modcrafters.minecraft.industrialoverkill.mixin.PitcherCropGrowth;
-import net.modcrafters.minecraft.industrialoverkill.waste.FarmSupplies;
+import net.modcrafters.minecraft.industrialoverkill.power.AshItem;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 
 final class AgriFertilizing {
@@ -21,27 +21,34 @@ final class AgriFertilizing {
     static final int PELLETS_ONLY = 3;
 
     enum Dose {
-        REGULAR("fertilizer", 1), FILTERED("filtered_fertilizer", 2), PELLET("pellets", 2);
+        REGULAR(0, 1),
+        FILTERED(1, 2),
+        PELLET(2, 2),
+        ALTERNATIVE_TOP(3, 1),
+        ALTERNATIVE_BOTTOM(4, 1);
 
-        final String slot;
+        final int slot;
         final int stages;
 
-        Dose(String slot, int stages) {
+        Dose(int slot, int stages) {
             this.slot = slot;
             this.stages = stages;
         }
 
         boolean stocked(DefinedMachineEntity machine) {
-            var stack = machine.items.inventory(slot).getStackInSlot(0);
-            return switch (this) {
-                case REGULAR -> stack.is(FarmSupplies.FERTILIZER.get());
-                case FILTERED -> stack.is(FarmSupplies.FILTERED_FERTILIZER.get());
-                case PELLET -> stack.is(FarmSupplies.SLOW_RELEASE_PELLET.get());
-            };
+            var contents = machine.items.inventory("fertilizer");
+            var stack = contents.getStackInSlot(slot);
+            return !stack.isEmpty() && contents.isItemValid(slot, stack);
         }
     }
 
     private AgriFertilizing() {}
+
+    private static Dose regularDose(DefinedMachineEntity machine) {
+        if (Dose.REGULAR.stocked(machine)) return Dose.REGULAR;
+        if (Dose.ALTERNATIVE_TOP.stocked(machine)) return Dose.ALTERNATIVE_TOP;
+        return Dose.ALTERNATIVE_BOTTOM.stocked(machine) ? Dose.ALTERNATIVE_BOTTOM : null;
+    }
 
     static Dose choose(DefinedMachineEntity machine, ServerLevel level, BlockPos pos, BlockState crop, int strategy) {
         if (strategy == OFF || strategy == PELLETS_ONLY || AgriPellets.active(level, pos)) return null;
@@ -49,23 +56,23 @@ final class AgriFertilizing {
         if (remaining <= 0) return null;
         if (strategy == FINISH_ONLY) {
             if (crop.getBlock() instanceof StemBlock || remaining > 2) return null;
-            var dose = remaining == 2 ? Dose.FILTERED : Dose.REGULAR;
-            return dose.stocked(machine) ? dose : null;
+            if (remaining == 1) return regularDose(machine);
+            return Dose.FILTERED.stocked(machine) ? Dose.FILTERED : null;
         }
         if (remaining == 2 && Dose.FILTERED.stocked(machine)) return Dose.FILTERED;
-        if (Dose.REGULAR.stocked(machine)) return Dose.REGULAR;
+        var regular = regularDose(machine);
+        if (regular != null) return regular;
         return remaining > 1 && Dose.FILTERED.stocked(machine) ? Dose.FILTERED : null;
     }
 
     static boolean use(DefinedMachineEntity machine, ServerLevel level, BlockPos pos, Dose dose) {
         if (!dose.stocked(machine) || (dose == Dose.PELLET && AgriPellets.active(level, pos))) return false;
-        var contents = machine.items.inventory(dose.slot);
-        var stack = contents.getStackInSlot(0).copy();
-        if (!advance(level, pos, dose.stages)) return false;
+        var contents = machine.items.inventory("fertilizer");
+        var stack = contents.getStackInSlot(dose.slot).copy();
+        if (!advance(level, pos, dose.stages, stack.getItem() instanceof AshItem, 8)) return false;
         stack.shrink(1);
-        contents.setStackInSlot(0, stack);
+        contents.setStackInSlot(dose.slot, stack);
         if (dose == Dose.PELLET && remaining(level.getBlockState(pos)) > 0) AgriPellets.start(level, pos);
-        level.levelEvent(1505, pos, 8);
         return true;
     }
 
@@ -83,7 +90,7 @@ final class AgriFertilizing {
         return dose != null && !(crop.getBlock() instanceof StemBlock) && remaining(crop) <= dose.stages;
     }
 
-    static boolean advance(ServerLevel level, BlockPos pos, int stages) {
+    static boolean advance(ServerLevel level, BlockPos pos, int stages, boolean usingAsh, int particles) {
         if (!level.hasChunkAt(pos) || level.isOutsideBuildHeight(pos) || !level.getWorldBorder().isWithinBounds(pos)
             || level.captureBlockSnapshots || level.restoringBlockSnapshots) return false;
         var state = level.getBlockState(pos);
@@ -92,6 +99,8 @@ final class AgriFertilizing {
         var player = FakePlayerFactory.get(level, AgriTilling.PROFILE);
         if (!player.mayBuild() || !level.mayInteract(player, pos)
             || !CommonHooks.canCropGrow(level, pos, state, true) || level.getBlockState(pos) != state) return false;
+        // An eligible ash attempt spends the dose and FE even when the crop stays at its current age.
+        if (usingAsh && !AshItem.takesEffect(level.random)) return true;
         int growth = Math.min(stages, remaining);
         boolean changed = switch (state.getBlock()) {
             case CropBlock crop -> level.setBlock(pos, crop.getStateForAge(crop.getAge(state) + growth), Block.UPDATE_CLIENTS);
@@ -103,7 +112,10 @@ final class AgriFertilizing {
             }
             default -> false;
         };
-        if (changed) CommonHooks.fireCropGrowPost(level, pos, state);
+        if (changed) {
+            CommonHooks.fireCropGrowPost(level, pos, state);
+            level.levelEvent(1505, pos, particles);
+        }
         return changed;
     }
 }

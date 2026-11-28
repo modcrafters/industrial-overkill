@@ -13,13 +13,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FarmBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainProcessor;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen;
+import net.modcrafters.minecraft.industrialoverkill.IndustrialOverkill;
+import net.modcrafters.minecraft.industrialoverkill.api.agri.AgriHarvestHandler;
 import net.modcrafters.minecraft.industrialoverkill.upgrade.MachineUpgrades;
 import zone.moddev.mc.lib.gui.ElementActions;
 import zone.moddev.mc.lib.gui.runtime.MachineMenu;
@@ -27,6 +34,7 @@ import zone.moddev.mc.lib.gui.runtime.ScreenNetwork;
 import zone.moddev.mc.lib.machine.neoforge.DefinedMachineEntity;
 
 @GameTestHolder("industrial_overkill_agri")
+@EventBusSubscriber(modid = IndustrialOverkill.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 @PrefixGameTestTemplate(false)
 public final class AgriPlantingTests {
     private static DefinedMachineEntity place(GameTestHelper h, int upgrades) {
@@ -55,6 +63,167 @@ public final class AgriPlantingTests {
 
     private static void ticks(DefinedMachineEntity machine, int count) {
         for (int tick = 0; tick < count; tick++) machine.serverTick();
+    }
+
+    // A test-only compatibility provider, registered exactly as a separate mod would register one.
+    @SubscribeEvent
+    public static void registerBerryHarvest(RegisterCapabilitiesEvent event) {
+        AgriHarvestHandler picker = (level, base, state) -> state.getValue(BlockStateProperties.BERRIES)
+            ? new AgriHarvestHandler.Harvest(base, state.setValue(BlockStateProperties.BERRIES, false),
+                (world, target, harvested, player) -> List.of(new ItemStack(Items.GLOW_BERRIES)))
+            : null;
+        event.registerBlock(AgriHarvestHandler.CAPABILITY, (level, pos, state, entity, context) -> picker, Blocks.CAVE_VINES);
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void plantsStalksOnTheirOwnSoils(GameTestHelper h) {
+        var machine = place(h, 0);
+        var seeds = machine.screenInventory("seeds");
+        var level = h.getLevel();
+        machine.screenInventory("hoe").setStackInSlot(0, new ItemStack(Items.IRON_HOE));
+        for (int i = 0; i < 3; i++) level.setBlockAndUpdate(crop(machine, 3, i).below(), Blocks.DIRT.defaultBlockState());
+        require(seeds.insertItem(0, new ItemStack(Items.SUGAR_CANE, 2), false).isEmpty(), "The ordinary seed port accepts cane");
+        ticks(machine, 16);
+        require(level.isEmptyBlock(crop(machine, 3, 0)) && level.getBlockState(crop(machine, 3, 0).below()).is(Blocks.DIRT)
+            && seeds.getStackInSlot(0).getCount() == 2, "Dry cane skips the dirt and spends no planting item");
+        level.setBlockAndUpdate(crop(machine, 3, 4).below(), Blocks.WATER.defaultBlockState());
+        ticks(machine, 16);
+        require(level.getBlockState(crop(machine, 3, 1)).is(Blocks.SUGAR_CANE) && seeds.getStackInSlot(0).getCount() == 1,
+            "Cane plants beside water with a hoe installed");
+        seeds.setStackInSlot(0, new ItemStack(Items.BAMBOO));
+        ticks(machine, 16);
+        require(level.getBlockState(crop(machine, 3, 2)).is(Blocks.BAMBOO_SAPLING) && seeds.getStackInSlot(0).isEmpty(),
+            "Bamboo uses vanilla shoot placement on dirt");
+        level.removeBlock(crop(machine, 3, 2), false); // Clear the side of the first cactus plot.
+        for (int i = 3; i <= 4; i++) level.setBlockAndUpdate(crop(machine, 3, i).below(), Blocks.SAND.defaultBlockState());
+        seeds.setStackInSlot(0, new ItemStack(Items.CACTUS, 2));
+        ticks(machine, 32);
+        require(level.getBlockState(crop(machine, 3, 3)).is(Blocks.CACTUS) && level.isEmptyBlock(crop(machine, 3, 4))
+            && seeds.getStackInSlot(0).getCount() == 1, "Cactus plants on sand and skips the spot beside the first cactus");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void keepsTheFourPlotsBesideCactusClear(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var cactus = crop(machine, 3, 4);
+        level.setBlockAndUpdate(cactus.below(), Blocks.SAND.defaultBlockState());
+        level.setBlockAndUpdate(cactus, Blocks.CACTUS.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.WHEAT_SEEDS, 12));
+        ticks(machine, 300);
+        for (int i : List.of(1, 3, 5, 7))
+            require(level.isEmptyBlock(crop(machine, 3, i)), "Cactus keeps each face-adjacent plot empty");
+        for (int i : List.of(0, 2, 6, 8))
+            require(level.getBlockState(crop(machine, 3, i)).is(Blocks.WHEAT), "Diagonal plots can grow wheat");
+        require(seeds.getStackInSlot(0).getCount() == 8, "Only the four planted plots spend seeds");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void rechecksCactusClearanceBeforeSpendingTheBerry(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var target = crop(machine, 3, 0);
+        var neighbor = crop(machine, 3, 5);
+        level.setBlockAndUpdate(target.below(), Blocks.DIRT.defaultBlockState());
+        level.setBlockAndUpdate(neighbor.below(), Blocks.SAND.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.SWEET_BERRIES));
+        seeds.setStackInSlot(1, new ItemStack(Items.BAMBOO));
+        var processor = AgriBrainProcessor.from(machine);
+        processor.cyclePlantingMode();
+        ticks(machine, 11);
+        require(processor.phase() == AgriBrainProcessor.Phase.PLANT, "The clear plot has a planned berry planting");
+        level.setBlockAndUpdate(neighbor, Blocks.CACTUS.defaultBlockState());
+        ticks(machine, 5);
+        require(level.isEmptyBlock(target) && seeds.getStackInSlot(0).getCount() == 1 && processor.nextSeedSlot() == 0
+            && machine.energy.stored() == 100000 - 16 * AgriBrainProcessor.SCAN_FE_PER_TICK,
+            "A new cactus during hover preserves the berry, its turn, and the planting FE");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void waitsForSpaceBeforePlantingCactusBesideWheat(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var target = crop(machine, 3, 0);
+        var neighbor = crop(machine, 3, 1);
+        level.setBlockAndUpdate(target.below(), Blocks.SAND.defaultBlockState());
+        level.setBlockAndUpdate(neighbor, Blocks.WHEAT.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        seeds.setStackInSlot(0, new ItemStack(Items.CACTUS));
+        ticks(machine, 16);
+        require(level.isEmptyBlock(target) && seeds.getStackInSlot(0).getCount() == 1, "A growing crop keeps cactus out");
+        level.removeBlock(neighbor, false);
+        ticks(machine, 300);
+        require(level.getBlockState(target).is(Blocks.CACTUS) && seeds.getStackInSlot(0).isEmpty(),
+            "The same plot accepts cactus after the neighbor is cleared");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void trimsColumnsAndPicksCustomCropsOnlyWhenDropsFit(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var output = machine.screenInventory("output");
+        for (int i = 0; i < 2; i++) {
+            var base = crop(machine, 3, i);
+            level.setBlockAndUpdate(base.below(), Blocks.DIRT.defaultBlockState());
+            for (int height = 0; height < 3; height++) level.setBlockAndUpdate(base.above(height), Blocks.BAMBOO.defaultBlockState());
+        }
+        var vine = crop(machine, 3, 2);
+        level.setBlockAndUpdate(vine.above(), Blocks.STONE.defaultBlockState());
+        level.setBlockAndUpdate(vine, Blocks.CAVE_VINES.defaultBlockState().setValue(BlockStateProperties.BERRIES, true));
+        for (int slot = 0; slot < output.getSlots(); slot++) output.setStackInSlot(slot, new ItemStack(Items.STONE, 64));
+        ticks(machine, 16);
+        require(level.getBlockState(crop(machine, 3, 0).above(2)).is(Blocks.BAMBOO), "Full output preserves the entire column");
+        output.setStackInSlot(0, ItemStack.EMPTY);
+        ticks(machine, 16);
+        var base = crop(machine, 3, 1);
+        require(level.getBlockState(base).is(Blocks.BAMBOO) && level.getBlockState(base.above()).is(Blocks.BAMBOO)
+            && level.isEmptyBlock(base.above(2)) && output.getStackInSlot(0).is(Items.BAMBOO)
+            && output.getStackInSlot(0).getCount() == 1, "The top harvest goes to output and preserves its supports");
+        output.setStackInSlot(1, ItemStack.EMPTY);
+        ticks(machine, 16);
+        require(!level.getBlockState(vine).getValue(BlockStateProperties.BERRIES) && output.getStackInSlot(1).is(Items.GLOW_BERRIES)
+            && output.getStackInSlot(1).getCount() == 1, "The compatibility handler picks berries and leaves the vine");
+        h.succeed();
+    }
+
+    @GameTest(template = "gym_empty")
+    public static void plantsAndPicksTaggedBushesWithoutUpgrades(GameTestHelper h) {
+        var machine = place(h, 0);
+        var level = h.getLevel();
+        var bush = crop(machine, 3, 0);
+        level.setBlockAndUpdate(bush.below(), Blocks.DIRT.defaultBlockState());
+        var seeds = machine.screenInventory("seeds");
+        require(seeds.insertItem(0, new ItemStack(Items.SWEET_BERRIES), false).isEmpty(), "Seed slots accept sweet berries");
+        ticks(machine, 16);
+        require(level.getBlockState(bush).is(Blocks.SWEET_BERRY_BUSH) && level.getBlockState(bush.below()).is(Blocks.DIRT)
+            && seeds.getStackInSlot(0).isEmpty(), "One berry plants a bush directly on dirt");
+
+        var unripe = crop(machine, 3, 1);
+        level.setBlockAndUpdate(unripe, Blocks.SWEET_BERRY_BUSH.defaultBlockState().setValue(SweetBerryBushBlock.AGE, 2));
+        var wart = crop(machine, 3, 2);
+        level.setBlockAndUpdate(wart.below(), Blocks.SOUL_SAND.defaultBlockState());
+        level.setBlockAndUpdate(wart, Blocks.NETHER_WART.defaultBlockState().setValue(NetherWartBlock.AGE, 3));
+        level.setBlockAndUpdate(bush, level.getBlockState(bush).setValue(SweetBerryBushBlock.AGE, 3));
+        var output = machine.screenInventory("output");
+        for (int slot = 0; slot < output.getSlots(); slot++) output.setStackInSlot(slot, new ItemStack(Items.STONE, 64));
+        ticks(machine, 300);
+        require(level.getBlockState(bush).getValue(SweetBerryBushBlock.AGE) == 3, "A full harvest inventory preserves ripe berries");
+        output.setStackInSlot(0, ItemStack.EMPTY);
+        output.setStackInSlot(1, ItemStack.EMPTY);
+        ticks(machine, 300);
+        var picked = output.getStackInSlot(0);
+        require(picked.is(Items.SWEET_BERRIES) && picked.getCount() >= 2 && picked.getCount() <= 3
+            && seeds.getStackInSlot(0).isEmpty(), "Picking sends the full ripe yield to Harvest");
+        require(level.getBlockState(bush).getValue(SweetBerryBushBlock.AGE) == 1
+            && level.getBlockState(unripe).getValue(SweetBerryBushBlock.AGE) == 2, "The picked bush regrows and the unripe bush is untouched");
+        require(level.getBlockState(wart).getValue(NetherWartBlock.AGE) == 3, "An untagged age-based plant is left alone");
+        h.succeed();
     }
 
     @GameTest(template = "gym_empty")

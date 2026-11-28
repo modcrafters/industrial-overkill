@@ -15,6 +15,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import org.slf4j.Logger;
 
 import net.modcrafters.minecraft.industrialoverkill.gym.AnimalGym;
+import net.modcrafters.minecraft.industrialoverkill.power.OmnivorousGenerator;
+import net.modcrafters.minecraft.industrialoverkill.agri.AgriBrainScreen;
+import net.modcrafters.minecraft.industrialoverkill.agri.AgriFertilizerMigration;
 import net.modcrafters.minecraft.industrialoverkill.agri.AgriPellets;
 import net.modcrafters.minecraft.industrialoverkill.courier.CourierOccupantLoot;
 import net.modcrafters.minecraft.industrialoverkill.ranch.RanchAddons;
@@ -39,6 +42,8 @@ public final class IndustrialOverkill {
         NeoForgeMod.enableMilkFluid();
         SOUNDS.register(bus);
         FarmSupplies.register(bus);
+        AgriBrainScreen.register();
+        AgriFertilizerMigration.register();
         FarmFluids.register(bus);
         CourierOccupantLoot.register(bus);
         RanchAddons.register(bus);
@@ -47,6 +52,7 @@ public final class IndustrialOverkill {
         net.modcrafters.minecraft.industrialoverkill.stew.RockStewConfig.register(bus, container);
         net.modcrafters.minecraft.industrialoverkill.stew.RockStewRecipes.register(bus);
         AnimalGym.register(bus);
+        OmnivorousGenerator.register(bus);
         net.modcrafters.minecraft.industrialoverkill.agri.AgriDockBlock.register(bus);
         net.modcrafters.minecraft.industrialoverkill.upgrade.MachineUpgrades.register(bus);
         net.modcrafters.minecraft.industrialoverkill.gym.GymAnimalRecipe.register(bus);

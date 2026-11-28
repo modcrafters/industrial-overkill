@@ -1,0 +1,8 @@
+{
+  "parent": "industrial_overkill:block/machine/generator",
+  "loader": "neoforge:composite",
+  "children": {
+    "casing": {"parent": "industrial_overkill:block/machine/generator"},
+    "front": {"parent": "industrial_overkill:block/omnivorous_generator_front"}
+  }
+}
