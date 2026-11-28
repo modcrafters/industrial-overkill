@@ -7,6 +7,25 @@
       "parent": "industrial_overkill:block/machine/powered_sides",
       "textures": {"lights": "industrial_overkill:block/generator/_base/side_powered"}
     },
-    "front": {"parent": "industrial_overkill:block/omnivorous_generator_front"}
+    "fire": {
+      "render_type": "minecraft:cutout",
+      "textures": {
+        "fire": "industrial_overkill:block/generator/omnivorous/fire_animation",
+        "particle": "#fire"
+      },
+      "elements": [{
+        "from": [4, 4.5, -0.015],
+        "to": [12, 11, -0.015],
+        "shade": false,
+        "neoforge_data": {"block_light": 15, "sky_light": 15, "ambient_occlusion": false},
+        "faces": {
+          "north": {"uv": [0, 0, 16, 16], "texture": "#fire", "cullface": "north"}
+        }
+      }]
+    },
+    "front": {
+      "parent": "industrial_overkill:block/omnivorous_generator_front",
+      "textures": {"front": "industrial_overkill:block/generator/omnivorous/front_working"}
+    }
   }
 }
